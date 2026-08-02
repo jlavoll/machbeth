@@ -1,0 +1,19 @@
+[remap]
+
+importer="oggvorbisstr"
+type="AudioStreamOggVorbis"
+uid="uid://cbqq0ekvtni5u"
+path="res://.godot/imported/WIND_Winds Textural Breeze Light Debris_B00M_3DS06_2.0.ogg-c84a659512618a6dc9d3985766861cfc.oggvorbisstr"
+
+[deps]
+
+source_file="res://ambience/WIND_Winds Textural Breeze Light Debris_B00M_3DS06_2.0.ogg"
+dest_files=["res://.godot/imported/WIND_Winds Textural Breeze Light Debris_B00M_3DS06_2.0.ogg-c84a659512618a6dc9d3985766861cfc.oggvorbisstr"]
+
+[params]
+
+loop=false
+loop_offset=0
+bpm=0
+beat_count=0
+bar_beats=4

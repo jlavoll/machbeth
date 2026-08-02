@@ -1,0 +1,312 @@
+extends CharacterBody3D
+class_name PlayerCar
+
+# ==============================================================================
+# PLAYER MOVEMENT & CAR HANDLING EXPORTS
+# ==============================================================================
+# @export variables allow tweaking values directly inside Godot's Inspector panel.
+
+# Maximum forward driving speed in meters per second
+@export var max_speed: float = 24.0
+
+# Maximum reverse driving speed in meters per second
+@export var reverse_speed: float = 12.0
+
+# How quickly the vehicle speeds up (meters per second squared)
+@export var acceleration: float = 30.0
+
+# Passive deceleration rate when no throttle/brake key is pressed
+@export var friction: float = 15.0
+
+# Steering rotation speed in radians per second
+@export var steer_speed: float = 3.2
+
+# Current forward/backward velocity of the vehicle
+var current_speed: float = 0.0
+
+# ==============================================================================
+# VISUAL BODY DYNAMICS (LEANING, BANKING & PITCH)
+# ==============================================================================
+
+# Maximum body roll (lean/bank) in degrees during sharp turns
+@export_range(0.0, 20.0, 0.5) var max_bank_angle_degrees: float = 8.5
+
+# Maximum nose pitch dip/lift in degrees under heavy acceleration or braking
+@export_range(0.0, 15.0, 0.5) var max_pitch_angle_degrees: float = 4.0
+
+# How quickly body tilt responds to steering/acceleration changes (higher = snappier)
+@export_range(1.0, 20.0, 0.5) var body_tilt_speed: float = 8.0
+
+# References to visual body mesh child node
+@onready var car_body_mesh: MeshInstance3D = $CarBody
+
+# Internal smoothed tilt values (radians)
+var _target_bank_roll: float = 0.0
+var _target_pitch: float = 0.0
+
+# ==============================================================================
+# HEADLIGHT STAGE SYSTEM (H KEY SHORTCUT)
+# ==============================================================================
+# Modes: 0 = OFF, 1 = NEAR (Low Beam), 2 = LONG (High/Long Beam)
+enum HeadlightMode { OFF, NEAR, LONG }
+var current_headlight_mode: HeadlightMode = HeadlightMode.NEAR
+
+# ------------------------------------------------------------------------------
+# HEADLIGHT BEAM LENGTH & TUNING PARAMETERS  (Adjust values here to tune beams!)
+# ------------------------------------------------------------------------------
+
+# --- 1. NEAR BEAM (LOW BEAM) ---
+# Length of Near Beam light throw in meters (Default: 35.0m)
+@export_range(10.0, 100.0, 1.0) var near_beam_length: float = 35.0
+# Cone spread angle in degrees (Default: 35.0°) - wider angle illuminates road right in front
+@export_range(10.0, 90.0, 1.0) var near_beam_cone_angle: float = 35.0
+# Brightness strength energy multiplier (Default: 5.0)
+@export_range(1.0, 30.0, 0.5) var near_beam_energy: float = 5.0
+# Downward tilt angle in degrees (Default: -12.0°) - points light onto nearby road surface
+@export_range(-30.0, 0.0, 0.5) var near_beam_tilt_degrees: float = -12.0
+
+# --- 2. LONG BEAM (HIGH BEAM / FAR THROW) ---
+# Length of Long Beam light throw in meters (Default: 90.0m - increase e.g. 150.0m for extreme distance)
+@export_range(30.0, 300.0, 5.0) var long_beam_length: float = 250.0
+# Cone spread angle in degrees (Default: 22.0°) - narrower focused spotlight beam reaches further
+@export_range(5.0, 60.0, 1.0) var long_beam_cone_angle: float = 22.0
+# Brightness strength energy multiplier (Default: 12.0)
+@export_range(1.0, 50.0, 1.0) var long_beam_energy: float = 12.0
+# Downward tilt angle in degrees (Default: -4.0°) - flatter angle lets beam illuminate down long avenues
+@export_range(-20.0, 5.0, 0.5) var long_beam_tilt_degrees: float = -14.0
+
+var spot_light_left: SpotLight3D
+var spot_light_right: SpotLight3D
+@onready var headlight_mesh_left: MeshInstance3D = $HeadLightLeft
+@onready var headlight_mesh_right: MeshInstance3D = $HeadLightRight
+
+# ==============================================================================
+# CAMERA & ZOOM CONTROL PARAMETERS
+# ==============================================================================
+
+# Reference to the child Camera3D node attached to this player vehicle
+@onready var camera: Camera3D = $Camera3D
+
+# Camera tilt angle downward in degrees (0 = looking flat forward, -90 = looking straight down)
+@export var camera_pitch_angle_degrees: float = -65.0
+
+# Camera position offset relative to the car: Vector3(X=Left/Right, Y=Height Above Car, Z=Distance Behind Car)
+@export var camera_offset: Vector3 = Vector3(0.0, 22.0, 5.0)
+
+# Minimum Field of View in degrees (base zoom-in limit before extra upward tilt kicks in)
+@export var min_fov: float = 60.0
+
+# Ultra-Zoom Field of View in degrees (maximum zoom-in limit for upward sky tilt)
+@export var ultra_min_fov: float = 35.0
+
+# Maximum Field of View in degrees (most zoomed OUT)
+@export var max_fov: float = 150.0
+
+# Amount by which the Field of View changes with each mouse wheel notch scroll
+@export var zoom_step: float = 3.0
+
+# Starting base FOV captured at launch
+var base_fov: float = 85.0
+
+# Camera position offset when fully zoomed IN: Vector3(X=0, Y=Height, Z=Distance Behind)
+@export var min_zoom_camera_offset: Vector3 = Vector3(0.0, 4.0, 8.0)
+
+# Pitch angle in degrees when zoomed in to min_fov (60° FOV) looking behind car
+@export var min_zoom_pitch_angle_degrees: float = -20.0
+
+# Pitch angle in degrees when continuing to zoom in further to ultra_min_fov (35° FOV) tilting upward to sky/skyscrapers
+@export var ultra_zoom_pitch_angle_degrees: float = 10.0
+
+# ==============================================================================
+# ENGINE LOOPS & INPUT HANDLING
+# ==============================================================================
+
+func _ready() -> void:
+	if camera:
+		base_fov = camera.fov
+	_update_camera_transform()
+	_setup_3d_headlights()
+
+func _setup_3d_headlights() -> void:
+	# Create 3D SpotLight3D projectors for left and right headlights
+	spot_light_left = SpotLight3D.new()
+	spot_light_left.name = "SpotLightLeft"
+	spot_light_left.position = Vector3(-0.6, 0.2, -1.2) # Front left
+	spot_light_left.rotation_degrees = Vector3(-10.0, 0.0, 0.0)
+	spot_light_left.light_color = Color(0.69, 1.0, 1.0, 1.0) # Neon Cyan
+	spot_light_left.shadow_enabled = true
+	add_child(spot_light_left)
+
+	spot_light_right = SpotLight3D.new()
+	spot_light_right.name = "SpotLightRight"
+	spot_light_right.position = Vector3(0.6, 0.2, -1.2) # Front right
+	spot_light_right.rotation_degrees = Vector3(-10.0, 0.0, 0.0)
+	spot_light_right.light_color = Color(0.663, 0.902, 1.0, 1.0) # Neon Cyan
+	spot_light_right.shadow_enabled = true
+	add_child(spot_light_right)
+
+	# Apply initial mode settings (starts on NEAR)
+	_apply_headlight_mode()
+
+func _cycle_headlight_mode() -> void:
+	# Cycle OFF (0) -> NEAR (1) -> LONG (2) -> OFF (0)
+	match current_headlight_mode:
+		HeadlightMode.OFF:
+			current_headlight_mode = HeadlightMode.NEAR
+		HeadlightMode.NEAR:
+			current_headlight_mode = HeadlightMode.LONG
+		HeadlightMode.LONG:
+			current_headlight_mode = HeadlightMode.OFF
+	
+	_apply_headlight_mode()
+
+func _apply_headlight_mode() -> void:
+	var mode_name: String = ""
+	match current_headlight_mode:
+		HeadlightMode.OFF:
+			mode_name = "OFF"
+			spot_light_left.visible = false
+			spot_light_right.visible = false
+			_set_headlight_mesh_emission(0.0)
+
+		HeadlightMode.NEAR:
+			mode_name = "NEAR (LOW BEAM)"
+			spot_light_left.visible = true
+			spot_light_right.visible = true
+			
+			# Near Beam distance, angle, energy, and tilt (configured above in NEAR BEAM parameters)
+			spot_light_left.spot_range = near_beam_length
+			spot_light_right.spot_range = near_beam_length
+			spot_light_left.spot_angle = near_beam_cone_angle
+			spot_light_right.spot_angle = near_beam_cone_angle
+			spot_light_left.light_energy = near_beam_energy
+			spot_light_right.light_energy = near_beam_energy
+			spot_light_left.rotation_degrees = Vector3(near_beam_tilt_degrees, 0.0, 0.0)
+			spot_light_right.rotation_degrees = Vector3(near_beam_tilt_degrees, 0.0, 0.0)
+			_set_headlight_mesh_emission(5.0)
+
+		HeadlightMode.LONG:
+			mode_name = "LONG (HIGH BEAM)"
+			spot_light_left.visible = true
+			spot_light_right.visible = true
+			
+			# Long Beam distance, angle, energy, and tilt (configured above in LONG BEAM parameters)
+			# --> TWEAK 'long_beam_length' AT TOP OF FILE OR IN INSPECTOR TO CHANGE LONG BEAM DISTANCE <--
+			spot_light_left.spot_range = long_beam_length
+			spot_light_right.spot_range = long_beam_length
+			spot_light_left.spot_angle = long_beam_cone_angle
+			spot_light_right.spot_angle = long_beam_cone_angle
+			spot_light_left.light_energy = long_beam_energy
+			spot_light_right.light_energy = long_beam_energy
+			spot_light_left.rotation_degrees = Vector3(long_beam_tilt_degrees, 0.0, 0.0)
+			spot_light_right.rotation_degrees = Vector3(long_beam_tilt_degrees, 0.0, 0.0)
+			_set_headlight_mesh_emission(10.0)
+
+	print("[HEADLIGHTS] Mode switched to: ", mode_name)
+
+func _set_headlight_mesh_emission(energy: float) -> void:
+	for mesh in [headlight_mesh_left, headlight_mesh_right]:
+		if is_instance_valid(mesh):
+			var mat: StandardMaterial3D = mesh.get_surface_override_material(0)
+			if not mat and mesh.mesh:
+				mat = mesh.mesh.surface_get_material(0)
+			if mat:
+				mat.emission_enabled = (energy > 0.0)
+				mat.emission_energy_multiplier = energy
+
+func _update_camera_transform() -> void:
+	if camera:
+		var current_pitch: float = camera_pitch_angle_degrees
+		var current_offset: Vector3 = camera_offset
+
+		if camera.fov < base_fov and camera.fov >= min_fov:
+			var zoom_in_factor: float = (base_fov - camera.fov) / (base_fov - min_fov)
+			current_pitch = lerp(camera_pitch_angle_degrees, min_zoom_pitch_angle_degrees, zoom_in_factor)
+			current_offset = camera_offset.lerp(min_zoom_camera_offset, zoom_in_factor)
+			
+		elif camera.fov < min_fov:
+			var ultra_zoom_factor: float = (min_fov - camera.fov) / (min_fov - ultra_min_fov)
+			current_pitch = lerp(min_zoom_pitch_angle_degrees, ultra_zoom_pitch_angle_degrees, ultra_zoom_factor)
+			current_offset = min_zoom_camera_offset
+
+		camera.position = current_offset
+		camera.rotation_degrees = Vector3(current_pitch, 0.0, 0.0)
+
+func _physics_process(delta: float) -> void:
+	# --------------------------------------------------------------------------
+	# 1. STEERING INPUT (A/D or Left/Right Arrow Keys)
+	# --------------------------------------------------------------------------
+	var steer_input: float = 0.0
+	if Input.is_key_pressed(KEY_A) or Input.is_key_pressed(KEY_LEFT):
+		steer_input += 1.0  # Turn left (+1)
+	if Input.is_key_pressed(KEY_D) or Input.is_key_pressed(KEY_RIGHT):
+		steer_input -= 1.0  # Turn right (-1)
+
+	# --------------------------------------------------------------------------
+	# 2. THROTTLE INPUT (W/S or Up/Down Arrow Keys)
+	# --------------------------------------------------------------------------
+	var throttle_input: float = 0.0
+	if Input.is_key_pressed(KEY_W) or Input.is_key_pressed(KEY_UP):
+		throttle_input += 1.0  # Drive forward (+1)
+	if Input.is_key_pressed(KEY_S) or Input.is_key_pressed(KEY_DOWN):
+		throttle_input -= 1.0  # Reverse / Brake (-1)
+
+	# --------------------------------------------------------------------------
+	# 3. STEERING ROTATION LOGIC
+	# --------------------------------------------------------------------------
+	if abs(current_speed) > 0.1 or throttle_input != 0.0:
+		var steer_dir: float = -1.0 if current_speed < -0.1 else 1.0
+		rotation.y += steer_input * steer_speed * steer_dir * delta
+
+	# --------------------------------------------------------------------------
+	# 4. SPEED ACCELERATION / BRAKING / FRICTION
+	# --------------------------------------------------------------------------
+	if throttle_input > 0:
+		current_speed = move_toward(current_speed, max_speed, acceleration * delta)
+	elif throttle_input < 0:
+		current_speed = move_toward(current_speed, -reverse_speed, acceleration * delta)
+	else:
+		current_speed = move_toward(current_speed, 0.0, friction * delta)
+
+	# --------------------------------------------------------------------------
+	# 5. VISUAL BODY DYNAMICS (BANKING ROLL & NOSE PITCH)
+	# --------------------------------------------------------------------------
+	if is_instance_valid(car_body_mesh):
+		# Roll (Z axis): Steers left (+steer_input) -> leans left (+Z roll); steers right -> leans right (-Z roll)
+		var max_bank_rad: float = deg_to_rad(max_bank_angle_degrees)
+		var speed_ratio: float = clamp(abs(current_speed) / max_speed, 0.2, 1.0)
+		_target_bank_roll = steer_input * max_bank_rad * speed_ratio
+
+		# Pitch (X axis): W acceleration -> nose lifts (-X pitch); S braking/reverse -> nose dips (+X pitch)
+		var max_pitch_rad: float = deg_to_rad(max_pitch_angle_degrees)
+		_target_pitch = -throttle_input * max_pitch_rad
+
+		# Smoothly lerp local mesh rotation so banking feels responsive and organic
+		var lerp_t: float = clamp(body_tilt_speed * delta, 0.0, 1.0)
+		car_body_mesh.rotation.z = lerp(car_body_mesh.rotation.z, _target_bank_roll, lerp_t)
+		car_body_mesh.rotation.x = lerp(car_body_mesh.rotation.x, _target_pitch, lerp_t)
+
+	# --------------------------------------------------------------------------
+	# 6. MOVEMENT VECTOR COMPUTATION & PHYSICS EXECUTION
+	# --------------------------------------------------------------------------
+	var forward_dir: Vector3 = -transform.basis.z
+	velocity = forward_dir * current_speed
+	move_and_slide()
+
+# ==============================================================================
+# MOUSE WHEEL CAMERA ZOOM HANDLER
+# ==============================================================================
+
+func _unhandled_input(event: InputEvent) -> void:
+	if event is InputEventKey and event.pressed and not event.echo:
+		# 'H' key toggles/cycles headlight stages: OFF -> NEAR -> LONG -> OFF
+		if event.keycode == KEY_H:
+			_cycle_headlight_mode()
+
+	if event is InputEventMouseButton and event.is_pressed():
+		if event.button_index == MOUSE_BUTTON_WHEEL_UP:
+			camera.fov = clamp(camera.fov - zoom_step, ultra_min_fov, max_fov)
+			_update_camera_transform()
+		elif event.button_index == MOUSE_BUTTON_WHEEL_DOWN:
+			camera.fov = clamp(camera.fov + zoom_step, ultra_min_fov, max_fov)
+			_update_camera_transform()

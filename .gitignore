@@ -1,0 +1,10 @@
+# Ignore Godot's local engine cache and UIDs
+.godot/
+*.import
+*.uid
+
+# Ignore exported binaries, builds, and executables
+[Bb]uilds/
+*.exe
+*.x86_64
+*.wav

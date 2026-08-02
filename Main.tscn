@@ -1,0 +1,131 @@
+[gd_scene format=3 uid="uid://dv5kxpcm2ixij"]
+
+[ext_resource type="Script" uid="uid://bllfjt0138nsr" path="res://CityGenerator.gd" id="1_city"]
+[ext_resource type="Script" uid="uid://ub2iucnvakux" path="res://PlayerCar.gd" id="2_player"]
+[ext_resource type="Script" uid="uid://bpnfom63u4juy" path="res://BattleTriggerManager.gd" id="3_trigger"]
+[ext_resource type="Script" uid="uid://ch8j5p6jt6j0i" path="res://CockpitDashboardUI.gd" id="4_dash"]
+[ext_resource type="Script" uid="uid://dg4ffeys7eiv8" path="res://BattleSystemManager.gd" id="5_battle"]
+[ext_resource type="Script" uid="uid://rghgg765wt48" path="res://NeuralGlitchSystem.gd" id="6_glitch"]
+[ext_resource type="Script" uid="uid://dkb70l8lanc05" path="res://TacticalOvermapManager.gd" id="7_map"]
+[ext_resource type="Script" uid="uid://diyr85ttp7erd" path="res://CityVisualEffects.gd" id="8_vfx"]
+[ext_resource type="Script" uid="uid://bwskvxeqxtmq2" path="res://MusicPlaylistManager.gd" id="9_music"]
+[ext_resource type="Script" uid="uid://12vb4gswxjwy" path="res://WeatherSystem.gd" id="10_weather"]
+[ext_resource type="Script" uid="uid://bxtcg5erqdqh1" path="res://DustFogSystem.gd" id="11_dust"]
+[ext_resource type="Script" uid="uid://kcxweanu5xnb" path="res://WeatherAmbienceManager.gd" id="12_ambience"]
+[ext_resource type="Script" uid="uid://bglk4w1ybeoii" path="res://CarEngineAudio.gd" id="13_engine"]
+[ext_resource type="Script" uid="uid://cemywsq2ghv2h" path="res://AudioSettingsMenu.gd" id="14_audiomenu"]
+[ext_resource type="Script" uid="uid://3dxvow48b5wt" path="res://TrafficSystem.gd" id="15_traffic"]
+[ext_resource type="Script" uid="uid://bflf00k1lk4sc" path="res://PedestrianSystem.gd" id="16_pedestrians"]
+
+[sub_resource type="Environment" id="Environment_1"]
+background_mode = 1
+background_color = Color(0.01, 0, 0.03, 1)
+glow_enabled = true
+glow_intensity = 2.0
+glow_bloom = 0.5
+
+[sub_resource type="BoxMesh" id="BoxMesh_Car"]
+size = Vector3(1.8, 0.8, 2.2)
+
+[sub_resource type="StandardMaterial3D" id="StandardMaterial3D_Car"]
+albedo_color = Color(0.05, 0.05, 0.08, 1)
+
+[sub_resource type="BoxMesh" id="BoxMesh_Tail"]
+size = Vector3(1.6, 0.3, 0.2)
+
+[sub_resource type="StandardMaterial3D" id="StandardMaterial3D_Tail"]
+albedo_color = Color(1, 0, 0, 1)
+emission_enabled = true
+emission = Color(1, 0, 0.1, 1)
+emission_energy_multiplier = 6.0
+
+[sub_resource type="BoxMesh" id="BoxMesh_Head"]
+size = Vector3(0.4, 0.3, 0.2)
+
+[sub_resource type="StandardMaterial3D" id="StandardMaterial3D_Head"]
+albedo_color = Color(0.8, 1, 1, 1)
+emission_enabled = true
+emission = Color(0, 0.9, 1, 1)
+emission_energy_multiplier = 5.0
+
+[sub_resource type="BoxShape3D" id="BoxShape3D_Car"]
+size = Vector3(1.8, 0.8, 2.2)
+
+[node name="Main" type="Node3D" unique_id=279897959]
+
+[node name="WorldEnvironment" type="WorldEnvironment" parent="." unique_id=1652633752]
+environment = SubResource("Environment_1")
+
+[node name="CityGenerator" type="Node3D" parent="." unique_id=2045914462]
+script = ExtResource("1_city")
+
+[node name="BattleTriggerManager" type="Node" parent="." unique_id=691405585]
+script = ExtResource("3_trigger")
+
+[node name="CockpitDashboardUI" type="CanvasLayer" parent="." unique_id=1504728854]
+script = ExtResource("4_dash")
+
+[node name="BattleSystemManager" type="Node" parent="." unique_id=456970244]
+script = ExtResource("5_battle")
+
+[node name="NeuralGlitchSystem" type="Node" parent="." unique_id=1040507365]
+script = ExtResource("6_glitch")
+
+[node name="TacticalOvermapManager" type="Node" parent="." unique_id=871121607]
+script = ExtResource("7_map")
+
+[node name="CityVisualEffects" type="Node" parent="." unique_id=988068155]
+script = ExtResource("8_vfx")
+
+[node name="MusicPlaylistManager" type="Node" parent="." unique_id=623130639]
+script = ExtResource("9_music")
+
+[node name="WeatherSystem" type="Node" parent="." unique_id=655479687]
+script = ExtResource("10_weather")
+
+[node name="DustFogSystem" type="Node" parent="." unique_id=864159856]
+script = ExtResource("11_dust")
+
+[node name="WeatherAmbienceManager" type="Node" parent="." unique_id=1455840743]
+script = ExtResource("12_ambience")
+
+[node name="CarEngineAudio" type="Node" parent="." unique_id=1122334455]
+script = ExtResource("13_engine")
+
+[node name="AudioSettingsMenu" type="CanvasLayer" parent="." unique_id=-2061521730]
+script = ExtResource("14_audiomenu")
+
+[node name="TrafficSystem" type="Node3D" parent="." unique_id=578341031]
+script = ExtResource("15_traffic")
+
+[node name="PedestrianSystem" type="Node3D" parent="." unique_id=996599496]
+script = ExtResource("16_pedestrians")
+
+[node name="PlayerCar" type="CharacterBody3D" parent="." unique_id=1110453537]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1, 0)
+script = ExtResource("2_player")
+
+[node name="CarBody" type="MeshInstance3D" parent="PlayerCar" unique_id=1343700470]
+mesh = SubResource("BoxMesh_Car")
+surface_material_override/0 = SubResource("StandardMaterial3D_Car")
+
+[node name="TailLight" type="MeshInstance3D" parent="PlayerCar" unique_id=2116807872]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.2, 1.1)
+mesh = SubResource("BoxMesh_Tail")
+surface_material_override/0 = SubResource("StandardMaterial3D_Tail")
+
+[node name="HeadLightLeft" type="MeshInstance3D" parent="PlayerCar" unique_id=1924402337]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -0.6, 0.2, -1.1)
+mesh = SubResource("BoxMesh_Head")
+surface_material_override/0 = SubResource("StandardMaterial3D_Head")
+
+[node name="HeadLightRight" type="MeshInstance3D" parent="PlayerCar" unique_id=1259257380]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0.6, 0.2, -1.1)
+mesh = SubResource("BoxMesh_Head")
+surface_material_override/0 = SubResource("StandardMaterial3D_Head")
+
+[node name="CollisionShape3D" type="CollisionShape3D" parent="PlayerCar" unique_id=788437662]
+shape = SubResource("BoxShape3D_Car")
+
+[node name="Camera3D" type="Camera3D" parent="PlayerCar" unique_id=1736342020]
+fov = 85.0

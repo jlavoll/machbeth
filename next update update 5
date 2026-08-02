@@ -1,0 +1,8 @@
+we shold de-randomify cars much more. the sequence shoould be
+city is spawned
+traffic rules and roads and astar system is in place
+a few selected cars are spawned in predetermined safe locations, and they have a "todays plan" already mapped out, so they have a set route they want to drive. 
+we should remove the "ambient" car spawning, and just have a citywide spawning of lets say 6 cars who are driving within safe and good paths
+
+
+city should fill the entire grid

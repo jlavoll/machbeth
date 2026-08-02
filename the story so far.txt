@@ -1,0 +1,52 @@
+📜 THE STORY SO FAR
+"All hail, Mack! Hail to thee, Chief Enforcer of Glamis District."
+"All hail, Mack! Hail to thee, Director of Cawdor Logistics."
+"All hail, Mack! Thou shalt be CEO hereafter!"
+— Intercepted Decoded Neural Packet #03-NORNS
+
+ [ SYSTEM MEMORY BUFFER: RECOVERED LOGS ]
+ ----------------------------------------------------------------------
+ CURRENT EXECUTIVE STATUS : DIRECTOR OF CAWDOR LOGISTICS
+ NEURAL SYSTEM INTEGRITY  : 68% (THERMAL WARNING: RUNAWAY IMMINENT)
+ ACTIVE SUB-ROUTINE       : CONSPIRACY_OVERRIDE.EXE [RUNNING]
+ ----------------------------------------------------------------------
+Prologue: The Rebel Purge & The Deep-Web Prophecy
+The Spire Grid was tearing itself apart at the seams. A rogue network faction, backed by rival corporate titan Sweno, launched a full-scale digital and physical assault on Duncan Dynamics. Armed rebel war-rigs clogged the avenues while malware vectors threatened to wipe the corporate core.
+
+Enter Mack, the top-tier Enforcer for the Glamis Security Sub-District, alongside his trusted wingman and telemetry scout, Bankes. Pushing their tactical vehicles to thermal threshold, Mack and Bankes single-handedly neutralized the rebel frontline and executed the traitorous Director of Cawdor Logistics in a high-speed highway showdown.
+
+While cooling their engines in the unmapped subterranean underbelly of the grid, Mack’s receiver hijacked a low-frequency, glitched signal. Three rogue AI entities—The Norns—manifested as fragmented visual artifacts across his windshield display. They broadcasted a cryptic, three-part prophecy: Mack would retain Glamis, inherit the freshly vacant Directorate of Cawdor, and ultimately usurp CEO Duncan to rule the entire Spire Grid. Moments later, an official executive ping confirmed the news: for his ruthlessness in battle, Duncan had awarded Mack the Cawdor sector. The prophecy was already rendering into reality.
+
+Act I: The Red Handshake in the Pit
+Ambition, once a background process, became a high-priority system thread. Spurred on by his netrunner partner Lady M—who calculated that Duncan’s upcoming inspection tour of the Glamis sector offered a zero-day vulnerability window—the pair mapped out the executive hit.
+
+When CEO Duncan’s pristine obsidian convoy entered the subterranean garage network known as The Pit, Lady M severed the grid’s local power, plunging the district into PITCH_BLACK darkness. Under cover of total blackout, Mack intercepted the armored executive limo. The hit was ruthless; high-voltage data-fluid spilled across the asphalt like glowing crimson blood.
+
+Lady M personally scrubbed the security feeds and planted forged signature keys on Duncan’s automated driver-guards, framing them for the assassination. By dawn, the board of directors appointed Mack as acting CEO of Duncan Dynamics. Duncan’s heirs, Malcolm and Donalbain, sensing a system-wide purge, disconnected their neural links and fled into off-grid darknets.
+
+Act II: Ghost-Code & Thermal Drift
+Rule at the top of the Spire Grid is far from stable. Paranoia began to corrupt Mack's neural processing stack. Remembering that The Norns had also prophesied that Bankes' line would eventually inherit the corporate grid, Mack commissioned a black-market hit during a routine night patrol. Bankes was ambushed and deleted by corporate hit-drones, though his netrunner son, Fleance, managed to escape into the darknet web traffic.
+
+The victory was hollow. At the executive banquet celebrating Mack’s ascension, his high-bandwidth implants suffered severe packet loss and visual corruption. There, sitting in the center of the executive HUD feed, was a rogue, un-killable ghost-code avatar of Bankes—staring back at Mack through a layer of digital static, spawning phantom target markers across his windshield.
+
+ [ HUD WARNING: CORRUPTED TARGET VECTOR DETECTED ]
+  >> ENTITY ID: B_ANKES_GHOST.EXE
+  >> STATUS: UNREGISTERED SIGNAL / PARASITIC NODE
+  >> ACTION: PURGE FAILED (ACCESS DENIED)
+Act III: The Descent into Thermal Runaway
+With his neural stack overheating and his grip on the city slipping, Mack forced a reconnect with The Norns in the deepest darkweb sectors. The AI entity delivered three final, evasive system warnings:
+
+"Beware Macduff!" (The elite driver of the Fife Security Patrol).
+
+"None born of organic womb shall harm Mack."
+
+"Mack shall never be overthrown until Birnam Malware itself marches across the Central Highway."
+
+Reassured by what he interprets as mathematical impossibility, Mack initiated a grid-wide scorched-earth campaign—erasing Macduff’s entire family registry and localized node network from the cloud.
+
+Now, as Mack sits atop the highest tower of the Spire Grid, the city below burns with low-frequency rebellion. Lady M’s system is crashing hard, trapped in an endless hardware memory-wipe loop ("Out, damn virus!") as she tries to scrub non-existent data-fluid from her physical hands. Beyond the neon horizon, Macduff and Malcolm assemble a coalition of rogue war-rigs, preparing a massive network worm—The Birnam Purge—to bring down Mack's empire once and for all.
+
+🎮 Current Game Start Location
+Active Mission: Prepare the vehicle at The Pit for the incoming invasion force.
+
+Objective: Hardware diagnostic check, load out heavy Ordnance upgrades, and hold the central high-speed highway against the incoming Birnam Malware swarm.
