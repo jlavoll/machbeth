@@ -287,11 +287,11 @@ func _generate_city_grid() -> void:
 	var broadway_x_idx: int = rng.randi_range(1, 3) # Pick index 1, 2, or 3
 	var broadway_z_idx: int = rng.randi_range(1, 3)
 
-	# Fixed grid cuts aligned to 10m grid lines (-240, -120, 0, 120, 240)
-	var base_x_cuts: Array[float] = [-240.0, -120.0, 0.0, 120.0, 240.0]
-	var base_z_cuts: Array[float] = [-240.0, -120.0, 0.0, 120.0, 240.0]
+	# Expand street cuts to cover full city grid (-270m to +270m across 600m map)
+	var base_x_cuts: Array[float] = [-270.0, -180.0, -90.0, 0.0, 90.0, 180.0, 270.0]
+	var base_z_cuts: Array[float] = [-270.0, -180.0, -90.0, 0.0, 90.0, 180.0, 270.0]
 
-	# Strictly grid-aligned street corridors (no random fractional jitter)
+	# Strictly grid-aligned street corridors (aligned to 10m grid lines)
 	var x_streets: Array[float] = base_x_cuts.duplicate()
 	var z_streets: Array[float] = base_z_cuts.duplicate()
 
@@ -423,7 +423,7 @@ func _create_block_cluster(center: Vector3, size: Vector2, neon_colors: Array) -
 	curb_lines.surface_end()
 
 	# --------------------------------------------------------------------------
-	# 2. GRID-SNAPPED BUILDING PLOTS (HALFWAY INTO PERIMETER GRID = SIDEWALK)
+	# 2. GRID-SNAPPED BUILDING PLOTS (WITH ARCHITECTURAL FOOTPRINT VARIATIONS)
 	# --------------------------------------------------------------------------
 	# Calculate interior building footprint area after 5m (half-grid) sidewalk inset on all sides
 	var inner_size_x: float = size.x - (sidewalk_width * 2.0)
@@ -447,12 +447,23 @@ func _create_block_cluster(center: Vector3, size: Vector2, neon_colors: Array) -
 	var start_x: float = center.x - inner_size_x / 2.0 + plot_w / 2.0
 	var start_z: float = center.z - inner_size_z / 2.0 + plot_d / 2.0
 
+	# Architectural variation selector per block (0: Standard Grid, 1: Corner Plaza Cutout, 2: L-Tower Split)
+	var block_style_variant: int = rng.randi() % 3
+
 	for ix in range(num_x):
 		for iz in range(num_z):
+			# Option 1: Corner Plaza Cutout (Leave 1 corner plot open for a small pedestrian plaza)
+			if block_style_variant == 1 and ix == 0 and iz == 0 and num_x > 1 and num_z > 1:
+				continue # Skip plot to create an open corner plaza!
+
 			var b_width: float = plot_w
 			var b_depth: float = plot_d
-			# Skyscraper height snapped in 10m increments (20m to 80m tall)
-			var b_height: float = float(rng.randi_range(2, 8) * 10)
+			# Skyscraper height snapped in 10m increments (20m to 90m tall)
+			var b_height: float = float(rng.randi_range(2, 9) * 10)
+
+			# Option 2: Setback / L-Shaped Tower (Offset footprint on upper floors or vary width)
+			if block_style_variant == 2 and (ix + iz) % 2 == 1 and plot_w >= 20.0:
+				b_width -= 10.0 # Creates an asymmetrical L-shaped building alcove!
 
 			var bx: float = start_x + ix * (plot_w + alley_width)
 			var bz: float = start_z + iz * (plot_d + alley_width)
