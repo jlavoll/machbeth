@@ -40,6 +40,19 @@ func _setup_volumetric_neon_fog() -> void:
 		env.fog_density = fog_density
 		env.fog_height = 0.0
 		env.fog_height_density = fog_height_falloff
+		
+		# --- VOLUMETRIC FOG & ATMOSPHERIC HAZE ---
+		env.volumetric_fog_enabled = true
+		env.volumetric_fog_density = 0.035
+		env.volumetric_fog_emission = Color(0.01, 0.02, 0.05)
+		env.volumetric_fog_scattering = Color(0.8, 0.85, 1.0)
+		env.volumetric_fog_length = 300.0
+		
+		# --- ENVIRONMENT GLOW & BLOOM ---
+		env.glow_enabled = true
+		env.glow_intensity = 1.2
+		env.glow_bloom = 0.35
+		env.glow_blend_mode = Environment.GLOW_BLEND_MODE_ADDITIVE
 
 # ------------------------------------------------------------------------------
 # 2. FLOATING DUST PARTICLES (DYNAMIC LIGHT REFLECTION & BUILDING COLLISIONS)

@@ -98,6 +98,7 @@ func create_parking_lot_streetlight(center_target: Vector3, position_world: Vect
 	# Light Properties
 	spot_light.light_color = spotlight_color
 	spot_light.light_energy = spotlight_energy
+	spot_light.light_volumetric_fog_energy = 3.0 # Cone beam projection in volumetric fog
 	spot_light.spot_range = max(lot_size.x, lot_size.y) * spotlight_range_multiplier
 	spot_light.spot_angle = spotlight_cone_angle
 	spot_light.shadow_enabled = false
