@@ -11,14 +11,17 @@ extends Node3D
 # Total depth of the city map along the Z axis (600 meters)
 @export var city_size_z: float = 600.0
 
-# Width of the main central avenue (Broadway) in meters (30.0m)
+# Width of the main central avenue (Broadway) in meters (30.0m = 3 full 10m grid lanes)
 @export var main_broadway_width: float = 30.0
 
-# Width of standard side streets in meters (16.0m)
-@export var secondary_street_width: float = 16.0
+# Width of standard side streets in meters (20.0m = 2 full 10m grid lanes)
+@export var secondary_street_width: float = 20.0
 
-# Narrow gap width between buildings inside a block cluster in meters (6.0m)
-@export var alley_width: float = 6.0
+# Sidewalk width inset in meters (5.0m = half 10m grid tile)
+@export var sidewalk_width: float = 5.0
+
+# Narrow gap width between buildings inside a block cluster in meters (10.0m = 1 full grid lane)
+@export var alley_width: float = 10.0
 
 # Procedural generation seed number (Set to 0 for random city every launch, or enter any integer e.g. 777 for a persistent map!)
 @export var city_seed: int = 0
@@ -278,25 +281,19 @@ func _generate_city_grid() -> void:
 	]
 
 	# --------------------------------------------------------------------------
-	# 1. SEED-DRIVEN DYNAMIC AVENUE OFFSETS (MAIN BROADWAY IS NOT ALWAYS AT 0.0)
+	# 1. GRID-ALIGNED STREET CUTS (10m GRID UNITS, 2-LANE 20m STREETS)
 	# --------------------------------------------------------------------------
 	# Pick random street cut indices for the main wide avenues (Broadway)
 	var broadway_x_idx: int = rng.randi_range(1, 3) # Pick index 1, 2, or 3
 	var broadway_z_idx: int = rng.randi_range(1, 3)
 
-	var base_x_cuts: Array[float] = [-220.0, -110.0, 0.0, 110.0, 220.0]
-	var base_z_cuts: Array[float] = [-220.0, -110.0, 0.0, 110.0, 220.0]
+	# Fixed grid cuts aligned to 10m grid lines (-240, -120, 0, 120, 240)
+	var base_x_cuts: Array[float] = [-240.0, -120.0, 0.0, 120.0, 240.0]
+	var base_z_cuts: Array[float] = [-240.0, -120.0, 0.0, 120.0, 240.0]
 
-	# Add seed jitter (-25m to +25m) to secondary street cuts so city grids are irregular
-	var x_streets: Array[float] = []
-	var z_streets: Array[float] = []
-	for i in range(base_x_cuts.size()):
-		if i == 0 or i == base_x_cuts.size() - 1:
-			x_streets.append(base_x_cuts[i])
-			z_streets.append(base_z_cuts[i])
-		else:
-			x_streets.append(base_x_cuts[i] + rng.randf_range(-25.0, 25.0))
-			z_streets.append(base_z_cuts[i] + rng.randf_range(-25.0, 25.0))
+	# Strictly grid-aligned street corridors (no random fractional jitter)
+	var x_streets: Array[float] = base_x_cuts.duplicate()
+	var z_streets: Array[float] = base_z_cuts.duplicate()
 
 	active_x_streets = x_streets
 	active_z_streets = z_streets
@@ -379,32 +376,89 @@ func _generate_city_grid() -> void:
 # 4. BLOCK SUBDIVISION & ALLEY LAYOUT
 # ==============================================================================
 
-# Subdivides a city block into multiple individual building plots separated by alleys
+# Subdivides a city block into multiple individual building plots sitting on discrete sidewalks
 func _create_block_cluster(center: Vector3, size: Vector2, neon_colors: Array) -> void:
-	# Randomly split block into 2 to 3 building plots along X and Z axes
-	var num_x: int = rng.randi_range(2, 3)
-	var num_z: int = rng.randi_range(2, 3)
+	# --------------------------------------------------------------------------
+	# 1. DISCRETE GREY SIDEWALK SLAB WITH GLOWING CURB TRIM
+	# --------------------------------------------------------------------------
+	var sidewalk_mesh = MeshInstance3D.new()
+	var box_slab = BoxMesh.new()
+	# Sidewalk covers the entire block area (height 0.1m elevated above Y=0)
+	box_slab.size = Vector3(size.x, 0.1, size.y)
+	sidewalk_mesh.mesh = box_slab
+	sidewalk_mesh.position = center + Vector3(0.0, 0.05, 0.0) # Y=0.05m elevation
 
-	# Calculate plot width and depth minus alley gaps (6 meters)
-	var cell_w: float = (size.x - (num_x - 1) * alley_width) / num_x
-	var cell_d: float = (size.y - (num_z - 1) * alley_width) / num_z
+	# Discrete Concrete Grey Slate Material
+	var sw_mat = StandardMaterial3D.new()
+	sw_mat.albedo_color = Color(0.12, 0.13, 0.16) # Discrete Dark Grey Concrete Slate
+	sw_mat.roughness = 0.8
+	sidewalk_mesh.material_override = sw_mat
+	add_child(sidewalk_mesh)
 
-	var start_x: float = center.x - size.x / 2.0 + cell_w / 2.0
-	var start_z: float = center.z - size.y / 2.0 + cell_d / 2.0
+	# Glowing Neon Curb Edge Trim Lines around sidewalk perimeter
+	var curb_mat = StandardMaterial3D.new()
+	curb_mat.emission_enabled = true
+	curb_mat.emission = neon_colors[rng.randi() % neon_colors.size()]
+	curb_mat.emission_energy_multiplier = 2.5
+
+	var curb_lines = ImmediateMesh.new()
+	var curb_instance = MeshInstance3D.new()
+	curb_instance.mesh = curb_lines
+	curb_instance.material_override = curb_mat
+	curb_instance.position = center + Vector3(0.0, 0.11, 0.0)
+	add_child(curb_instance)
+
+	curb_lines.clear_surfaces()
+	curb_lines.surface_begin(Mesh.PRIMITIVE_LINES)
+	var hx: float = size.x / 2.0
+	var hz: float = size.y / 2.0
+	curb_lines.surface_add_vertex(Vector3(-hx, 0, -hz))
+	curb_lines.surface_add_vertex(Vector3(hx, 0, -hz))
+	curb_lines.surface_add_vertex(Vector3(hx, 0, -hz))
+	curb_lines.surface_add_vertex(Vector3(hx, 0, hz))
+	curb_lines.surface_add_vertex(Vector3(hx, 0, hz))
+	curb_lines.surface_add_vertex(Vector3(-hx, 0, hz))
+	curb_lines.surface_add_vertex(Vector3(-hx, 0, hz))
+	curb_lines.surface_add_vertex(Vector3(-hx, 0, -hz))
+	curb_lines.surface_end()
+
+	# --------------------------------------------------------------------------
+	# 2. GRID-SNAPPED BUILDING PLOTS (HALFWAY INTO PERIMETER GRID = SIDEWALK)
+	# --------------------------------------------------------------------------
+	# Calculate interior building footprint area after 5m (half-grid) sidewalk inset on all sides
+	var inner_size_x: float = size.x - (sidewalk_width * 2.0)
+	var inner_size_z: float = size.y - (sidewalk_width * 2.0)
+
+	if inner_size_x < 10.0 or inner_size_z < 10.0:
+		return
+
+	# Split block into 2 to 3 building plots along X and Z axes
+	var num_x: int = 2 if inner_size_x < 60.0 else rng.randi_range(2, 3)
+	var num_z: int = 2 if inner_size_z < 60.0 else rng.randi_range(2, 3)
+
+	# Alley gaps (10m = 1 full grid tile)
+	var plot_w: float = (inner_size_x - (num_x - 1) * alley_width) / num_x
+	var plot_d: float = (inner_size_z - (num_z - 1) * alley_width) / num_z
+
+	# Snap building plot sizes to 10m grid increments
+	plot_w = max(10.0, floor(plot_w / 10.0) * 10.0)
+	plot_d = max(10.0, floor(plot_d / 10.0) * 10.0)
+
+	var start_x: float = center.x - inner_size_x / 2.0 + plot_w / 2.0
+	var start_z: float = center.z - inner_size_z / 2.0 + plot_d / 2.0
 
 	for ix in range(num_x):
 		for iz in range(num_z):
-			# Randomize individual building footprint scale slightly (85% to 98% of plot)
-			var b_width: float = cell_w * rng.randf_range(0.85, 0.98)
-			var b_depth: float = cell_d * rng.randf_range(0.85, 0.98)
-			# Randomize skyscraper height between 25.0 meters and 75.0 meters tall
-			var b_height: float = rng.randf_range(15.0, 75.0)
+			var b_width: float = plot_w
+			var b_depth: float = plot_d
+			# Skyscraper height snapped in 10m increments (20m to 80m tall)
+			var b_height: float = float(rng.randi_range(2, 8) * 10)
 
-			var bx: float = start_x + ix * (cell_w + alley_width)
-			var bz: float = start_z + iz * (cell_d + alley_width)
+			var bx: float = start_x + ix * (plot_w + alley_width)
+			var bz: float = start_z + iz * (plot_d + alley_width)
 
 			# Position Y is at b_height / 2.0 because BoxMesh origin is centered at geometric middle
-			_spawn_building(Vector3(bx, b_height / 2.0, bz), Vector3(b_width, b_height, b_depth), neon_colors)
+			_spawn_building(Vector3(bx, b_height / 2.0 + 0.1, bz), Vector3(b_width, b_height, b_depth), neon_colors)
 
 # ==============================================================================
 # 5. BUILDING SPINNER & 3D MESH/PHYSICS CREATION
