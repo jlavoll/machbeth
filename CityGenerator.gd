@@ -453,24 +453,11 @@ func _spawn_building(pos: Vector3, b_size: Vector3, neon_colors: Array) -> void:
 	# --------------------------------------------------------------------------
 	var building_light: OmniLight3D = OmniLight3D.new()
 	building_light.light_color = accent_color
-	building_light.light_energy = 3.5
-	building_light.light_volumetric_fog_energy = 2.5 # Heavy volumetric light scattering into fog!
-	building_light.omni_range = max(b_size.x, b_size.z) * 2.0
-	building_light.omni_attenuation = 0.8
+	building_light.light_energy = 2.5
+	building_light.light_volumetric_fog_energy = 1.0 # Soft ambient light scattering into fog
+	building_light.omni_range = max(b_size.x, b_size.z) * 1.5
+	building_light.omni_attenuation = 1.0
 	static_body.add_child(building_light)
-
-	# --------------------------------------------------------------------------
-	# WINDOW LIGHT BEAMS (DIRECTIONAL SPOTLIGHT SHAFTS INTO FOG)
-	# --------------------------------------------------------------------------
-	for angle in [0, 90, 180, 270]:
-		var window_spot = SpotLight3D.new()
-		window_spot.light_color = accent_color
-		window_spot.light_energy = 8.0
-		window_spot.light_volumetric_fog_energy = 4.0 # Dramatic light beam cut through haze
-		window_spot.spot_range = 25.0
-		window_spot.spot_angle = 45.0
-		window_spot.rotation_degrees.y = angle
-		static_body.add_child(window_spot)
 
 
 
