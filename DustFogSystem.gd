@@ -44,8 +44,8 @@ func _setup_volumetric_neon_fog() -> void:
 		# --- VOLUMETRIC FOG & ATMOSPHERIC HAZE ---
 		env.volumetric_fog_enabled = true
 		env.volumetric_fog_density = 0.035
+		env.volumetric_fog_albedo = Color(0.8, 0.85, 1.0)
 		env.volumetric_fog_emission = Color(0.01, 0.02, 0.05)
-		env.volumetric_fog_scattering = Color(0.8, 0.85, 1.0)
 		env.volumetric_fog_length = 300.0
 		
 		# --- ENVIRONMENT GLOW & BLOOM ---
