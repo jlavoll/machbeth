@@ -453,10 +453,10 @@ func _spawn_building(pos: Vector3, b_size: Vector3, neon_colors: Array) -> void:
 	# --------------------------------------------------------------------------
 	var building_light: OmniLight3D = OmniLight3D.new()
 	building_light.light_color = accent_color
-	building_light.light_energy = 2.5
-	building_light.light_volumetric_fog_energy = 1.0 # Soft ambient light scattering into fog
-	building_light.omni_range = max(b_size.x, b_size.z) * 1.5
-	building_light.omni_attenuation = 1.0
+	building_light.light_energy = 3.0
+	building_light.light_volumetric_fog_energy = 1.7 # Moderate volumetric light halo in fog
+	building_light.omni_range = max(b_size.x, b_size.z) * 1.75
+	building_light.omni_attenuation = 0.9
 	static_body.add_child(building_light)
 
 

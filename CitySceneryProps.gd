@@ -19,13 +19,13 @@ class_name CitySceneryProps
 @export var lamp_head_width: float = 0.8
 @export var lamp_head_height: float = 0.4
 @export var lamp_head_depth: float = 0.8
-@export var lamp_lens_emission_energy: float = 6.0
+@export var lamp_lens_emission_energy: float = 8.0
 
 # Spotlight Beam Parameters (Warm Cyber Yellow Floodlight)
 @export var spotlight_color: Color = Color(1.0, 0.85, 0.2) # High-visibility Amber / Warm Cyber Yellow
-@export var spotlight_energy: float = 12.0                  # Balanced beam energy multiplier
-@export var spotlight_range_multiplier: float = 1.2         # Throws light 1.2x the lot size
-@export var spotlight_cone_angle: float = 45.0              # Focused 45-degree floodlight cone
+@export var spotlight_energy: float = 20.0                  # Medium balanced beam energy
+@export var spotlight_range_multiplier: float = 1.3         # Throws light 1.3x the lot size
+@export var spotlight_cone_angle: float = 50.0              # Balanced 50-degree floodlight cone
 
 # ==============================================================================
 # PARKING LOT CORNER FLOODLIGHT FACTORY
@@ -98,7 +98,7 @@ func create_parking_lot_streetlight(center_target: Vector3, position_world: Vect
 	# Light Properties
 	spot_light.light_color = spotlight_color
 	spot_light.light_energy = spotlight_energy
-	spot_light.light_volumetric_fog_energy = 0.8 # Soft cone beam projection in volumetric fog
+	spot_light.light_volumetric_fog_energy = 1.5 # Medium visible light beam cone in fog
 	spot_light.spot_range = max(lot_size.x, lot_size.y) * spotlight_range_multiplier
 	spot_light.spot_angle = spotlight_cone_angle
 	spot_light.shadow_enabled = false
