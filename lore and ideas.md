@@ -209,3 +209,82 @@ jornthebjorn — 1:47 AM
 Skal også lage et Adaptive music system. Har en plan. (Godot har allerde et veldig bra system som fundament)
 
 vurdere om narrow street skal være off limits for biler, inkludert vår, så der må man bruke nema
+
+
+
+[ ] add this haze: could this city be filled with haze so the the lights in the "windows" glow with drama?
+
+Yes, absolutely! Godot’s Volumetric Fog system in Godot 4 works exceptionally well with procedural emissive window textures and OmniLight3D nodes.  
+Ukjent
+
+When you turn on atmospheric haze, the procedural windows won't just look like flat lit pixels—their light will scatter into the surrounding air, creating dramatic atmospheric cones, glowing halos, and cinematic street-level light shafts.
+
+Step 1: Add Volumetric Fog via WorldEnvironment
+You can attach a WorldEnvironment node to your scene (or configure it via script) to flood the city with thick cyberpunk haze.
+
+GDScript
+func _setup_cyberpunk_haze() -> void:
+	var world_env = WorldEnvironment.new()
+	var env = Environment.new()
+	
+	# Dark background sky
+	env.background_mode = Environment.BG_COLOR
+	env.background_color = Color(0.01, 0.005, 0.02)
+	
+	# Enable Volumetric Fog
+	env.volumetric_fog_enabled = true
+	env.volumetric_fog_density = 0.035          # Adjust density to taste (0.02 - 0.05 works best for city scales)
+	env.volumetric_fog_emission = Color(0.01, 0.02, 0.05) # Deep ambient blue/violet tint in the fog
+	env.volumetric_fog_scattering = Color(0.8, 0.85, 1.0)
+	env.volumetric_fog_length = 300.0           # Matches half your city size (300m)
+	
+	# Enable Glow to make window halo blooms pop
+	env.glow_enabled = true
+	env.glow_intensity = 1.2
+	env.glow_bloom = 0.35
+	env.glow_blend_mode = Environment.GLOW_BLEND_MODE_ADDITIVE
+	
+	world_env.environment = env
+	add_child(world_env)
+Step 2: Enhance Building Lights for Maximum Drama
+Your current CityGenerator.gd script already spawns an OmniLight3D inside each skyscraper and creates emissive windows. To make the window glow cut dramatically through the haze:  
+Ukjent
++ 1
+
+Enable Volumetric Energy on Building OmniLights:
+In _spawn_building(), boost volumetric_fog_energy on building_light:  
+Ukjent
++ 2
+
+GDScript
+# Inside _spawn_building() in CityGenerator.gd
+var building_light: OmniLight3D = OmniLight3D.new()
+building_light.light_color = accent_color
+building_light.light_energy = 3.5
+building_light.volumetric_fog_energy = 2.5 # Makes light scatter heavily into the haze!
+building_light.omni_range = max(b_size.x, b_size.z) * 2.0
+building_light.omni_attenuation = 0.8
+static_body.add_child(building_light)
+Give Windows Material Emission Depth:
+In _spawn_building(), set b_mat.emission_on_uv2 = false and adjust emission energy multiplier:  
+Ukjent
++ 1
+
+GDScript
+b_mat.emission_energy_multiplier = 5.0 # Boost brightness so windows cut through dense haze
+Step 3: Add Window "Light Beams" (Optional Polish)
+Because standard StandardMaterial3D emission textures only glow on the mesh surface itself (they don't cast real-time light beams into fog by default), adding SpotLight3D nodes pointing outward from the skyscraper walls will cast actual light shafts extending out of the windows into the fog:  
+Ukjent
+
+GDScript
+# Place this inside _spawn_building() to cast volumetric shafts out of building faces
+for angle in [0, 90, 180, 270]:
+	var window_spot = SpotLight3D.new()
+	window_spot.light_color = accent_color
+	window_spot.light_energy = 8.0
+	window_spot.volumetric_fog_energy = 4.0 # Punchy light shaft
+	window_spot.spot_range = 25.0
+	window_spot.spot_angle = 45.0
+	window_spot.rotation_degrees.y = angle
+	static_body.add_child(window_spot)
+When combined with your dynamic light stages (L key) and street floodlights (CitySceneryProps.gd), turning the lighting stage down to DIM or DARK_BUILDINGS while keeping volumetric fog enabled will turn the city into a dramatic, atmospheric silhouette shrouded in glowing colored mist!
