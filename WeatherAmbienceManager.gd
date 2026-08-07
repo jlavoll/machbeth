@@ -126,14 +126,17 @@ func _process(delta: float) -> void:
 # Checks weather state from WeatherSystem.gd if active
 func _sync_weather_state_check() -> void:
 	if is_instance_valid(weather_system):
-		var w_state = weather_system.current_weather
-		if int(w_state) == 0: # NEON_RAIN
-			target_rain_volume_db = max_rain_volume_db + 6.0 # +6dB boost
+		var w_state = int(weather_system.current_weather)
+		if w_state == 0 or w_state == 2: # NEON_RAIN or GLITCH_STORM
+			target_rain_volume_db = max_rain_volume_db + 6.0
 			target_wind_volume_db = -80.0
-		elif int(w_state) == 1: # CYBER_SNOW
+		elif w_state == 1 or w_state == 6: # CYBER_SNOW or ICE_DRIFT
 			target_rain_volume_db = -80.0
 			target_wind_volume_db = max_wind_volume_db + 6.0
-		else:
+		elif w_state == 5: # CYAN_DUST
+			target_rain_volume_db = -80.0
+			target_wind_volume_db = max_wind_volume_db + 10.0
+		else: # NEBULA_DRIFT, SOLAR_EMBERS, EMP_STATIC, CYBER_WARP, CLEAR_NEON_NIGHT
 			target_rain_volume_db = -80.0
 			target_wind_volume_db = max_wind_volume_db
 
