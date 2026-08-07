@@ -179,17 +179,15 @@ func _toggle_tactical_overmap() -> void:
 			dust_system.dust_particles.emitting = false
 			dust_system.dust_particles.visible = false
 
-		# Temporarily hide weather particles (rain, snow, splashes) during satellite view
+		# Temporarily hide weather particle rendering during satellite view
 		if is_instance_valid(weather_system):
-			if is_instance_valid(weather_system.rain_particles):
-				weather_system.rain_particles.emitting = false
+			if "particle_nodes" in weather_system and weather_system.particle_nodes is Dictionary:
+				for p_key in weather_system.particle_nodes:
+					var p_node = weather_system.particle_nodes[p_key]
+					if is_instance_valid(p_node):
+						p_node.visible = false
+			elif "rain_particles" in weather_system and is_instance_valid(weather_system.rain_particles):
 				weather_system.rain_particles.visible = false
-			if is_instance_valid(weather_system.rain_splash_particles):
-				weather_system.rain_splash_particles.emitting = false
-				weather_system.rain_splash_particles.visible = false
-			if is_instance_valid(weather_system.snow_particles):
-				weather_system.snow_particles.emitting = false
-				weather_system.snow_particles.visible = false
 
 		# Assign PIP camera to PIP SubViewport world
 		if is_instance_valid(pip_live_camera) and is_instance_valid(pip_viewport):
@@ -217,14 +215,13 @@ func _toggle_tactical_overmap() -> void:
 			dust_system.dust_particles.visible = true
 			dust_system.dust_particles.emitting = true
 
-		# Restore weather particles (rain/snow) matching active weather state
+		# Restore weather particles matching active weather state
 		if is_instance_valid(weather_system):
-			if is_instance_valid(weather_system.rain_particles):
-				weather_system.rain_particles.visible = true
-			if is_instance_valid(weather_system.rain_splash_particles):
-				weather_system.rain_splash_particles.visible = true
-			if is_instance_valid(weather_system.snow_particles):
-				weather_system.snow_particles.visible = true
+			if "particle_nodes" in weather_system and weather_system.particle_nodes is Dictionary:
+				for p_key in weather_system.particle_nodes:
+					var p_node = weather_system.particle_nodes[p_key]
+					if is_instance_valid(p_node):
+						p_node.visible = true
 			if weather_system.has_method("set_weather_state"):
 				weather_system.set_weather_state(weather_system.current_weather)
 		
