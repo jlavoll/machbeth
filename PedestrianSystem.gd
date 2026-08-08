@@ -400,10 +400,10 @@ func _process(delta: float) -> void:
 
 			var phase: float = ped.get_meta("anim_phase", 0.0)
 			if is_in_food_queue and queue_slot == 0 and not is_raining:
-				# Customer #1 at counter window: Animated bopping simulating gesturing & ordering food!
-				phase += delta * 12.0
+				# Customer #1 at counter window: Gentle, friendly bopping simulating chatting & ordering food
+				phase += delta * 7.0
 				ped.set_meta("anim_phase", phase)
-				ped.position.y = abs(sin(phase)) * 0.08 + (sin(phase * 0.5) * 0.02)
+				ped.position.y = abs(sin(phase)) * 0.05 + (sin(phase * 0.5) * 0.015)
 				# Order timer countdown: 4 to 7 seconds at counter window
 				var order_timer: float = ped.get_meta("food_order_timer", 5.0) - delta
 				ped.set_meta("food_order_timer", order_timer)
@@ -411,6 +411,7 @@ func _process(delta: float) -> void:
 					# Received food! Depart queue and become a regular roaming pedestrian
 					ped.remove_meta("food_truck_queue_target")
 					ped.remove_meta("queue_slot_index")
+					ped.set_meta("food_cooldown_timer", 90.0) # 90-second cooldown so they walk far away before ever wanting food again!
 					var new_dest: Vector3 = _pick_new_pedestrian_target_objective(ped_pos)
 					ped.set_meta("target_destination", new_dest)
 					ped.set_meta("walk_direction", (new_dest - ped_pos).normalized())
@@ -476,11 +477,17 @@ func _manage_food_truck_queues(delta: float) -> void:
 			truck.set_meta("target_line_size", target_line_size)
 
 		if queued_peds.size() < target_line_size:
-			# Find nearest unassigned wandering pedestrian within 45m and recruit them into the line!
+			# Find nearest unassigned wandering pedestrian within 45m (who is not on food cooldown)
 			var candidate_ped: CharacterBody3D = null
 			var closest_dist: float = 999.0
 			for ped in active_pedestrians:
 				if is_instance_valid(ped) and not ped.has_meta("food_truck_queue_target"):
+					var cooldown: float = ped.get_meta("food_cooldown_timer", 0.0)
+					if cooldown > 0.0:
+						cooldown -= delta
+						ped.set_meta("food_cooldown_timer", cooldown)
+						continue # Skip pedestrians on food cooldown!
+
 					var d: float = ped.global_position.distance_to(counter_pos)
 					if d < 45.0 and d < closest_dist:
 						closest_dist = d
