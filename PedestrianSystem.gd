@@ -239,9 +239,9 @@ func _process(delta: float) -> void:
 					var hit_pos: Vector3 = result["position"]
 					hit_pos.y = ped_pos.y
 
-					# Filter out Parking Lots, Parks, CyberRivers, and Trees
+					# Filter out Parking Lots, Parks, CyberRivers, Trees, and Food Trucks
 					var is_park_or_lot: bool = false
-					if "ParkingLot" in collider.name or "Park" in collider.name or "River" in collider.name or "Tree" in collider.name:
+					if "ParkingLot" in collider.name or "Park" in collider.name or "River" in collider.name or "Tree" in collider.name or "FoodTruck" in collider.name:
 						is_park_or_lot = true
 					elif is_instance_valid(city_gen):
 						# Geometric check against active park & parking lot bounding boxes
@@ -393,10 +393,28 @@ func _process(delta: float) -> void:
 				flashlight_spot.light_energy = move_toward(flashlight_spot.light_energy, target_energy, delta * 15.0)
 
 			# --------------------------------------------------------------------------
-			# ANIMATION: NORMAL WALKING BOB VS IMPATIENT AGITATED SHELTER BOPPING
+			# ANIMATION: NORMAL WALKING BOB VS IMPATIENT AGITATED SHELTER BOPPING VS FOOD TRUCK ORDERING
 			# --------------------------------------------------------------------------
+			var is_in_food_queue: bool = ped.has_meta("food_truck_queue_target")
+			var queue_slot: int = ped.get_meta("queue_slot_index", -1)
+
 			var phase: float = ped.get_meta("anim_phase", 0.0)
-			if is_sheltered:
+			if is_in_food_queue and queue_slot == 0 and not is_raining:
+				# Customer #1 at counter window: Animated bopping simulating gesturing & ordering food!
+				phase += delta * 12.0
+				ped.set_meta("anim_phase", phase)
+				ped.position.y = abs(sin(phase)) * 0.08 + (sin(phase * 0.5) * 0.02)
+				# Order timer countdown: 4 to 7 seconds at counter window
+				var order_timer: float = ped.get_meta("food_order_timer", 5.0) - delta
+				ped.set_meta("food_order_timer", order_timer)
+				if order_timer <= 0.0:
+					# Received food! Depart queue and become a regular roaming pedestrian
+					ped.remove_meta("food_truck_queue_target")
+					ped.remove_meta("queue_slot_index")
+					var new_dest: Vector3 = _pick_new_pedestrian_target_objective(ped_pos)
+					ped.set_meta("target_destination", new_dest)
+					ped.set_meta("walk_direction", (new_dest - ped_pos).normalized())
+			elif is_sheltered:
 				# Fast, impatient jittery/agitated bopping while waiting under building shelter
 				phase += delta * 16.0
 				ped.set_meta("anim_phase", phase)
@@ -406,3 +424,69 @@ func _process(delta: float) -> void:
 				phase += delta * (8.0 if ped.velocity.length() <= walk_speed else 14.0)
 				ped.set_meta("anim_phase", phase)
 				ped.position.y = abs(sin(phase)) * 0.1
+
+	_manage_food_truck_queues(delta)
+
+# Manages 3-10 customer line queues outside active city food trucks
+func _manage_food_truck_queues(delta: float) -> void:
+	var city_gen = $"../CityGenerator"
+	if not is_instance_valid(city_gen) or city_gen.get("active_food_trucks") == null:
+		return
+
+	for truck in city_gen.active_food_trucks:
+		if not is_instance_valid(truck):
+			continue
+
+		var truck_pos: Vector3 = truck.global_position
+		# Counter window position extends off the right side of truck (Vector3(1.6, 0.0, 0.0) relative)
+		var counter_pos: Vector3 = truck.global_transform * Vector3(1.6, 0.0, 0.0)
+		counter_pos.y = 0.0
+		var queue_dir: Vector3 = truck.global_transform.basis.x.normalized() # Line forms outward perpendicular to counter window
+
+		# Gather existing pedestrians currently in line for this truck
+		var queued_peds: Array[CharacterBody3D] = []
+		for ped in active_pedestrians:
+			if is_instance_valid(ped) and ped.get_meta("food_truck_queue_target", null) == truck:
+				queued_peds.append(ped)
+
+		# Sort line by slot index or distance to counter window
+		queued_peds.sort_custom(func(a, b):
+			return a.get_meta("queue_slot_index", 99) < b.get_meta("queue_slot_index", 99)
+		)
+
+		# Assign updated slot positions and guide queue step-forwards
+		for idx in range(queued_peds.size()):
+			var q_ped = queued_peds[idx]
+			q_ped.set_meta("queue_slot_index", idx)
+			var slot_pos: Vector3 = counter_pos + queue_dir * (float(idx) * 1.1)
+			q_ped.set_meta("target_destination", slot_pos)
+			
+			if q_ped.global_position.distance_to(slot_pos) > 0.5:
+				var move_dir: Vector3 = (slot_pos - q_ped.global_position).normalized()
+				q_ped.set_meta("walk_direction", move_dir)
+				q_ped.velocity = move_dir * walk_speed
+			else:
+				q_ped.velocity = Vector3.ZERO
+				q_ped.look_at(counter_pos if idx == 0 else counter_pos + queue_dir * (float(idx - 1) * 1.1), Vector3.UP)
+
+		# Auto-Refill Line: Maintain between 3 and 8 waiting customers in line at each food truck!
+		var target_line_size: int = truck.get_meta("target_line_size", 0)
+		if target_line_size == 0:
+			target_line_size = rng.randi_range(3, 8)
+			truck.set_meta("target_line_size", target_line_size)
+
+		if queued_peds.size() < target_line_size:
+			# Find nearest unassigned wandering pedestrian within 45m and recruit them into the line!
+			var candidate_ped: CharacterBody3D = null
+			var closest_dist: float = 999.0
+			for ped in active_pedestrians:
+				if is_instance_valid(ped) and not ped.has_meta("food_truck_queue_target"):
+					var d: float = ped.global_position.distance_to(counter_pos)
+					if d < 45.0 and d < closest_dist:
+						closest_dist = d
+						candidate_ped = ped
+
+			if candidate_ped != null:
+				candidate_ped.set_meta("food_truck_queue_target", truck)
+				candidate_ped.set_meta("queue_slot_index", queued_peds.size())
+				candidate_ped.set_meta("food_order_timer", rng.randf_range(4.0, 7.0))

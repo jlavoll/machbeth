@@ -33,6 +33,7 @@ var rng: RandomNumberGenerator = RandomNumberGenerator.new()
 var active_river_boxes: Array[Rect2] = []
 var active_park_boxes: Array[Rect2] = []
 var active_lot_boxes: Array[Rect2] = []
+var active_food_trucks: Array[Node3D] = []
 
 # Calculated street corridor grid cuts for seed (X & Z coordinates)
 var active_x_streets: Array[float] = []
@@ -73,6 +74,7 @@ func generate_city_from_seed(target_seed: int) -> void:
 	active_river_boxes.clear()
 	active_park_boxes.clear()
 	active_lot_boxes.clear()
+	active_food_trucks.clear()
 	active_x_streets.clear()
 	active_z_streets.clear()
 	if target_seed != 0:
@@ -82,7 +84,74 @@ func generate_city_from_seed(target_seed: int) -> void:
 
 	_build_ground_and_grid()
 	_generate_city_grid()
+	_spawn_food_trucks()
 	_eject_entities_from_water()
+
+# Spawns between 2 and 5 cyberpunk food trucks parked along road edges next to parks & parking lots
+func _spawn_food_trucks() -> void:
+	var num_trucks: int = rng.randi_range(2, 5)
+	var scenery_props_script = preload("res://CitySceneryProps.gd")
+	var scenery_props = scenery_props_script.new()
+
+	# Combine park and lot boxes for preferred placement
+	var target_boxes: Array[Rect2] = []
+	target_boxes.append_array(active_park_boxes)
+	target_boxes.append_array(active_lot_boxes)
+
+	# Shuffle target boxes to vary placement across seeds
+	target_boxes.shuffle()
+
+	var spawned_count: int = 0
+	var neon_colors: Array[Color] = [
+		Color(0.0, 0.85, 1.0),  # Cyan
+		Color(1.0, 0.0, 0.8),   # Magenta
+		Color(1.0, 0.8, 0.0),   # Amber
+		Color(0.2, 1.0, 0.4)    # Emerald
+	]
+
+	# First pass: try placing along park & lot roadside edges
+	for box in target_boxes:
+		if spawned_count >= num_trucks:
+			break
+
+		# Pick a random roadside edge of the box (North, South, East, or West)
+		var edge: int = rng.randi() % 4
+		var spawn_pos: Vector3 = Vector3.ZERO
+		var facing_dir: Vector3 = Vector3.FORWARD
+
+		match edge:
+			0: # North Edge (Top side along Z-min)
+				spawn_pos = Vector3(box.position.x + box.size.x * 0.5, 0.0, box.position.y - 1.8)
+				facing_dir = Vector3.RIGHT
+			1: # South Edge (Bottom side along Z-max)
+				spawn_pos = Vector3(box.position.x + box.size.x * 0.5, 0.0, box.position.y + box.size.y + 1.8)
+				facing_dir = Vector3.LEFT
+			2: # West Edge (Left side along X-min)
+				spawn_pos = Vector3(box.position.x - 1.8, 0.0, box.position.y + box.size.y * 0.5)
+				facing_dir = Vector3.FORWARD
+			3: # East Edge (Right side along X-max)
+				spawn_pos = Vector3(box.position.x + box.size.x + 1.8, 0.0, box.position.y + box.size.y * 0.5)
+				facing_dir = Vector3.BACK
+
+		# Ensure not placed inside water
+		if not _is_position_in_water(spawn_pos):
+			var truck_color: Color = neon_colors[rng.randi() % neon_colors.size()]
+			var truck_node = scenery_props.create_food_truck(spawn_pos, facing_dir, truck_color)
+			add_child(truck_node)
+			active_food_trucks.append(truck_node)
+			spawned_count += 1
+
+	# Fallback pass: if city has fewer parks/lots than target count, place along main street curbs
+	while spawned_count < num_trucks and active_x_streets.size() > 1 and active_z_streets.size() > 1:
+		var rx: float = active_x_streets[rng.randi() % active_x_streets.size()] + 4.5
+		var rz: float = active_z_streets[rng.randi() % active_z_streets.size()] + 4.5
+		var fallback_pos: Vector3 = Vector3(rx, 0.0, rz)
+		if not _is_position_in_water(fallback_pos):
+			var truck_color: Color = neon_colors[rng.randi() % neon_colors.size()]
+			var truck_node = scenery_props.create_food_truck(fallback_pos, Vector3.FORWARD, truck_color)
+			add_child(truck_node)
+			active_food_trucks.append(truck_node)
+			spawned_count += 1
 
 # Checks if PlayerCar, ambient traffic cars, or pedestrians are stuck in CyberRiver water and moves them to safe land
 func _eject_entities_from_water() -> void:

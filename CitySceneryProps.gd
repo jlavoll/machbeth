@@ -111,3 +111,125 @@ func create_parking_lot_streetlight(center_target: Vector3, position_world: Vect
 	spot_light.look_at(center_target + Vector3(0.0, 0.5, 0.0), Vector3.UP)
 
 	return prop_root
+
+# ==============================================================================
+# CYBERPUNK FOOD TRUCK FACTORY
+# ==============================================================================
+# Creates a detailed cyberpunk street food truck (Noodle / Cyber-Taco / Synth-Bento Bar)
+# with glowing neon menu signs, serving counter window, roof AC vents, and ambient lights!
+func create_food_truck(spawn_pos: Vector3, facing_dir: Vector3, neon_color: Color) -> Node3D:
+	var truck_root = Node3D.new()
+	truck_root.name = "CyberFoodTruck"
+	truck_root.position = spawn_pos
+
+	# Orient truck along roadside
+	if facing_dir.length_squared() > 0.01:
+		truck_root.look_at(spawn_pos + facing_dir, Vector3.UP)
+
+	# 1. Main Truck Body Box (4.2m long, 2.2m wide, 2.4m tall)
+	var body_inst = MeshInstance3D.new()
+	body_inst.name = "FoodTruckBody"
+	var body_box = BoxMesh.new()
+	body_box.size = Vector3(2.2, 2.2, 4.2)
+	body_inst.mesh = body_box
+	body_inst.position = Vector3(0.0, 1.4, 0.0)
+
+	var truck_mat = StandardMaterial3D.new()
+	truck_mat.albedo_color = Color(0.06, 0.07, 0.1) # Dark Synth-Matte Steel
+	truck_mat.metallic = 0.7
+	truck_mat.roughness = 0.4
+	body_inst.material_override = truck_mat
+	truck_root.add_child(body_inst)
+
+	# 2. Driver Cabin Windshield (Front)
+	var cab_inst = MeshInstance3D.new()
+	var cab_box = BoxMesh.new()
+	cab_box.size = Vector3(2.0, 0.9, 0.8)
+	cab_inst.mesh = cab_box
+	cab_inst.position = Vector3(0.0, 1.5, -1.8)
+
+	var glass_mat = StandardMaterial3D.new()
+	glass_mat.albedo_color = Color(0.02, 0.08, 0.12)
+	glass_mat.metallic = 0.9
+	glass_mat.roughness = 0.1
+	cab_inst.material_override = glass_mat
+	truck_root.add_child(cab_inst)
+
+	# 3. Wheels (4 Heavy Cyber Tires)
+	var wheel_positions = [
+		Vector3(-1.05, 0.45, 1.2),
+		Vector3(1.05, 0.45, 1.2),
+		Vector3(-1.05, 0.45, -1.2),
+		Vector3(1.05, 0.45, -1.2)
+	]
+	for w_pos in wheel_positions:
+		var w_inst = MeshInstance3D.new()
+		var w_mesh = CylinderMesh.new()
+		w_mesh.top_radius = 0.45
+		w_mesh.bottom_radius = 0.45
+		w_mesh.height = 0.35
+		w_inst.mesh = w_mesh
+		w_inst.rotation_degrees = Vector3(0, 0, 90)
+		w_inst.position = w_pos
+
+		var w_mat = StandardMaterial3D.new()
+		w_mat.albedo_color = Color(0.03, 0.03, 0.04)
+		w_mat.roughness = 0.9
+		w_inst.material_override = w_mat
+		truck_root.add_child(w_inst)
+
+	# 4. Glowing Neon Roof Menu Sign ("NOODLES / SYNTH-BAR")
+	var sign_inst = MeshInstance3D.new()
+	sign_inst.name = "FoodTruckNeonSign"
+	var sign_box = BoxMesh.new()
+	sign_box.size = Vector3(1.8, 0.6, 0.1)
+	sign_inst.mesh = sign_box
+	sign_inst.position = Vector3(0.0, 2.8, 0.0)
+
+	var sign_mat = StandardMaterial3D.new()
+	sign_mat.albedo_color = neon_color
+	sign_mat.emission_enabled = true
+	sign_mat.emission = neon_color
+	sign_mat.emission_energy_multiplier = 6.0
+	sign_inst.material_override = sign_mat
+	truck_root.add_child(sign_inst)
+
+	# 5. Serving Window Opening Cutout & Counter Hatch
+	var counter_inst = MeshInstance3D.new()
+	counter_inst.name = "FoodTruckCounter"
+	var counter_box = BoxMesh.new()
+	counter_box.size = Vector3(0.3, 0.1, 2.0)
+	counter_inst.mesh = counter_box
+	counter_inst.position = Vector3(1.15, 1.2, 0.0)
+
+	var counter_mat = StandardMaterial3D.new()
+	counter_mat.albedo_color = Color(0.8, 0.8, 0.85)
+	counter_mat.metallic = 0.9
+	counter_inst.material_override = counter_mat
+	truck_root.add_child(counter_inst)
+
+	# 6. Warm Serving Counter Light (OmniLight3D illuminating customer area)
+	var counter_light = OmniLight3D.new()
+	counter_light.name = "FoodTruckCounterLight"
+	counter_light.position = Vector3(1.6, 1.8, 0.0)
+	counter_light.light_color = neon_color.lerp(Color(1.0, 0.9, 0.5), 0.5)
+	counter_light.light_energy = 4.0
+	counter_light.omni_range = 6.0
+	counter_light.omni_attenuation = 0.8
+	truck_root.add_child(counter_light)
+
+	# 7. Impassable Solid Collision Box for Player Car & Traffic
+	var static_body = StaticBody3D.new()
+	static_body.name = "FoodTruckCollision"
+	static_body.collision_layer = 4 # Layer 3 Traffic/Prop obstacle
+	static_body.collision_mask = 0
+
+	var col_shape = CollisionShape3D.new()
+	var box_shape = BoxShape3D.new()
+	box_shape.size = Vector3(2.4, 2.5, 4.4)
+	col_shape.shape = box_shape
+	col_shape.position = Vector3(0.0, 1.4, 0.0)
+	static_body.add_child(col_shape)
+	truck_root.add_child(static_body)
+
+	return truck_root
