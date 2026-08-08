@@ -40,6 +40,15 @@ var current_track_index: int = 0
 var active_track_profile: MusicTrackProfile = null
 var audio_player: AudioStreamPlayer
 
+# ==============================================================================
+# M-KEY MANUAL CYCLE STATE
+# ==============================================================================
+# Flat ordered list of every audio file discovered in res://music/ at startup.
+# M cycles: silence → track[0] → track[1] → … → silence → track[0] …
+# Index -1 = silence.
+var _m_tracks: Array[String] = []   # filepaths
+var _m_index:  int = -1             # -1 = currently silent
+
 @onready var trigger_manager = $"../BattleTriggerManager"
 
 # ==============================================================================
@@ -49,7 +58,8 @@ var audio_player: AudioStreamPlayer
 func _ready() -> void:
 	_create_audio_player()
 	_initialize_playlist_catalogs()
-	
+	_scan_music_folder()
+
 	# Connect to BattleTriggerManager signals for automatic combat music switching
 	if is_instance_valid(trigger_manager):
 		trigger_manager.combat_encounter_requested.connect(func():
@@ -61,6 +71,24 @@ func _ready() -> void:
 
 	# Start playing default Driving playlist
 	switch_playlist_category(PlaylistCategory.DRIVING)
+
+# Scans res://music/ and collects all .ogg / .mp3 filepaths for M-key cycling
+func _scan_music_folder() -> void:
+	var dir := DirAccess.open("res://music")
+	if dir == null:
+		push_warning("[MUSIC] Could not open res://music/ for scanning")
+		return
+	dir.list_dir_begin()
+	var fname := dir.get_next()
+	while fname != "":
+		if not dir.current_is_dir():
+			var lower := fname.to_lower()
+			if lower.ends_with(".ogg") or lower.ends_with(".mp3"):
+				_m_tracks.append("res://music/" + fname)
+		fname = dir.get_next()
+	dir.list_dir_end()
+	_m_tracks.sort()  # deterministic order
+	print("[MUSIC] M-key cycle discovered ", _m_tracks.size(), " track(s): ", _m_tracks)
 
 func _create_audio_player() -> void:
 	audio_player = AudioStreamPlayer.new()
@@ -173,3 +201,39 @@ func _on_track_finished() -> void:
 	if active_list.size() > 0:
 		var next_index = (current_track_index + 1) % active_list.size()
 		play_track_from_active_category(next_index)
+
+# ==============================================================================
+# M-KEY MANUAL TRACK CYCLE
+# ==============================================================================
+
+func _unhandled_input(event: InputEvent) -> void:
+	if event is InputEventKey and event.pressed and not event.echo:
+		if event.keycode == KEY_P:
+			_cycle_music_track()
+
+# Advances to next slot: silence → track[0] → track[1] → … → silence → …
+func _cycle_music_track() -> void:
+	if _m_tracks.is_empty():
+		print("[MUSIC] No tracks found in res://music/")
+		return
+
+	# Advance index (-1 = silence, 0..N-1 = tracks)
+	_m_index += 1
+	if _m_index >= _m_tracks.size():
+		_m_index = -1   # wrap back to silence
+
+	if _m_index == -1:
+		audio_player.stop()
+		print("[MUSIC] 🔇 Silence")
+		return
+
+	var filepath: String = _m_tracks[_m_index]
+	if not ResourceLoader.exists(filepath):
+		print("[MUSIC] Track not found: ", filepath)
+		return
+
+	var stream = load(filepath)
+	audio_player.stream = stream
+	audio_player.play()
+	var short_name: String = filepath.get_file()
+	print("[MUSIC] ▶ [", _m_index + 1, "/", _m_tracks.size(), "] ", short_name)

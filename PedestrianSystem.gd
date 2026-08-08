@@ -145,7 +145,7 @@ func _spawn_pedestrian(is_initial_citywide_spawn: bool = false) -> void:
 		else:
 			var angle: float = rng.randf_range(0, TAU)
 			var test_dist: float = rng.randf_range(spawn_radius * 0.5, spawn_radius)
-			spawn_pos = player_car.global_position + Vector3(cos(angle) * test_dist, 0.0, sin(angle) * test_dist)
+			spawn_pos = _get_player_world_position() + Vector3(cos(angle) * test_dist, 0.0, sin(angle) * test_dist)
 
 		# Direct geometric AABB check against active river boxes
 		if is_instance_valid(city_gen) and city_gen.has_method("_is_position_in_water"):
@@ -154,7 +154,7 @@ func _spawn_pedestrian(is_initial_citywide_spawn: bool = false) -> void:
 		else:
 			valid_spawn = true
 
-	ped_node.global_position = spawn_pos
+	ped_node.position = spawn_pos
 
 	# Assign target destination objective (e.g. cross street to a specific building/park/lot center)
 	var target_destination: Vector3 = _pick_new_pedestrian_target_objective(spawn_pos)
@@ -167,6 +167,9 @@ func _spawn_pedestrian(is_initial_citywide_spawn: bool = false) -> void:
 	# Personality Roll: 75% Rule-Abiding Citizens (Walk on Sidewalks), 25% Anarchistic Street Roamers
 	var is_rule_abiding: bool = (rng.randf() > 0.25)
 	ped_node.set_meta("is_rule_abiding", is_rule_abiding)
+	ped_node.set_meta("flashlight_on", false)
+	ped_node.set_meta("flashlight_delay_timer", 0.0)
+	ped_node.set_meta("flashlight_reaction_lag", rng.randf_range(0.3, 3.2))
 
 	add_child(ped_node)
 	active_pedestrians.append(ped_node)
@@ -190,11 +193,18 @@ func _pick_new_pedestrian_target_objective(start_pos: Vector3) -> Vector3:
 # PROCESS LOOP & WALKING BOBBING MOTION
 # ==============================================================================
 
+## Returns the current world position of the player — car or on-foot figure
+func _get_player_world_position() -> Vector3:
+	if is_instance_valid(player_car) and player_car.is_on_foot and is_instance_valid(player_car.on_foot_node):
+		return player_car.on_foot_node.global_position
+	return player_car.global_position
+
 func _process(delta: float) -> void:
 	if not is_instance_valid(player_car):
 		return
 
-	var player_pos: Vector3 = player_car.global_position
+	# Track actual player position — car position when driving, on-foot node when walking
+	var player_pos: Vector3 = _get_player_world_position()
 
 	for i in range(active_pedestrians.size() - 1, -1, -1):
 		var ped = active_pedestrians[i]
@@ -380,6 +390,7 @@ func _process(delta: float) -> void:
 
 			# --------------------------------------------------------------------------
 			# FLASHLIGHT ACTIVATION (TWO DARKEST 'L' STAGES: DARK_BUILDINGS = 3, PITCH_BLACK = 4)
+			# Staggered asynchronous turning on/off matching car headlights
 			# --------------------------------------------------------------------------
 			var city_vfx = $"../CityVisualEffects"
 			var is_darkest_stages: bool = false
@@ -387,9 +398,23 @@ func _process(delta: float) -> void:
 				# Stage 3: DARK_BUILDINGS, Stage 4: PITCH_BLACK
 				is_darkest_stages = (int(city_vfx.current_city_light_stage) >= 3)
 
-			var flashlight_spot = ped.get_node_or_null("Flashlight/FlashlightSpot")
+			var flashlight_spot: SpotLight3D = ped.get_node_or_null("Flashlight/FlashlightSpot") as SpotLight3D
 			if is_instance_valid(flashlight_spot):
-				var target_energy: float = 6.5 if is_darkest_stages else 0.0
+				var flashlight_on: bool  = ped.get_meta("flashlight_on",          false)
+				var delay_timer: float  = ped.get_meta("flashlight_delay_timer",  0.0)
+				var reaction_lag: float = ped.get_meta("flashlight_reaction_lag", 1.0)
+
+				if is_darkest_stages != flashlight_on:
+					delay_timer += delta
+					ped.set_meta("flashlight_delay_timer", delay_timer)
+					if delay_timer >= reaction_lag:
+						ped.set_meta("flashlight_on",          is_darkest_stages)
+						ped.set_meta("flashlight_delay_timer", 0.0)
+				else:
+					ped.set_meta("flashlight_delay_timer", 0.0)
+
+				var current_on: bool = ped.get_meta("flashlight_on", false)
+				var target_energy: float = 6.5 if current_on else 0.0
 				flashlight_spot.light_energy = move_toward(flashlight_spot.light_energy, target_energy, delta * 15.0)
 
 			# --------------------------------------------------------------------------
@@ -447,7 +472,7 @@ func _manage_food_truck_queues(delta: float) -> void:
 		# Gather existing pedestrians currently in line for this truck
 		var queued_peds: Array[CharacterBody3D] = []
 		for ped in active_pedestrians:
-			if is_instance_valid(ped) and ped.get_meta("food_truck_queue_target", null) == truck:
+			if is_instance_valid(ped) and ped.has_meta("food_truck_queue_target") and ped.get_meta("food_truck_queue_target") == truck:
 				queued_peds.append(ped)
 
 		# Sort line by slot index or distance to counter window

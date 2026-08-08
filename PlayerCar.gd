@@ -25,6 +25,20 @@ class_name PlayerCar
 var current_speed: float = 0.0
 
 # ==============================================================================
+# ON-FOOT STATE
+# ==============================================================================
+
+## Set to true while the player is walking the streets — disables driving input
+var is_on_foot: bool = false
+
+## Reference to the active PlayerOnFoot node (null while driving)
+var on_foot_node: CharacterBody3D = null
+
+## Guard: true for one frame after re-entering so the same E press that triggered
+## on_foot_reenter() doesn't also fire _exit_to_on_foot() again in this node
+var _reenter_guard: bool = false
+
+# ==============================================================================
 # VISUAL BODY DYNAMICS (LEANING, BANKING & PITCH)
 # ==============================================================================
 
@@ -233,6 +247,12 @@ func _update_camera_transform() -> void:
 		camera.rotation_degrees = Vector3(current_pitch, 0.0, 0.0)
 
 func _physics_process(delta: float) -> void:
+	# While on foot, suppress all car driving — the car sits parked
+	if is_on_foot:
+		velocity = Vector3.ZERO
+		move_and_slide()
+		return
+
 	# --------------------------------------------------------------------------
 	# 1. STEERING INPUT (A/D or Left/Right Arrow Keys)
 	# --------------------------------------------------------------------------
@@ -300,13 +320,68 @@ func _physics_process(delta: float) -> void:
 func _unhandled_input(event: InputEvent) -> void:
 	if event is InputEventKey and event.pressed and not event.echo:
 		# 'H' key toggles/cycles headlight stages: OFF -> NEAR -> LONG -> OFF
-		if event.keycode == KEY_H:
+		if event.keycode == KEY_H and not is_on_foot:
 			_cycle_headlight_mode()
+
+		# 'E' key exits the car — guard prevents double-fire on the same press as re-entry
+		if event.keycode == KEY_E and not is_on_foot and not _reenter_guard:
+			_exit_to_on_foot()
+
+	# Clear the reenter guard one frame after it was set
+	if _reenter_guard:
+		_reenter_guard = false
 
 	if event is InputEventMouseButton and event.is_pressed():
 		if event.button_index == MOUSE_BUTTON_WHEEL_UP:
 			camera.fov = clamp(camera.fov - zoom_step, ultra_min_fov, max_fov)
-			_update_camera_transform()
+			if not is_on_foot:
+				_update_camera_transform()
 		elif event.button_index == MOUSE_BUTTON_WHEEL_DOWN:
 			camera.fov = clamp(camera.fov + zoom_step, ultra_min_fov, max_fov)
-			_update_camera_transform()
+			if not is_on_foot:
+				_update_camera_transform()
+
+# ==============================================================================
+# ON-FOOT EXIT / REENTER
+# ==============================================================================
+
+func _exit_to_on_foot() -> void:
+	is_on_foot = true
+	current_speed = 0.0
+	velocity = Vector3.ZERO
+
+	# Spawn the player figure at ground level beside the car
+	var spawn_offset: Vector3 = global_transform.basis.x * 1.5  # step out to the right
+	var spawn_pos: Vector3 = global_position + spawn_offset
+	spawn_pos.y = 0.0  # Force to ground — car floats at y=1 but the street is at y=0
+
+	var foot_script = load("res://PlayerOnFoot.gd")
+	on_foot_node = CharacterBody3D.new()
+	on_foot_node.set_script(foot_script)
+	get_parent().add_child(on_foot_node)
+
+	# setup() reparents the camera, builds the figure, and starts lerping
+	on_foot_node.setup(self, camera, spawn_pos)
+
+	print("[ON FOOT] Player exited car at ", global_position)
+
+## Called by PlayerOnFoot when the player walks back to the car and presses E
+func on_foot_reenter(cam: Camera3D) -> void:
+	is_on_foot = false
+	_reenter_guard = true  # Block the same E press from immediately re-exiting
+
+	# Reparent camera back from the foot node to this car
+	var world_cam_transform: Transform3D = cam.global_transform
+	on_foot_node.remove_child(cam)
+	add_child(cam)
+	cam.global_transform = world_cam_transform
+
+	# Free the on-foot figure
+	if is_instance_valid(on_foot_node):
+		on_foot_node.queue_free()
+	on_foot_node = null
+
+	# Restore camera to driving position (will lerp naturally next _update_camera_transform call)
+	_update_camera_transform()
+
+	print("[ON FOOT] Player re-entered car")

@@ -107,8 +107,8 @@ func create_parking_lot_streetlight(center_target: Vector3, position_world: Vect
 	prop_root.add_child(spot_light)
 
 	# Orient spotlight and lamp head box to face directly toward parking lot center
-	lamp_head_instance.look_at(center_target + Vector3(0.0, 0.5, 0.0), Vector3.UP)
-	spot_light.look_at(center_target + Vector3(0.0, 0.5, 0.0), Vector3.UP)
+	lamp_head_instance.look_at_from_position(lamp_head_instance.position, center_target + Vector3(0.0, 0.5, 0.0), Vector3.UP)
+	spot_light.look_at_from_position(spot_light.position, center_target + Vector3(0.0, 0.5, 0.0), Vector3.UP)
 
 	return prop_root
 
@@ -122,9 +122,9 @@ func create_food_truck(spawn_pos: Vector3, facing_dir: Vector3, neon_color: Colo
 	truck_root.name = "CyberFoodTruck"
 	truck_root.position = spawn_pos
 
-	# Orient truck along roadside
+	# Orient truck along roadside (use look_at_from_position — node not in tree yet)
 	if facing_dir.length_squared() > 0.01:
-		truck_root.look_at(spawn_pos + facing_dir, Vector3.UP)
+		truck_root.look_at_from_position(spawn_pos, spawn_pos + facing_dir, Vector3.UP)
 
 	# 1. Main Truck Body Box (4.2m long, 2.2m wide, 2.4m tall)
 	var body_inst = MeshInstance3D.new()
