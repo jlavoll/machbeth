@@ -60,6 +60,7 @@ func create_parking_lot_streetlight(center_target: Vector3, position_world: Vect
 	# 2. LAMP HOUSING HEAD (BOX FIXTURE MOUNTED ATOP THE POLE)
 	# --------------------------------------------------------------------------
 	var lamp_head_instance = MeshInstance3D.new()
+	lamp_head_instance.name = "StreetlampHeadBox"
 	var head_box_mesh = BoxMesh.new()
 	head_box_mesh.size = Vector3(lamp_head_width, lamp_head_height, lamp_head_depth)
 	lamp_head_instance.mesh = head_box_mesh
@@ -74,6 +75,7 @@ func create_parking_lot_streetlight(center_target: Vector3, position_world: Vect
 	# 3. HIGH-GLOW EMISSION LENS MESH (GLOWING GLASS FACE LIKE A CAR HEADLIGHT)
 	# --------------------------------------------------------------------------
 	var lens_instance = MeshInstance3D.new()
+	lens_instance.name = "StreetlampLensGlowMesh"
 	var lens_box_mesh = BoxMesh.new()
 	lens_box_mesh.size = Vector3(lamp_head_width * 0.85, 0.08, lamp_head_depth * 0.85)
 	lens_instance.mesh = lens_box_mesh

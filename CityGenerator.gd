@@ -137,6 +137,7 @@ func _find_safe_land_position(start_pos: Vector3) -> Vector3:
 	return Vector3.ZERO
 
 
+
 # ==============================================================================
 # 1. GROUND PLANE & WIREFRAME GRID SYSTEM
 # ==============================================================================
@@ -155,10 +156,12 @@ func _build_ground_and_grid() -> void:
 	# Position slightly below Y=0 (-0.05m) to avoid z-fighting visual glitches with grid lines
 	# Vector3(X=0.0, Y=-0.05, Z=0.0) -> (Horizontal, Height, Depth)
 	ground_mesh.position = Vector3(0, -0.05, 0)
-
-	# Ground Material: Deep Dark Purple / Cyberpunk Asphalt
+	
+		# Ground Material: Deep Dark Purple / Cyberpunk Asphalt
 	var ground_mat = StandardMaterial3D.new()
 	# Color(R=0.01, G=0.005, B=0.02) -> Almost pure black with a tiny tint of dark violet
+	ground_mat.roughness = 0.7     # Low roughness for a glossy/wet reflective surface
+	ground_mat.metallic = 0.2      # Subtle metallic sheen
 	ground_mat.albedo_color = Color(0.01, 0.005, 0.02)
 	ground_mesh.material_override = ground_mat
 

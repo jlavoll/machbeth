@@ -236,8 +236,10 @@ func _apply_city_lighting_stage() -> void:
 
 # Helper function to recursively update material emission across all city elements (buildings, grass, water, trees)
 func _update_node_lighting_recursively(target_node: Node, mult: float) -> void:
-	# Skip corner streetlights so independent floodlights stay on
-	if "ParkingLotCornerSpotlight" in target_node.name:
+	# Skip streetlights & parking lot corner lights so independent floodlights and lamp bulb lenses stay lit
+	var n_name: String = target_node.name
+	var p_name: String = target_node.get_parent().name if target_node.get_parent() != null else ""
+	if "Spotlight" in n_name or "Streetlight" in n_name or "ParkingLot" in n_name or "Streetlamp" in n_name or "Spotlight" in p_name or "Streetlight" in p_name or "ParkingLot" in p_name or "Streetlamp" in p_name:
 		return
 
 	if target_node is MeshInstance3D and target_node.material_override is StandardMaterial3D:

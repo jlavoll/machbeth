@@ -2,372 +2,451 @@ extends Node3D
 class_name TrafficSystem
 
 # ==============================================================================
-# AMBIENT CITY TRAFFIC SYSTEM WITH ASTAR3D PATHFINDING (TrafficSystem.gd)
+# LOOPING CITY TRAFFIC SYSTEM (TrafficSystem.gd)
 # ==============================================================================
-# Vehicles are assigned a true AStar3D-calculated path through the city's street
-# intersection network. Intersections from CityGenerator are nodes; segments are
-# edges. Broadway avenues are weighted lower so commuter traffic prefers them.
-# All existing behaviour (headlights, wheels, tilt, bounce, rest, U-turn rules)
-# is fully retained and layered on top of the pathfinding movement.
+# Each car is assigned a fixed 8-waypoint clockwise loop around a city block.
+# When it reaches waypoint[last], it resets to waypoint[0] and starts again.
+# No continuation logic. No dead ends. No disappearing.
+#
+# A loop around a city block with corner (X1,Z1) and (X2,Z2):
+#
+#   North leg ← ← ← ← ← ←
+#   ↑  [7]NorthTO  [6]NorthFROM  ↑  ← cars going North on X1 right lane
+#   ↑                             ↑
+#   [0]EastFROM              [3]SouthTO
+#   ↓  East → → → → → →     ↑  South leg
+#   [1]EastTO  [2]SouthFROM  ↑
+#              [4]WestFROM → [5]WestTO
+#              West leg
+#
+# Right-hand lane offsets by direction:
+#   East  (+X): offset direction = South (+Z)
+#   South (+Z): offset direction = West  (-X)
+#   West  (-X): offset direction = North (-Z)
+#   North (-Z): offset direction = East  (+X)
+# ==============================================================================
 
-@export var max_ambient_cars: int = 6
-@export var spawn_radius_distance: float = 140.0
-@export var despawn_radius_distance: float = 270.0
-@export var base_traffic_speed: float = 12.0
+# ------------------------------------------------------------------------------
+# CONFIGURATION
+# ------------------------------------------------------------------------------
 
-# Vehicle mesh templates
-var commuter_mesh: BoxMesh
-var hauler_mesh: BoxMesh
-var enforcer_mesh: BoxMesh
+@export var total_city_cars: int = 30
+# Total traffic cars placed citywide at startup. Spread across city blocks.
 
-# Vehicle pool
+@export var base_traffic_speed: float = 21.0
+# Base speed for commuter pods in m/s.
+
+@export var hauler_speed_multiplier: float = 0.62
+# Corporate haulers are slower than commuters.
+
+@export var lane_offset: float = 4.2
+# Right-hand lane offset from road centre-line in meters.
+
+@export var waypoint_arrival_radius: float = 3.2
+# How close a car must get to a waypoint before it advances (meters).
+
+@export var inter_car_brake_distance: float = 14.0
+# Raycast distance ahead to check for a leading car (meters).
+
+@export var inter_car_stop_distance: float = 6.0
+# Full stop distance from the car ahead (meters).
+
+# ------------------------------------------------------------------------------
+# INTERNAL STATE
+# ------------------------------------------------------------------------------
+
+var _commuter_body_mesh:  BoxMesh
+var _hauler_body_mesh:    BoxMesh
+var _enforcer_body_mesh:  BoxMesh
+var _racer_body_mesh:     BoxMesh
+var _van_body_mesh:       BoxMesh
+var _limo_body_mesh:      BoxMesh
+
 var active_traffic_cars: Array[Node3D] = []
 
-# References
-@onready var player_car = $"../PlayerCar"
-@onready var city_generator = $"../CityGenerator"
+# Pre-built loop routes: each is Array[Vector3] with 8 waypoints.
+# Cars pick one and loop it forever.
+var _city_block_loops: Array = []   # Array of Array[Vector3]
 
-# ==============================================================================
-# ASTAR3D GRAPH INFRASTRUCTURE
-# ==============================================================================
-var astar_grid: AStar3D = AStar3D.new()
-var grid_node_map: Dictionary = {} # Maps Vector2i(ix, iz) -> AStar point_id
-var valid_spawn_node_ids: Array[int] = [] # Pre-filtered drivable AStar node IDs (no parks/water)
+@onready var player_car: Node3D    = $"../PlayerCar"
+@onready var city_generator: Node3D = $"../CityGenerator"
 
-var rng: RandomNumberGenerator = RandomNumberGenerator.new()
-
-# ==============================================================================
-# HELPER: DUAL-WHISKER OBSTACLE AVOIDANCE STEERING
-# ==============================================================================
-# Fires three raycasts (centre + left + right whiskers) ahead of the car.
-# Returns a lateral avoidance vector to blend into the current drive direction.
-func _get_obstacle_avoidance_steering(car: CharacterBody3D, drive_dir: Vector3, space_state: PhysicsDirectSpaceState3D) -> Vector3:
-	var car_pos: Vector3 = car.global_position + Vector3(0.0, 0.5, 0.0)
-	var car_speed: float = car.get_meta("speed", base_traffic_speed)
-	var look_ahead: float = max(8.0, car_speed * 1.2)
-
-	var left_whisker_dir: Vector3 = drive_dir.rotated(Vector3.UP, deg_to_rad(25.0))
-	var right_whisker_dir: Vector3 = drive_dir.rotated(Vector3.UP, deg_to_rad(-25.0))
-
-	var q_left = PhysicsRayQueryParameters3D.create(car_pos, car_pos + left_whisker_dir * (look_ahead * 0.7), 1 | 2 | 4, [car])
-	var q_right = PhysicsRayQueryParameters3D.create(car_pos, car_pos + right_whisker_dir * (look_ahead * 0.7), 1 | 2 | 4, [car])
-
-	var res_l = space_state.intersect_ray(q_left)
-	var res_r = space_state.intersect_ray(q_right)
-
-	var avoid_steering: Vector3 = Vector3.ZERO
-	if res_l.size() > 0:
-		avoid_steering += drive_dir.cross(Vector3.UP)  # Steer Right (away from left obstacle)
-	if res_r.size() > 0:
-		avoid_steering -= drive_dir.cross(Vector3.UP)  # Steer Left (away from right obstacle)
-
-	if avoid_steering.length_squared() > 0.001:
-		return avoid_steering.normalized()
-	return Vector3.ZERO
-
-# ==============================================================================
-# HELPER: QUADRATIC BEZIER CORNER INTERPOLATION
-# ==============================================================================
-# Smooths the car's path direction when transitioning between two AStar segments.
-# p0 = previous waypoint, p1 = current corner node, p2 = next waypoint, t = blend [0..1]
-func _interpolate_corner(p0: Vector3, p1: Vector3, p2: Vector3, t: float) -> Vector3:
-	var q0: Vector3 = p0.lerp(p1, t)
-	var q1: Vector3 = p1.lerp(p2, t)
-	return q0.lerp(q1, t)
+var _rng: RandomNumberGenerator = RandomNumberGenerator.new()
 
 # ==============================================================================
 # INITIALIZATION
 # ==============================================================================
 
 func _ready() -> void:
-	rng.randomize()
+	_rng.randomize()
 	_create_vehicle_mesh_templates()
-	# Defer graph build so CityGenerator finishes spawning streets first
-	call_deferred("_build_astar_city_network")
+	call_deferred("_on_city_ready")
 
-# ==============================================================================
-# 1. ASTAR3D CITY NETWORK GENERATION
-# ==============================================================================
-
-func _build_astar_city_network() -> void:
+func _on_city_ready() -> void:
 	if not is_instance_valid(city_generator):
-		push_warning("TrafficSystem: CityGenerator missing. Falling back to basic spawning.")
-		_spawn_initial_traffic_pool()
+		push_warning("[TrafficSystem] CityGenerator not found.")
 		return
 
-	var x_cuts: Array = city_generator.get("active_x_streets")
-	var z_cuts: Array = city_generator.get("active_z_streets")
+	var x_streets: Array = city_generator.get("active_x_streets")
+	var z_streets: Array = city_generator.get("active_z_streets")
 
-	if x_cuts == null or z_cuts == null or x_cuts.size() == 0 or z_cuts.size() == 0:
-		_spawn_initial_traffic_pool()
+	if x_streets == null or z_streets == null or x_streets.size() < 2 or z_streets.size() < 2:
+		push_warning("[TrafficSystem] City street data not ready.")
 		return
 
-	astar_grid.clear()
-	grid_node_map.clear()
-	valid_spawn_node_ids.clear()
-
-	var broadway_x: float = city_generator.get("active_broadway_x") if city_generator.get("active_broadway_x") != null else -9999.0
-	var broadway_z: float = city_generator.get("active_broadway_z") if city_generator.get("active_broadway_z") != null else -9999.0
-
-	var point_id: int = 0
-
-	# Register all street intersections as AStar3D nodes
-	for ix in range(x_cuts.size()):
-		for iz in range(z_cuts.size()):
-			var world_pos: Vector3 = Vector3(x_cuts[ix], 0.5, z_cuts[iz])
-			astar_grid.add_point(point_id, world_pos)
-
-			# Broadway avenues get lower weight — AStar3D will prefer them as arterial routes
-			var on_broadway: bool = (abs(world_pos.x - broadway_x) < 16.0 or abs(world_pos.z - broadway_z) < 16.0)
-			if on_broadway:
-				astar_grid.set_point_weight_scale(point_id, 0.6) # Preferred high-speed arterial
-
-			# Disable nodes that fall inside parks, parking lots, or water — cars will never spawn or route here
-			var node_is_blocked: bool = false
-			if is_instance_valid(city_generator):
-				var in_park_or_lot: bool = city_generator.has_method("_is_position_in_park_or_lot") and city_generator._is_position_in_park_or_lot(world_pos)
-				var in_water: bool = city_generator.has_method("_is_position_in_water") and city_generator._is_position_in_water(world_pos)
-				if in_park_or_lot or in_water:
-					astar_grid.set_point_disabled(point_id, true)
-					node_is_blocked = true
-
-			# Track valid spawn nodes (enabled, drivable intersections only)
-			if not node_is_blocked:
-				valid_spawn_node_ids.append(point_id)
-
-			grid_node_map[Vector2i(ix, iz)] = point_id
-			point_id += 1
-
-	# Connect adjacent intersection nodes (bidirectional street segments)
-	for ix in range(x_cuts.size()):
-		for iz in range(z_cuts.size()):
-			var current_id: int = grid_node_map[Vector2i(ix, iz)]
-
-			# Connect East (+X) neighbor
-			if ix + 1 < x_cuts.size():
-				var east_id: int = grid_node_map[Vector2i(ix + 1, iz)]
-				astar_grid.connect_points(current_id, east_id, true)
-
-			# Connect South (+Z) neighbor
-			if iz + 1 < z_cuts.size():
-				var south_id: int = grid_node_map[Vector2i(ix, iz + 1)]
-				astar_grid.connect_points(current_id, south_id, true)
-
-	print("[TrafficSystem] AStar3D graph built: ", astar_grid.get_point_count(), " nodes, ", valid_spawn_node_ids.size(), " valid spawn points.")
-	_spawn_initial_traffic_pool()
+	_build_all_block_loops(x_streets, z_streets)
+	_spawn_all_city_cars()
 
 # ==============================================================================
-# 2. PATH ROUTING & ASSIGNMENT
+# 1. BLOCK LOOP ROUTE BUILDING
 # ==============================================================================
+# For every valid city block (bounded by 4 intersections), build a clockwise
+# 8-waypoint loop. A "valid" block has no park/river at any of its 4 corners.
 
-# Assigns a fresh AStar3D path from current position to a random distant intersection
-# and immediately pre-orients the car toward its first waypoint
-func _assign_new_astar_path(car: Node3D) -> void:
-	if astar_grid.get_point_count() == 0 or valid_spawn_node_ids.size() < 2:
-		return
+func _build_all_block_loops(x_streets: Array, z_streets: Array) -> void:
+	_city_block_loops.clear()
 
-	var start_id: int = astar_grid.get_closest_point(car.global_position)
+	for ix in range(x_streets.size() - 1):
+		for iz in range(z_streets.size() - 1):
+			var x1: float = x_streets[ix]
+			var x2: float = x_streets[ix + 1]
+			var z1: float = z_streets[iz]
+			var z2: float = z_streets[iz + 1]
 
-	# Pick a random valid destination from pre-filtered drivable nodes
-	var dest_id: int = valid_spawn_node_ids[rng.randi() % valid_spawn_node_ids.size()]
-	var tries: int = 0
-	while dest_id == start_id and tries < 10:
-		dest_id = valid_spawn_node_ids[rng.randi() % valid_spawn_node_ids.size()]
-		tries += 1
+			# Skip blocks where any corner falls in a park, lot, or river
+			if _is_blocked(Vector3(x1, 0.5, z1)): continue
+			if _is_blocked(Vector3(x2, 0.5, z1)): continue
+			if _is_blocked(Vector3(x2, 0.5, z2)): continue
+			if _is_blocked(Vector3(x1, 0.5, z2)): continue
 
-	var path: PackedVector3Array = astar_grid.get_point_path(start_id, dest_id)
-	if path.size() > 1:
-		car.set_meta("astar_path", path)
-		car.set_meta("astar_path_index", 1)
+			_city_block_loops.append(_make_block_loop(x1, z1, x2, z2))
 
-		# Pre-orient car toward its first waypoint immediately (no confused first frame!)
-		var first_wp: Vector3 = path[1]
-		first_wp.y = car.global_position.y
-		var initial_dir: Vector3 = (first_wp - car.global_position)
-		initial_dir.y = 0.0
-		if initial_dir.length_squared() > 0.01:
-			initial_dir = initial_dir.normalized()
-			car.set_meta("drive_direction", initial_dir)
-			car.look_at(car.global_position + initial_dir, Vector3.UP)
+	print("[TrafficSystem] Built ", _city_block_loops.size(), " city block loops.")
 
-	car.set_meta("is_resting_at_target", false)
-	car.set_meta("rest_timer", 0.0)
+func _make_block_loop(x1: float, z1: float, x2: float, z2: float) -> Array[Vector3]:
+	# Clockwise loop: East → South → West → North
+	# Each leg has FROM and TO waypoints. Corner transitions (TO → next FROM)
+	# are driven naturally as diagonal cuts through the intersection (~5.9m).
+	var o: float = lane_offset  # shorthand
+	var y: float = 0.5          # ride height
+
+	var loop: Array[Vector3] = [
+		Vector3(x1,     y, z1 + o),  # [0] East leg FROM  (= loop restart after North TO)
+		Vector3(x2,     y, z1 + o),  # [1] East leg TO
+		Vector3(x2 - o, y, z1     ),  # [2] South leg FROM (corner cut after East TO)
+		Vector3(x2 - o, y, z2     ),  # [3] South leg TO
+		Vector3(x2,     y, z2 - o),  # [4] West leg FROM  (corner cut after South TO)
+		Vector3(x1,     y, z2 - o),  # [5] West leg TO
+		Vector3(x1 + o, y, z2     ),  # [6] North leg FROM (corner cut after West TO)
+		Vector3(x1 + o, y, z1     ),  # [7] North leg TO   (→ next frame: index = 0)
+	]
+	return loop
+
+func _is_blocked(world_pos: Vector3) -> bool:
+	if not is_instance_valid(city_generator):
+		return false
+	var in_park: bool  = city_generator.has_method("_is_position_in_park_or_lot") and city_generator._is_position_in_park_or_lot(world_pos)
+	var in_water: bool = city_generator.has_method("_is_position_in_water")        and city_generator._is_position_in_water(world_pos)
+	return in_park or in_water
 
 # ==============================================================================
-# 3. MESH SETUP & VEHICLE SPAWNING
+# 2. MESH TEMPLATES
 # ==============================================================================
 
 func _create_vehicle_mesh_templates() -> void:
-	# 1. Commuter Pod (1.6m x 0.7m x 2.0m)
-	commuter_mesh = BoxMesh.new()
-	commuter_mesh.size = Vector3(1.6, 0.7, 2.0)
+	# 1. Commuter Pod — compact city runabout
+	_commuter_body_mesh = BoxMesh.new()
+	_commuter_body_mesh.size = Vector3(1.6, 0.7, 2.2)
 
-	# 2. Corporate Hauler Truck (2.4m x 1.8m x 4.5m)
-	hauler_mesh = BoxMesh.new()
-	hauler_mesh.size = Vector3(2.4, 1.8, 4.5)
+	# 2. Corporate Hauler — heavy freight truck
+	_hauler_body_mesh = BoxMesh.new()
+	_hauler_body_mesh.size = Vector3(2.4, 1.8, 4.5)
 
-	# 3. Enforcer Patrol Car (1.8m x 0.8m x 2.2m)
-	enforcer_mesh = BoxMesh.new()
-	enforcer_mesh.size = Vector3(1.8, 0.8, 2.2)
+	# 3. Enforcer Patrol — law enforcement cruiser, wide and aggressive
+	_enforcer_body_mesh = BoxMesh.new()
+	_enforcer_body_mesh.size = Vector3(2.0, 0.65, 2.8)
 
-func _spawn_initial_traffic_pool() -> void:
-	for i in range(max_ambient_cars):
-		_spawn_ambient_car(true)
+	# 4. Synthwave Racer — ultra-low street racer with wide stance
+	_racer_body_mesh = BoxMesh.new()
+	_racer_body_mesh.size = Vector3(2.1, 0.45, 2.6)
 
-func _spawn_ambient_car(is_initial_citywide_spawn: bool = false) -> void:
-	if not is_instance_valid(player_car):
+	# 5. Delivery Van — tall boxy cargo van
+	_van_body_mesh = BoxMesh.new()
+	_van_body_mesh.size = Vector3(1.8, 1.6, 3.2)
+
+	# 6. Luxury Limo — long low executive transport
+	_limo_body_mesh = BoxMesh.new()
+	_limo_body_mesh.size = Vector3(1.9, 0.6, 4.2)
+
+# ==============================================================================
+# 3. SPAWN ALL CARS
+# ==============================================================================
+
+func _spawn_all_city_cars() -> void:
+	if _city_block_loops.is_empty():
+		push_warning("[TrafficSystem] No valid city block loops — no cars will spawn.")
 		return
 
-	var car_node = CharacterBody3D.new()
-	car_node.name = "AmbientTrafficCar"
+	# Shuffle loops so cars start on varied blocks
+	var shuffled_loops: Array = _city_block_loops.duplicate()
+	shuffled_loops.shuffle()
 
-	# Pick vehicle archetype: 70% Commuter, 20% Hauler, 10% Enforcer
-	var roll: float = rng.randf()
-	var mesh_instance = MeshInstance3D.new()
-	var mat = StandardMaterial3D.new()
-	var car_size: Vector3 = Vector3.ZERO
+	var cars_placed: int = 0
+	var loop_count: int  = shuffled_loops.size()
 
-	if roll < 0.7:
-		mesh_instance.mesh = commuter_mesh
-		car_size = commuter_mesh.size
-		mat.albedo_color = Color(0.04, 0.04, 0.08)
-		mat.emission_enabled = true
-		mat.emission = Color(0.0, 0.85, 1.0) # Cyan accent
-		mat.emission_energy_multiplier = 1.5
-	else: # elif roll < 0.9:  # (Enforcer disabled — 30% hauler for now)
-		mesh_instance.mesh = hauler_mesh
-		car_size = hauler_mesh.size
-		mat.albedo_color = Color(0.08, 0.06, 0.04)
-		mat.emission_enabled = true
-		mat.emission = Color(1.0, 0.8, 0.0) # Amber banner
-		mat.emission_energy_multiplier = 2.0
-	#else:
-	#	# ENFORCER PATROL CAR (re-enable when ready)
-	#	mesh_instance.mesh = enforcer_mesh
-	#	car_size = enforcer_mesh.size
-	#	mat.albedo_color = Color(0.02, 0.02, 0.04)
-	#	mat.emission_enabled = true
-	#	mat.emission = Color(1.0, 0.0, 0.8) # Neon Pink siren
-	#	mat.emission_energy_multiplier = 4.0
+	for i in range(total_city_cars):
+		# Assign loops round-robin so cars spread across the city
+		var loop_route: Array[Vector3] = shuffled_loops[i % loop_count]
 
-	var wheel_radius: float = 0.35
-	var wheel_width: float = 0.25
-	# Car body elevation: bottom of body rests on top of wheel axles
-	var body_y_offset: float = wheel_radius * 1.5 + (car_size.y / 2.0)
+		# Start each car at a different waypoint in the loop so they don't
+		# all clump at the same spot on the same block.
+		var start_index: int = (i / loop_count) % loop_route.size()
 
-	mesh_instance.material_override = mat
-	mesh_instance.position = Vector3(0.0, body_y_offset, 0.0)
-	car_node.add_child(mesh_instance)
+		_spawn_car_on_loop(loop_route, start_index)
+		cars_placed += 1
 
-	# --------------------------------------------------------------------------
-	# GLOWING RED TAIL-LIGHT BAR (rear bumper)
-	# --------------------------------------------------------------------------
-	var tail_light_instance = MeshInstance3D.new()
-	var tail_box_mesh = BoxMesh.new()
-	tail_box_mesh.size = Vector3(car_size.x * 0.85, 0.25, 0.15)
-	tail_light_instance.mesh = tail_box_mesh
-	tail_light_instance.position = Vector3(0.0, body_y_offset - (car_size.y / 4.0), car_size.z / 2.0 + 0.05)
-	var tail_mat = StandardMaterial3D.new()
-	tail_mat.albedo_color = Color(1.0, 0.0, 0.1)
-	tail_mat.emission_enabled = true
-	tail_mat.emission = Color(1.0, 0.0, 0.15)
-	tail_mat.emission_energy_multiplier = 5.0
-	tail_light_instance.material_override = tail_mat
-	car_node.add_child(tail_light_instance)
+	print("[TrafficSystem] Spawned ", cars_placed, " looping traffic cars.")
 
-	# --------------------------------------------------------------------------
-	# 4 CYBER WHEELS (mounted at ground level Y = wheel_radius)
-	# --------------------------------------------------------------------------
-	var wheel_mesh = CylinderMesh.new()
-	wheel_mesh.top_radius = wheel_radius
+func _spawn_car_on_loop(loop_route: Array[Vector3], start_waypoint_index: int) -> void:
+	var car_node := CharacterBody3D.new()
+	car_node.name = "TrafficCar"
+
+	# Weighted archetype roll across 6 vehicle types:
+	# 35% Commuter | 18% Hauler | 10% Enforcer | 17% Racer | 12% Van | 8% Limo
+	var archetype_roll: float = _rng.randf()
+	var archetype: String
+	var body_mesh: BoxMesh
+	var car_body_mat := StandardMaterial3D.new()
+	var car_size: Vector3
+
+	if archetype_roll < 0.35:
+		archetype = "commuter"
+		body_mesh = _commuter_body_mesh
+		car_size  = _commuter_body_mesh.size
+		car_body_mat.albedo_color               = Color(0.03, 0.03, 0.07)  # Near-black
+		car_body_mat.emission_enabled           = true
+		car_body_mat.emission                   = Color(0.0, 0.85, 1.0)    # Cyan strip
+		car_body_mat.emission_energy_multiplier = 1.8
+	elif archetype_roll < 0.53:
+		archetype = "hauler"
+		body_mesh = _hauler_body_mesh
+		car_size  = _hauler_body_mesh.size
+		car_body_mat.albedo_color               = Color(0.08, 0.06, 0.04)  # Dark rust
+		car_body_mat.emission_enabled           = true
+		car_body_mat.emission                   = Color(1.0, 0.75, 0.0)    # Amber banner
+		car_body_mat.emission_energy_multiplier = 2.2
+	elif archetype_roll < 0.63:
+		archetype = "enforcer"
+		body_mesh = _enforcer_body_mesh
+		car_size  = _enforcer_body_mesh.size
+		car_body_mat.albedo_color               = Color(0.05, 0.05, 0.06)  # Graphite
+		car_body_mat.emission_enabled           = true
+		car_body_mat.emission                   = Color(0.05, 0.4, 1.0)    # Corporate blue
+		car_body_mat.emission_energy_multiplier = 1.4
+	elif archetype_roll < 0.80:
+		archetype = "racer"
+		body_mesh = _racer_body_mesh
+		car_size  = _racer_body_mesh.size
+		car_body_mat.albedo_color               = Color(0.06, 0.02, 0.10)  # Deep purple
+		car_body_mat.emission_enabled           = true
+		car_body_mat.emission                   = Color(0.5, 0.0, 1.0)     # Violet underglow
+		car_body_mat.emission_energy_multiplier = 2.5
+		car_body_mat.metallic                   = 0.9
+		car_body_mat.roughness                  = 0.15
+	elif archetype_roll < 0.92:
+		archetype = "van"
+		body_mesh = _van_body_mesh
+		car_size  = _van_body_mesh.size
+		car_body_mat.albedo_color               = Color(0.06, 0.04, 0.02)  # Dark brown
+		car_body_mat.emission_enabled           = true
+		car_body_mat.emission                   = Color(1.0, 0.45, 0.0)    # Orange cargo stripe
+		car_body_mat.emission_energy_multiplier = 1.6
+	else:
+		archetype = "limo"
+		body_mesh = _limo_body_mesh
+		car_size  = _limo_body_mesh.size
+		car_body_mat.albedo_color               = Color(0.02, 0.02, 0.02)  # Jet black
+		car_body_mat.emission_enabled           = true
+		car_body_mat.emission                   = Color(1.0, 0.82, 0.2)    # Gold trim
+		car_body_mat.emission_energy_multiplier = 1.2
+		car_body_mat.metallic                   = 1.0
+		car_body_mat.roughness                  = 0.05
+
+	var wheel_radius: float  = 0.35
+	var body_y_offset: float = wheel_radius * 1.5 + car_size.y * 0.5
+
+	# ---- Body ----
+	var body_instance := MeshInstance3D.new()
+	body_instance.mesh              = body_mesh
+	body_instance.material_override = car_body_mat
+	body_instance.position          = Vector3(0.0, body_y_offset, 0.0)
+	car_node.add_child(body_instance)
+
+	# ---- Tail-light bar (colour varies by archetype) ----
+	var tail_instance := MeshInstance3D.new()
+	var tail_box      := BoxMesh.new()
+	tail_box.size = Vector3(car_size.x * 0.82, 0.22, 0.14)
+	tail_instance.mesh     = tail_box
+	tail_instance.position = Vector3(0.0, body_y_offset - car_size.y * 0.25, car_size.z * 0.5 + 0.06)
+	var tail_mat           := StandardMaterial3D.new()
+	var tail_colour: Color = Color(1.0, 0.0, 0.12)           # Default red
+	if archetype == "enforcer":  tail_colour = Color(1.0, 0.0, 0.9)   # Magenta
+	elif archetype == "racer":   tail_colour = Color(0.5, 0.0, 1.0)   # Violet
+	elif archetype == "van":     tail_colour = Color(1.0, 0.5, 0.0)   # Orange
+	elif archetype == "limo":    tail_colour = Color(1.0, 0.75, 0.0)  # Gold
+	tail_mat.albedo_color               = tail_colour
+	tail_mat.emission_enabled           = true
+	tail_mat.emission                   = tail_colour
+	tail_mat.emission_energy_multiplier = 5.5
+	tail_instance.material_override = tail_mat
+	car_node.add_child(tail_instance)
+
+	# ---- Enforcer: roof siren bar (magenta + cyan alternating visually) ----
+	if archetype == "enforcer":
+		var siren_instance := MeshInstance3D.new()
+		var siren_box      := BoxMesh.new()
+		siren_box.size = Vector3(car_size.x * 0.55, 0.18, car_size.z * 0.35)
+		siren_instance.mesh     = siren_box
+		siren_instance.position = Vector3(0.0, body_y_offset + car_size.y * 0.5 + 0.1, -car_size.z * 0.08)
+		var siren_mat           := StandardMaterial3D.new()
+		siren_mat.albedo_color               = Color(0.05, 0.05, 0.05)
+		siren_mat.emission_enabled           = true
+		siren_mat.emission                   = Color(1.0, 0.0, 0.85)   # Magenta siren
+		siren_mat.emission_energy_multiplier = 6.0
+		siren_instance.material_override = siren_mat
+		car_node.add_child(siren_instance)
+
+	# ---- Racer: low front spoiler ----
+	if archetype == "racer":
+		var spoiler_instance := MeshInstance3D.new()
+		var spoiler_box      := BoxMesh.new()
+		spoiler_box.size = Vector3(car_size.x * 1.1, 0.12, 0.22)
+		spoiler_instance.mesh     = spoiler_box
+		spoiler_instance.position = Vector3(0.0, wheel_radius * 0.9, -car_size.z * 0.5 - 0.10)
+		var spoiler_mat           := StandardMaterial3D.new()
+		spoiler_mat.albedo_color               = Color(0.04, 0.0, 0.08)
+		spoiler_mat.emission_enabled           = true
+		spoiler_mat.emission                   = Color(0.2, 1.0, 0.3)   # Neon green underglow
+		spoiler_mat.emission_energy_multiplier = 3.5
+		spoiler_instance.material_override = spoiler_mat
+		car_node.add_child(spoiler_instance)
+
+	# ---- Van: cargo box on roof ----
+	if archetype == "van":
+		var cargo_instance := MeshInstance3D.new()
+		var cargo_box      := BoxMesh.new()
+		cargo_box.size = Vector3(car_size.x * 0.9, car_size.y * 0.55, car_size.z * 0.75)
+		cargo_instance.mesh     = cargo_box
+		cargo_instance.position = Vector3(0.0, body_y_offset + car_size.y * 0.75, car_size.z * 0.1)
+		var cargo_mat           := StandardMaterial3D.new()
+		cargo_mat.albedo_color               = Color(0.05, 0.04, 0.02)
+		cargo_mat.emission_enabled           = true
+		cargo_mat.emission                   = Color(1.0, 0.4, 0.0)    # Orange stripe
+		cargo_mat.emission_energy_multiplier = 1.2
+		cargo_instance.material_override = cargo_mat
+		car_node.add_child(cargo_instance)
+
+	# ---- Limo: cabin section (raised mid-roof) ----
+	if archetype == "limo":
+		var cabin_instance := MeshInstance3D.new()
+		var cabin_box      := BoxMesh.new()
+		cabin_box.size = Vector3(car_size.x * 0.82, 0.38, car_size.z * 0.5)
+		cabin_instance.mesh     = cabin_box
+		cabin_instance.position = Vector3(0.0, body_y_offset + car_size.y * 0.5 + 0.19, -car_size.z * 0.05)
+		var cabin_mat           := StandardMaterial3D.new()
+		cabin_mat.albedo_color               = Color(0.02, 0.02, 0.02)
+		cabin_mat.emission_enabled           = true
+		cabin_mat.emission                   = Color(1.0, 0.82, 0.2)   # Gold window trim
+		cabin_mat.emission_energy_multiplier = 0.8
+		cabin_instance.material_override = cabin_mat
+		car_node.add_child(cabin_instance)
+
+	# ---- 4 Cyber Wheels ----
+	var wheel_mesh := CylinderMesh.new()
+	wheel_mesh.top_radius    = wheel_radius
 	wheel_mesh.bottom_radius = wheel_radius
-	wheel_mesh.height = wheel_width
-
-	var wheel_mat = StandardMaterial3D.new()
+	wheel_mesh.height        = 0.25
+	var wheel_mat  := StandardMaterial3D.new()
 	wheel_mat.albedo_color = Color(0.02, 0.02, 0.04)
 
-	var wheel_y_offset: float = wheel_radius
-	var wheel_offset_half_width: float = car_size.x / 2.0 - (wheel_width / 4.0)
-	var wheel_offset_half_depth: float = car_size.z / 3.0
-
+	var wheel_half_w: float = car_size.x * 0.5 - 0.06
+	var wheel_depth:  float = car_size.z * 0.33
 	var wheel_positions: Array[Vector3] = [
-		Vector3(-wheel_offset_half_width, wheel_y_offset, -wheel_offset_half_depth), # Front Left
-		Vector3(wheel_offset_half_width,  wheel_y_offset, -wheel_offset_half_depth), # Front Right
-		Vector3(-wheel_offset_half_width, wheel_y_offset,  wheel_offset_half_depth), # Rear Left
-		Vector3(wheel_offset_half_width,  wheel_y_offset,  wheel_offset_half_depth)  # Rear Right
+		Vector3(-wheel_half_w, wheel_radius, -wheel_depth),
+		Vector3( wheel_half_w, wheel_radius, -wheel_depth),
+		Vector3(-wheel_half_w, wheel_radius,  wheel_depth),
+		Vector3( wheel_half_w, wheel_radius,  wheel_depth),
 	]
-	for wheel_pos in wheel_positions:
-		var wheel_inst = MeshInstance3D.new()
-		wheel_inst.mesh = wheel_mesh
-		wheel_inst.material_override = wheel_mat
-		wheel_inst.position = wheel_pos
-		wheel_inst.rotation_degrees = Vector3(0.0, 0.0, 90.0) # Cylinder horizontal along axle
-		car_node.add_child(wheel_inst)
+	for wp in wheel_positions:
+		var wi := MeshInstance3D.new()
+		wi.mesh              = wheel_mesh
+		wi.material_override = wheel_mat
+		wi.position          = wp
+		wi.rotation_degrees  = Vector3(0.0, 0.0, 90.0)
+		car_node.add_child(wi)
 
-	# --------------------------------------------------------------------------
-	# HEADLIGHT SpotLight3D (randomized reaction lag for dark-stage activation)
-	# --------------------------------------------------------------------------
-	var spot = SpotLight3D.new()
-	spot.name = "TrafficCarSpotLight"
-	spot.position = Vector3(0.0, body_y_offset, -car_size.z / 2.0 - 0.1)
-	spot.light_color = Color(0.9, 0.95, 1.0)
-	spot.light_energy = 0.0
-	spot.spot_range = 35.0
-	spot.spot_angle = 35.0
-	car_node.add_child(spot)
+	# ---- Headlight spot ----
+	var headlight := SpotLight3D.new()
+	headlight.name        = "TrafficHeadlight"
+	headlight.position    = Vector3(0.0, body_y_offset, -car_size.z * 0.5 - 0.12)
+	headlight.light_color  = Color(0.9, 0.95, 1.0)
+	headlight.light_energy = 0.0
+	headlight.spot_range   = 38.0
+	headlight.spot_angle   = 34.0
+	car_node.add_child(headlight)
 
-	# Collision: Layer 2 (Traffic), Mask: 1 (World) + 2 (Traffic) + 4 (Obstacles)
+	# ---- Collision ----
 	car_node.collision_layer = 2
-	car_node.collision_mask = 1 | 2 | 4
-	var col_shape = CollisionShape3D.new()
-	var box_shape = BoxShape3D.new()
-	box_shape.size = car_size
-	col_shape.shape = box_shape
-	col_shape.position = Vector3(0.0, body_y_offset, 0.0)
-	car_node.add_child(col_shape)
+	car_node.collision_mask  = 1 | 2
+	var col_node  := CollisionShape3D.new()
+	var col_shape := BoxShape3D.new()
+	col_shape.size   = car_size
+	col_node.shape   = col_shape
+	col_node.position = Vector3(0.0, body_y_offset, 0.0)
+	car_node.add_child(col_node)
 
-	# Snap spawn position directly onto a pre-validated drivable AStar intersection node
-	var spawn_pos: Vector3 = Vector3.ZERO
-	if valid_spawn_node_ids.size() > 0:
-		# Pick a random pre-filtered valid node — guaranteed clean intersection, no parks or water
-		var spawn_node_id: int = valid_spawn_node_ids[rng.randi() % valid_spawn_node_ids.size()]
-		spawn_pos = astar_grid.get_point_position(spawn_node_id)
-		spawn_pos.y = 0.0 # Ground level
-	elif is_instance_valid(player_car):
-		# Fallback only if AStar graph not yet ready
-		var rand_angle: float = rng.randf_range(0, TAU)
-		spawn_pos = player_car.global_position + Vector3(cos(rand_angle) * spawn_radius_distance, 0.0, sin(rand_angle) * spawn_radius_distance)
+	# ---- Place on loop ----
+	var start_pos: Vector3  = loop_route[start_waypoint_index]
+	var next_index: int     = (start_waypoint_index + 1) % loop_route.size()
+	var next_pos: Vector3   = loop_route[next_index]
 
-	car_node.global_position = spawn_pos
+	car_node.global_position = start_pos
 
-	# Per-car metadata
-	var archetype: String = "commuter" if roll < 0.7 else "hauler" # "enforcer" disabled — see commented spawn block above
-	car_node.set_meta("archetype", archetype)
-	car_node.set_meta("speed", base_traffic_speed * rng.randf_range(0.8, 1.2))
-	car_node.set_meta("headlight_reaction_delay", rng.randf_range(0.4, 3.5))
-	car_node.set_meta("headlight_timer", 0.0)
-	car_node.set_meta("headlights_on", false)
-	car_node.set_meta("current_bank_roll", 0.0) # Smoothed body roll
-	car_node.set_meta("current_pitch", 0.0)     # Smoothed nose pitch
-	car_node.set_meta("stuck_timer", 0.0)
-	car_node.set_meta("stuck_recovery_stage", 0)
-	car_node.set_meta("astar_path", PackedVector3Array())
-	car_node.set_meta("astar_path_index", 0)
-	car_node.set_meta("is_resting_at_target", false)
-	car_node.set_meta("rest_timer", 0.0)
-	# Drive direction initially forward (will snap to first AStar path segment on first frame)
-	car_node.set_meta("drive_direction", Vector3.FORWARD)
-	car_node.set_meta("prev_rot_y", 0.0)
-	car_node.set_meta("corner_blend_t", 0.0) # Bezier corner interpolation progress
+	var initial_dir: Vector3 = (next_pos - start_pos)
+	initial_dir.y = 0.0
+	if initial_dir.length_squared() > 0.001:
+		initial_dir = initial_dir.normalized()
+
+	# ---- Metadata ----
+	# Speed multipliers per archetype
+	var top_speed: float = base_traffic_speed
+	match archetype:
+		"hauler":   top_speed *= 0.62                          # Slow heavy freight
+		"enforcer": top_speed *= _rng.randf_range(1.15, 1.35)  # Fast law enforcement
+		"racer":    top_speed *= _rng.randf_range(1.45, 1.75)  # Aggressive street racer
+		"van":      top_speed *= _rng.randf_range(0.55, 0.70)  # Slow delivery
+		"limo":     top_speed *= _rng.randf_range(0.80, 0.95)  # Smooth executive pace
+		_:          top_speed *= 1.0                           # Commuter baseline
+	top_speed *= _rng.randf_range(0.92, 1.08)  # Small per-car variance
+
+	car_node.set_meta("archetype",             archetype)
+	car_node.set_meta("top_speed",             top_speed)
+	car_node.set_meta("loop_route",            loop_route)
+	car_node.set_meta("waypoint_index",        next_index)    # Next waypoint to drive toward
+	car_node.set_meta("drive_direction",       initial_dir)
+	car_node.set_meta("current_bank_roll",     0.0)
+	car_node.set_meta("current_nose_pitch",    0.0)
+	car_node.set_meta("prev_rotation_y",       0.0)
+	car_node.set_meta("headlight_on",          false)
+	car_node.set_meta("headlight_delay_timer", 0.0)
+	car_node.set_meta("headlight_reaction_lag", _rng.randf_range(0.3, 3.2))
+	car_node.set_meta("stuck_timer",           0.0)
+	car_node.set_meta("last_progress_pos",     start_pos)
 
 	add_child(car_node)
-	spot.rotation_degrees = Vector3(0.0, 0.0, 0.0) # Headlight faces forward local -Z
 
-	# Assign initial AStar path immediately if graph is ready
-	if astar_grid.get_point_count() > 0:
-		_assign_new_astar_path(car_node)
-	else:
-		car_node.look_at(car_node.global_position + car_node.get_meta("drive_direction"), Vector3.UP)
+	if initial_dir.length_squared() > 0.001:
+		car_node.look_at(start_pos + initial_dir, Vector3.UP)
 
 	active_traffic_cars.append(car_node)
 
@@ -379,308 +458,170 @@ func _process(delta: float) -> void:
 	if not is_instance_valid(player_car):
 		return
 
-	var player_pos: Vector3 = player_car.global_position
-
-	# Determine if city lighting is in a dark stage for headlight management
-	var vfx_node = $"../CityVisualEffects"
+	var city_vfx: Node = get_node_or_null("../CityVisualEffects")
 	var is_dark_stage: bool = false
-	if is_instance_valid(vfx_node) and "current_city_light_stage" in vfx_node:
-		is_dark_stage = vfx_node.current_city_light_stage >= 1
+	if is_instance_valid(city_vfx) and "current_city_light_stage" in city_vfx:
+		is_dark_stage = city_vfx.current_city_light_stage >= 1
 
-	for i in range(active_traffic_cars.size() - 1, -1, -1):
-		var car = active_traffic_cars[i]
+	var space_state: PhysicsDirectSpaceState3D = get_world_3d().direct_space_state
+
+	for car_idx in range(active_traffic_cars.size() - 1, -1, -1):
+		var car: Node3D = active_traffic_cars[car_idx]
 		if not is_instance_valid(car):
-			active_traffic_cars.remove_at(i)
+			active_traffic_cars.remove_at(car_idx)
 			continue
 
-		# ------------------------------------------------------------------
-		# HEADLIGHT REACTION LAG (randomized delay before turning on/off)
-		# ------------------------------------------------------------------
-		var spot_light: SpotLight3D = car.get_node_or_null("TrafficCarSpotLight") as SpotLight3D
-		var headlights_on: bool = car.get_meta("headlights_on", false)
-		var hl_delay: float = car.get_meta("headlight_reaction_delay", 1.0)
-		var hl_timer: float = car.get_meta("headlight_timer", 0.0)
+		_update_headlights(car, is_dark_stage, delta)
 
-		if is_dark_stage != headlights_on:
-			hl_timer += delta
-			car.set_meta("headlight_timer", hl_timer)
-			if hl_timer >= hl_delay:
-				car.set_meta("headlights_on", is_dark_stage)
-				car.set_meta("headlight_timer", 0.0)
-				if is_instance_valid(spot_light):
-					spot_light.light_energy = 8.0 if is_dark_stage else 0.0
-		else:
-			car.set_meta("headlight_timer", 0.0)
+		var move_speed: float = _drive_loop(car, space_state)
 
-		var car_pos: Vector3 = car.global_position
-		var distance_to_player: float = car_pos.distance_to(player_pos)
-		var is_out_of_bounds: bool = abs(car_pos.x) > 250.0 or abs(car_pos.z) > 250.0
-
-		# Despawn / recycle cars that drift too far or exit city bounds
-		if distance_to_player > despawn_radius_distance or is_out_of_bounds:
-			car.queue_free()
-			active_traffic_cars.remove_at(i)
-			_spawn_ambient_car()
-			continue
-
-		var base_speed: float = car.get_meta("speed", base_traffic_speed)
-		var current_speed: float = base_speed
-		var space_state = get_world_3d().direct_space_state
-
-		# ------------------------------------------------------------------
-		# 1. ASTAR3D PATH FOLLOWING — Drive from waypoint to waypoint
-		# ------------------------------------------------------------------
-		var is_resting: bool = car.get_meta("is_resting_at_target", false)
-		if is_resting:
-			# Destination rest pause (2.5 seconds parked)
-			var rest_timer: float = car.get_meta("rest_timer", 0.0) + delta
-			car.set_meta("rest_timer", rest_timer)
-			if rest_timer >= 2.5:
-				_assign_new_astar_path(car)
-			else:
-				current_speed = 0.0
-
-		var astar_path: PackedVector3Array = car.get_meta("astar_path", PackedVector3Array())
-		var path_idx: int = car.get_meta("astar_path_index", 0)
-
-		# If path exhausted, assign a new route (triggers rest pause first via _assign_new_astar_path)
-		if astar_path.size() == 0 or path_idx >= astar_path.size():
-			if not is_resting:
-				car.set_meta("is_resting_at_target", true)
-				car.set_meta("rest_timer", 0.0)
-				current_speed = 0.0
-		else:
-			var target_waypoint: Vector3 = astar_path[path_idx]
-			target_waypoint.y = car_pos.y # Horizontal movement only
-
-			# Arrived at current waypoint — advance to next
-			if car_pos.distance_to(target_waypoint) < 3.5:
-				path_idx += 1
-				car.set_meta("astar_path_index", path_idx)
-
-				if path_idx >= astar_path.size():
-					# Reached final destination — begin rest pause
-					car.set_meta("is_resting_at_target", true)
-					car.set_meta("rest_timer", 0.0)
-					current_speed = 0.0
-				else:
-					target_waypoint = astar_path[path_idx]
-					target_waypoint.y = car_pos.y
-
-			# Compute drive direction toward next waypoint with Bezier corner smoothing
-			if path_idx < astar_path.size() and not is_resting:
-				var raw_drive_dir: Vector3 = (target_waypoint - car_pos)
-				raw_drive_dir.y = 0.0
-				if raw_drive_dir.length_squared() > 0.01:
-					var drive_dir_towards_wp: Vector3 = raw_drive_dir.normalized()
-
-					# Quadratic Bezier corner smoothing when a previous waypoint exists
-					if path_idx >= 2:
-						var corner_t: float = car.get_meta("corner_blend_t", 0.0)
-						corner_t = clamp(corner_t + delta * 3.5, 0.0, 1.0) # Blend speed
-						car.set_meta("corner_blend_t", corner_t)
-						var p0: Vector3 = astar_path[path_idx - 2]
-						var p1: Vector3 = astar_path[path_idx - 1]
-						var p2: Vector3 = target_waypoint
-						var bezier_target: Vector3 = _interpolate_corner(p0, p1, p2, corner_t)
-						bezier_target.y = car_pos.y
-						var bezier_dir: Vector3 = (bezier_target - car_pos).normalized()
-						if bezier_dir.length_squared() > 0.01:
-							drive_dir_towards_wp = bezier_dir
-					else:
-						car.set_meta("corner_blend_t", 0.0) # Reset for next corner
-
-					car.set_meta("drive_direction", drive_dir_towards_wp)
-					car.look_at(car.global_position + drive_dir_towards_wp, Vector3.UP)
+		_update_body_dynamics(car, move_speed, delta)
 
 		var drive_dir: Vector3 = car.get_meta("drive_direction", Vector3.FORWARD)
-		var archetype: String = car.get_meta("archetype", "commuter")
+		car.velocity = drive_dir * move_speed
+		car.move_and_slide()
 
-		# ------------------------------------------------------------------
-		# ENFORCER PURSUIT: Chase player when within 40m
-		# ------------------------------------------------------------------
-		if archetype == "enforcer" and player_pos.distance_to(car_pos) < 40.0:
-			var pursuit_dir: Vector3 = (player_pos - car_pos)
-			pursuit_dir.y = 0.0
-			if pursuit_dir.length_squared() > 0.01:
-				var pursuit_drive: Vector3 = pursuit_dir.normalized()
-				car.set_meta("drive_direction", pursuit_drive)
-				drive_dir = pursuit_drive
-				car.look_at(car.global_position + pursuit_drive, Vector3.UP)
-				# Boost enforcer speed during pursuit!
-				current_speed = base_speed * 1.4
+		_check_stuck(car, car_idx, delta)
 
-		# ------------------------------------------------------------------
-		# DUAL-WHISKER AVOIDANCE: Blend lateral steering to avoid obstacles
-		# ------------------------------------------------------------------
-		var avoid_vec: Vector3 = _get_obstacle_avoidance_steering(car, drive_dir, space_state)
-		if avoid_vec.length_squared() > 0.001:
-			# Blend 35% avoidance into current drive direction so path-following still wins
-			var blended_dir: Vector3 = (drive_dir + avoid_vec * 0.35).normalized()
-			blended_dir.y = 0.0
-			if blended_dir.length_squared() > 0.01:
-				drive_dir = blended_dir
-				car.set_meta("drive_direction", drive_dir)
-				car.look_at(car.global_position + drive_dir, Vector3.UP)
+# ==============================================================================
+# 5. LOOP DRIVING
+# ==============================================================================
 
-		# ------------------------------------------------------------------
-		# 2. RIGHT-HAND LANE CENTERING (Latch onto correct lane within street)
-		# ------------------------------------------------------------------
-		if is_instance_valid(city_generator) and city_generator.get("active_x_streets") != null:
-			var x_cuts: Array = city_generator.active_x_streets
-			var z_cuts: Array = city_generator.active_z_streets
+func _drive_loop(car: Node3D, space_state: PhysicsDirectSpaceState3D) -> float:
+	var loop_route: Array    = car.get_meta("loop_route",     [])
+	var waypoint_index: int  = car.get_meta("waypoint_index", 0)
+	var top_speed: float     = car.get_meta("top_speed",      base_traffic_speed)
+	var car_pos: Vector3     = car.global_position
 
-			if abs(drive_dir.z) > 0.5:
-				# Driving North/South — latch to nearest X street + right-hand lane offset
-				var nearest_x: float = car_pos.x
-				var min_dx: float = 9999.0
-				for x_val in x_cuts:
-					var dx: float = abs(car_pos.x - x_val)
-					if dx < min_dx:
-						min_dx = dx
-						nearest_x = x_val
-				var lane_target_x: float = nearest_x + (4.0 if drive_dir.z < 0.0 else -4.0)
-				car_pos.x = move_toward(car_pos.x, lane_target_x, delta * 3.5)
-				car.global_position = car_pos
+	if loop_route.is_empty():
+		return 0.0
 
-			elif abs(drive_dir.x) > 0.5:
-				# Driving East/West — latch to nearest Z street + right-hand lane offset
-				var nearest_z: float = car_pos.z
-				var min_dz: float = 9999.0
-				for z_val in z_cuts:
-					var dz: float = abs(car_pos.z - z_val)
-					if dz < min_dz:
-						min_dz = dz
-						nearest_z = z_val
-				var lane_target_z: float = nearest_z + (4.0 if drive_dir.x > 0.0 else -4.0)
-				car_pos.z = move_toward(car_pos.z, lane_target_z, delta * 3.5)
-				car.global_position = car_pos
+	# Clamp index in case of any edge case
+	waypoint_index = waypoint_index % loop_route.size()
 
-		# ------------------------------------------------------------------
-		# 3. VEHICLE-TO-VEHICLE BRAKING (Forward whisker raycast, 12m range)
-		# ------------------------------------------------------------------
-		var forward_query = PhysicsRayQueryParameters3D.create(
-			car_pos + Vector3(0.0, 0.5, 0.0),
-			car_pos + Vector3(0.0, 0.5, 0.0) + drive_dir * 12.0)
-		forward_query.exclude = [car]
-		var forward_res = space_state.intersect_ray(forward_query)
-		if forward_res and forward_res.has("collider"):
-			var hit_node = forward_res["collider"]
-			if hit_node is CharacterBody3D:
-				var hit_dist: float = car_pos.distance_to(forward_res["position"])
-				if hit_dist < 6.0:
-					current_speed = 0.0      # Full stop brake
-				else:
-					current_speed = base_speed * 0.35 # Slow crawl
+	var target_wp: Vector3 = loop_route[waypoint_index]
+	target_wp.y = car_pos.y   # Horizontal movement only
 
-		# ------------------------------------------------------------------
-		# 4. CITY BOUNDARY PERIMETER TURNAROUND (stay inside city, reassign path)
-		# ------------------------------------------------------------------
-		if abs(car_pos.x) > 215.0 and sign(drive_dir.x) == sign(car_pos.x):
-			_assign_new_astar_path(car)
-			drive_dir = car.get_meta("drive_direction", Vector3.FORWARD)
+	var flat_dist: float = Vector2(car_pos.x - target_wp.x, car_pos.z - target_wp.z).length()
 
-		if abs(car_pos.z) > 215.0 and sign(drive_dir.z) == sign(car_pos.z):
-			_assign_new_astar_path(car)
-			drive_dir = car.get_meta("drive_direction", Vector3.FORWARD)
+	# Arrived at waypoint — advance to next (wraps around to 0 at end)
+	if flat_dist < waypoint_arrival_radius:
+		waypoint_index = (waypoint_index + 1) % loop_route.size()
+		car.set_meta("waypoint_index", waypoint_index)
 
-		# ------------------------------------------------------------------
-		# 5. VISUAL BODY DYNAMICS (BANKING ROLL & NOSE PITCH)
-		# ------------------------------------------------------------------
-		var car_mesh: MeshInstance3D = car.get_child(0) as MeshInstance3D
-		if is_instance_valid(car_mesh):
-			var prev_rot_y: float = car.get_meta("prev_rot_y", car.rotation.y)
-			var yaw_turn_rate: float = (car.rotation.y - prev_rot_y) / delta
-			car.set_meta("prev_rot_y", car.rotation.y)
+		target_wp   = loop_route[waypoint_index]
+		target_wp.y = car_pos.y
 
-			var speed_ratio: float = clamp(current_speed / base_speed, 0.0, 1.2)
-			var target_roll: float = clamp(-yaw_turn_rate * 0.15, -deg_to_rad(8.5), deg_to_rad(8.5)) * speed_ratio
-			var target_pitch: float = deg_to_rad(4.0) if current_speed < (base_speed * 0.4) else 0.0
+	# Drive toward current target waypoint
+	var raw_dir: Vector3 = target_wp - car_pos
+	raw_dir.y = 0.0
 
-			var current_roll: float = lerp(car.get_meta("current_bank_roll", 0.0), target_roll, delta * 8.0)
-			var current_pitch: float = lerp(car.get_meta("current_pitch", 0.0), target_pitch, delta * 8.0)
-			car.set_meta("current_bank_roll", current_roll)
-			car.set_meta("current_pitch", current_pitch)
-			car_mesh.rotation.z = current_roll
-			car_mesh.rotation.x = current_pitch
+	if raw_dir.length_squared() > 0.001:
+		var drive_dir: Vector3 = raw_dir.normalized()
+		car.set_meta("drive_direction", drive_dir)
+		var look_target: Vector3 = car_pos + drive_dir
+		look_target.y = car_pos.y
+		car.look_at(look_target, Vector3.UP)
 
-		# ------------------------------------------------------------------
-		# 6. MOVEMENT EXECUTION
-		# ------------------------------------------------------------------
-		car.velocity = drive_dir * current_speed
-		var is_colliding: bool = car.move_and_slide()
-		var actual_movement: float = car.velocity.length()
+	# Braking: forward raycast for cars ahead
+	return _calculate_braking_speed(car, top_speed, space_state)
 
-		# ------------------------------------------------------------------
-		# 7. BUILDING WALL DEFLECTION & COMICAL CAR-TO-CAR BOUNCE
-		# ------------------------------------------------------------------
-		if is_colliding:
-			for collision_idx in range(car.get_slide_collision_count()):
-				var slide_collision = car.get_slide_collision(collision_idx)
-				var collider = slide_collision.get_collider()
+func _calculate_braking_speed(car: Node3D, top_speed: float, space_state: PhysicsDirectSpaceState3D) -> float:
+	var drive_dir: Vector3 = car.get_meta("drive_direction", Vector3.FORWARD)
+	var ray_origin: Vector3 = car.global_position + Vector3(0.0, 0.6, 0.0)
 
-				if is_instance_valid(collider) and collider is StaticBody3D and not ("PlayerCar" in collider.name):
-					# Building hit — project drive direction onto wall surface plane (no more grinding!)
-					var wall_normal: Vector3 = slide_collision.get_normal()
-					wall_normal.y = 0.0
-					wall_normal = wall_normal.normalized()
+	var fwd_ray := PhysicsRayQueryParameters3D.create(
+		ray_origin,
+		ray_origin + drive_dir * inter_car_brake_distance,
+		2,      # Only check Layer 2 (other traffic cars)
+		[car]
+	)
+	var hit = space_state.intersect_ray(fwd_ray)
 
-					# Remove the into-wall component; snap result to nearest cardinal axis
-					var deflected_dir: Vector3 = (drive_dir - wall_normal * drive_dir.dot(wall_normal)).normalized()
-					var cardinal_candidates: Array[Vector3] = [Vector3.FORWARD, Vector3.BACK, Vector3.RIGHT, Vector3.LEFT]
-					var best_cardinal: Vector3 = deflected_dir
-					var best_dot: float = -1.0
-					for candidate in cardinal_candidates:
-						var d: float = deflected_dir.dot(candidate)
-						if d > best_dot:
-							best_dot = d
-							best_cardinal = candidate
+	if hit and hit.has("collider"):
+		var collider = hit["collider"]
+		if collider is CharacterBody3D and collider.name == "TrafficCar":
+			var gap: float = ray_origin.distance_to(hit["position"])
+			if gap < inter_car_stop_distance:
+				return 0.0   # Full stop
+			var brake_ratio: float = (gap - inter_car_stop_distance) / (inter_car_brake_distance - inter_car_stop_distance)
+			return top_speed * clamp(brake_ratio, 0.15, 0.85)
 
-					# Nudge away from wall and re-route via AStar from new position
-					car.global_position += wall_normal * 0.3
-					car.set_meta("drive_direction", best_cardinal)
-					car.look_at(car.global_position + best_cardinal, Vector3.UP)
-					_assign_new_astar_path(car) # Get a fresh valid path away from the wall
-					break
+	return top_speed
 
-				elif is_instance_valid(collider) and (collider is CharacterBody3D or "PlayerCar" in collider.name):
-					# Vehicle collision — comical elastic bounce!
-					var bounce_normal: Vector3 = slide_collision.get_normal()
-					var bounce_dir: Vector3 = (bounce_normal + Vector3(rng.randf_range(-0.3, 0.3), 0.2, rng.randf_range(-0.3, 0.3))).normalized()
-					var bounce_recoil_speed: float = base_speed * 1.8
-					car.global_position += bounce_dir * 0.45
-					car.velocity = bounce_dir * bounce_recoil_speed
-					var bounce_drive_dir: Vector3 = (drive_dir.bounce(bounce_normal) + Vector3(rng.randf_range(-0.4, 0.4), 0.0, rng.randf_range(-0.4, 0.4))).normalized()
-					car.set_meta("drive_direction", bounce_drive_dir)
-					car.look_at(car.global_position + bounce_drive_dir, Vector3.UP)
-					break
+# ==============================================================================
+# 6. BODY DYNAMICS
+# ==============================================================================
 
-		# ------------------------------------------------------------------
-		# 8. BARRIER STASIS RECOVERY (Multi-stage escape for truly stuck cars)
-		# ------------------------------------------------------------------
-		if is_colliding and actual_movement < 2.0:
-			var stuck_timer: float = car.get_meta("stuck_timer", 0.0) + delta
-			car.set_meta("stuck_timer", stuck_timer)
+func _update_body_dynamics(car: Node3D, current_speed: float, delta: float) -> void:
+	var car_body: MeshInstance3D = car.get_child(0) as MeshInstance3D
+	if not is_instance_valid(car_body):
+		return
 
-			if stuck_timer >= 2.0:
-				var recovery_stage: int = car.get_meta("stuck_recovery_stage", 0)
-				if recovery_stage == 0:
-					# Stage 1: Hard 90-degree left turn
-					var left_turn: Vector3 = Vector3(-drive_dir.z, 0.0, drive_dir.x).normalized()
-					car.set_meta("drive_direction", left_turn)
-					car.set_meta("stuck_recovery_stage", 1)
-					car.set_meta("stuck_timer", 0.0)
-					car.look_at(car.global_position + left_turn, Vector3.UP)
-				elif recovery_stage == 1:
-					# Stage 2: Reassign fresh AStar path from current location
-					_assign_new_astar_path(car)
-					car.set_meta("stuck_recovery_stage", 2)
-					car.set_meta("stuck_timer", 0.0)
-				else:
-					# Stage 3: Completely wedged — recycle to a fresh spawn point
-					car.queue_free()
-					active_traffic_cars.remove_at(i)
-					_spawn_ambient_car()
+	var top_speed: float    = car.get_meta("top_speed", base_traffic_speed)
+	var prev_rot_y: float   = car.get_meta("prev_rotation_y", car.rotation.y)
+	var yaw_delta: float    = (car.rotation.y - prev_rot_y) / max(delta, 0.001)
+	car.set_meta("prev_rotation_y", car.rotation.y)
+
+	var speed_ratio: float      = clamp(current_speed / max(top_speed, 0.1), 0.0, 1.2)
+	var target_roll: float      = clamp(-yaw_delta * 0.12, -deg_to_rad(7.5), deg_to_rad(7.5)) * speed_ratio
+	var target_pitch: float     = deg_to_rad(3.5) if current_speed < (top_speed * 0.35) else 0.0
+
+	var smoothed_roll: float  = lerp(car.get_meta("current_bank_roll",  0.0), target_roll,  delta * 9.0)
+	var smoothed_pitch: float = lerp(car.get_meta("current_nose_pitch", 0.0), target_pitch, delta * 9.0)
+	car.set_meta("current_bank_roll",  smoothed_roll)
+	car.set_meta("current_nose_pitch", smoothed_pitch)
+	car_body.rotation.z = smoothed_roll
+	car_body.rotation.x = smoothed_pitch
+
+# ==============================================================================
+# 7. HEADLIGHTS
+# ==============================================================================
+
+func _update_headlights(car: Node3D, is_dark_stage: bool, delta: float) -> void:
+	var headlight: SpotLight3D = car.get_node_or_null("TrafficHeadlight") as SpotLight3D
+	if not is_instance_valid(headlight):
+		return
+
+	var headlight_on: bool   = car.get_meta("headlight_on",          false)
+	var delay_timer: float   = car.get_meta("headlight_delay_timer",  0.0)
+	var reaction_lag: float  = car.get_meta("headlight_reaction_lag", 1.0)
+
+	if is_dark_stage != headlight_on:
+		delay_timer += delta
+		car.set_meta("headlight_delay_timer", delay_timer)
+		if delay_timer >= reaction_lag:
+			car.set_meta("headlight_on",          is_dark_stage)
+			car.set_meta("headlight_delay_timer", 0.0)
+			headlight.light_energy = 9.0 if is_dark_stage else 0.0
+	else:
+		car.set_meta("headlight_delay_timer", 0.0)
+
+# ==============================================================================
+# 8. STUCK DETECTION
+# ==============================================================================
+# Sample position every 20 seconds. If the car moved less than 2m in that
+# window it is genuinely wedged — teleport it back to its loop start.
+
+const STUCK_SAMPLE_INTERVAL: float = 20.0
+const STUCK_MIN_TRAVEL:       float = 2.0
+
+func _check_stuck(car: Node3D, array_idx: int, delta: float) -> void:
+	var stuck_timer: float         = car.get_meta("stuck_timer",       0.0) + delta
+	var stuck_sample_pos: Vector3  = car.get_meta("last_progress_pos", car.global_position)
+	car.set_meta("stuck_timer", stuck_timer)
+
+	if stuck_timer >= STUCK_SAMPLE_INTERVAL:
+		var distance_travelled: float = car.global_position.distance_to(stuck_sample_pos)
+		if distance_travelled < STUCK_MIN_TRAVEL:
+			# Genuinely wedged — teleport back to loop waypoint 0
+			var loop_route: Array = car.get_meta("loop_route", [])
+			if not loop_route.is_empty():
+				car.global_position = loop_route[0]
+				car.set_meta("waypoint_index", 1)
+			car.set_meta("stuck_timer",       0.0)
+			car.set_meta("last_progress_pos", car.global_position)
 		else:
-			car.set_meta("stuck_timer", 0.0)
-			car.set_meta("stuck_recovery_stage", 0)
+			# Moving fine — reset sample window
+			car.set_meta("stuck_timer",       0.0)
+			car.set_meta("last_progress_pos", car.global_position)

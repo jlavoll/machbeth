@@ -101,6 +101,36 @@ func _spawn_pedestrian(is_initial_citywide_spawn: bool = false) -> void:
 	col_shape.position = Vector3(0.0, 0.75, 0.0)
 	ped_node.add_child(col_shape)
 
+	# Flashlight Handheld Prop & Beam
+	var flashlight_node = Node3D.new()
+	flashlight_node.name = "Flashlight"
+	flashlight_node.position = Vector3(0.18, 0.65, 0.15) # Held in right hand extending forward
+	ped_node.add_child(flashlight_node)
+
+	var torch_mesh_inst = MeshInstance3D.new()
+	var torch_mesh = CylinderMesh.new()
+	torch_mesh.top_radius = 0.04
+	torch_mesh.bottom_radius = 0.03
+	torch_mesh.height = 0.22
+	torch_mesh_inst.mesh = torch_mesh
+	torch_mesh_inst.rotation_degrees = Vector3(90, 0, 0)
+	var torch_mat = StandardMaterial3D.new()
+	torch_mat.albedo_color = Color(0.2, 0.2, 0.25)
+	torch_mat.metallic = 0.8
+	torch_mesh_inst.material_override = torch_mat
+	flashlight_node.add_child(torch_mesh_inst)
+
+	var torch_light = SpotLight3D.new()
+	torch_light.name = "FlashlightSpot"
+	torch_light.position = Vector3(0.0, 0.0, 0.12)
+	torch_light.light_color = neon_color
+	torch_light.light_energy = 0.0 # Default off
+	torch_light.light_volumetric_fog_energy = 1.2
+	torch_light.spot_range = 14.0
+	torch_light.spot_angle = 32.0
+	torch_light.spot_attenuation = 0.8
+	flashlight_node.add_child(torch_light)
+
 	# Position across entire city grid on initial spawn, or around player during gameplay loop
 	var spawn_pos: Vector3 = Vector3.ZERO
 	var valid_spawn: bool = false
@@ -185,34 +215,82 @@ func _process(delta: float) -> void:
 			var current_ped_speed: float = walk_speed
 
 			# --------------------------------------------------------------------------
+			# 0. WEATHER SHELTER SEEKING (RAIN LOGIC)
+			# --------------------------------------------------------------------------
+			var weather_system = $"../WeatherSystem"
+			var is_raining: bool = false
+			if is_instance_valid(weather_system):
+				var w_type = weather_system.current_weather
+				is_raining = (w_type == weather_system.WeatherType.NEON_RAIN or w_type == weather_system.WeatherType.GLITCH_STORM)
+
+			var space_state = get_world_3d().direct_space_state
+			var nearest_building_pos: Vector3 = Vector3.ZERO
+			var is_near_shelter: bool = false
+
+			# Raycast in 8 compass directions to detect nearest building shelter wall
+			var city_gen = $"../CityGenerator"
+			for check_angle in [0.0, 45.0, 90.0, 135.0, 180.0, 225.0, 270.0, 315.0]:
+				var rad: float = deg_to_rad(check_angle)
+				var ray_dir: Vector3 = Vector3(cos(rad), 0.0, sin(rad))
+				var query = PhysicsRayQueryParameters3D.create(ped_pos + Vector3(0.0, 1.0, 0.0), ped_pos + Vector3(0.0, 1.0, 0.0) + ray_dir * 20.0)
+				var result = space_state.intersect_ray(query)
+				if result and result.has("collider") and result["collider"] is StaticBody3D:
+					var collider = result["collider"]
+					var hit_pos: Vector3 = result["position"]
+					hit_pos.y = ped_pos.y
+
+					# Filter out Parking Lots, Parks, CyberRivers, and Trees
+					var is_park_or_lot: bool = false
+					if "ParkingLot" in collider.name or "Park" in collider.name or "River" in collider.name or "Tree" in collider.name:
+						is_park_or_lot = true
+					elif is_instance_valid(city_gen):
+						# Geometric check against active park & parking lot bounding boxes
+						if city_gen.get("active_park_boxes") != null:
+							for p_box in city_gen.active_park_boxes:
+								if p_box.has_point(Vector2(hit_pos.x, hit_pos.z)):
+									is_park_or_lot = true
+									break
+						if not is_park_or_lot and city_gen.get("active_lot_boxes") != null:
+							for l_box in city_gen.active_lot_boxes:
+								if l_box.has_point(Vector2(hit_pos.x, hit_pos.z)):
+									is_park_or_lot = true
+									break
+
+					if not is_park_or_lot:
+						if nearest_building_pos == Vector3.ZERO or ped_pos.distance_to(hit_pos) < ped_pos.distance_to(nearest_building_pos):
+							nearest_building_pos = hit_pos
+						if ped_pos.distance_to(hit_pos) < 2.5:
+							is_near_shelter = true
+
+			var is_sheltered: bool = false
+			if is_raining:
+				if is_near_shelter:
+					is_sheltered = true
+				elif nearest_building_pos != Vector3.ZERO:
+					# Run fast sprint (3.0x speed) towards building shelter!
+					walk_dir = (nearest_building_pos - ped_pos).normalized()
+					current_ped_speed = walk_speed * 3.0
+					ped.set_meta("walk_direction", walk_dir)
+
+			# --------------------------------------------------------------------------
 			# 1. TARGET OBJECTIVE PROGRESS (WALKING TOWARD DESTINATION)
 			# --------------------------------------------------------------------------
-			var target_dest: Vector3 = ped.get_meta("target_destination", ped_pos + walk_dir * 10.0)
-			if ped_pos.distance_to(target_dest) < 3.0:
-				target_dest = _pick_new_pedestrian_target_objective(ped_pos)
-				ped.set_meta("target_destination", target_dest)
-				walk_dir = (target_dest - ped_pos).normalized()
-				ped.set_meta("walk_direction", walk_dir)
-				ped.set_meta("street_exposure_timer", 0.0) # Reset street exposure timer on new objective
+			if not is_raining:
+				var target_dest: Vector3 = ped.get_meta("target_destination", ped_pos + walk_dir * 10.0)
+				if ped_pos.distance_to(target_dest) < 3.0:
+					target_dest = _pick_new_pedestrian_target_objective(ped_pos)
+					ped.set_meta("target_destination", target_dest)
+					walk_dir = (target_dest - ped_pos).normalized()
+					ped.set_meta("walk_direction", walk_dir)
+					ped.set_meta("street_exposure_timer", 0.0) # Reset street exposure timer on new objective
 
 			# --------------------------------------------------------------------------
 			# 2. MID-STREET SELF-AWARENESS & SIDEWALK LATCHING FOR RULE-ABIDING CITIZENS
 			# --------------------------------------------------------------------------
 			var is_rule_abiding: bool = ped.get_meta("is_rule_abiding", true)
-			var space_state = get_world_3d().direct_space_state
-			var is_near_building: bool = false
+			var is_near_building: bool = nearest_building_pos != Vector3.ZERO and ped_pos.distance_to(nearest_building_pos) < 7.0
 
-			# Raycast in 4 compass directions (7m radius) to check building proximity
-			for check_angle in [0.0, 90.0, 180.0, 270.0]:
-				var rad: float = deg_to_rad(check_angle)
-				var ray_dir: Vector3 = Vector3(cos(rad), 0.0, sin(rad))
-				var query = PhysicsRayQueryParameters3D.create(ped_pos + Vector3(0.0, 1.0, 0.0), ped_pos + Vector3(0.0, 1.0, 0.0) + ray_dir * 7.0)
-				var result = space_state.intersect_ray(query)
-				if result and result.has("collider") and result["collider"] is StaticBody3D:
-					is_near_building = true
-					break
-
-			if not is_near_building and is_rule_abiding:
+			if not is_raining and not is_near_building and is_rule_abiding:
 				# Rule-Abiding Citizen exposed in the middle of a street!
 				var exposure_timer: float = ped.get_meta("street_exposure_timer", 0.0) + delta
 				var awareness_delay: float = ped.get_meta("street_awareness_delay", 3.0)
@@ -266,6 +344,7 @@ func _process(delta: float) -> void:
 				walk_dir = sidestep_dir
 				current_ped_speed = walk_speed * 3.2 # Triple speed sprint dodge!
 				ped.set_meta("walk_direction", walk_dir)
+				is_sheltered = false
 			
 			# Turn pedestrian around if approaching city grid perimeter boundary (+/-240m)
 			if abs(ped_pos.x) > 240.0:
@@ -275,7 +354,10 @@ func _process(delta: float) -> void:
 				walk_dir.z = -sign(ped_pos.z)
 				ped.set_meta("walk_direction", walk_dir.normalized())
 
-			ped.velocity = walk_dir * current_ped_speed
+			if is_sheltered:
+				ped.velocity = Vector3.ZERO
+			else:
+				ped.velocity = walk_dir * current_ped_speed
 			
 			# Move pedestrian and check for collisions
 			var collided: bool = ped.move_and_slide()
@@ -291,7 +373,36 @@ func _process(delta: float) -> void:
 						ped.set_meta("walk_direction", new_dir)
 						break
 
-			# Subtle walking bobbing animation (sinusoidal height oscillation)
-			var phase: float = ped.get_meta("anim_phase", 0.0) + delta * 8.0
-			ped.set_meta("anim_phase", phase)
-			ped.position.y = abs(sin(phase)) * 0.1
+			# Face movement direction if moving
+			if ped.velocity.length_squared() > 0.1:
+				var look_target: Vector3 = ped_pos + Vector3(ped.velocity.x, 0.0, ped.velocity.z)
+				ped.look_at(look_target, Vector3.UP)
+
+			# --------------------------------------------------------------------------
+			# FLASHLIGHT ACTIVATION (TWO DARKEST 'L' STAGES: DARK_BUILDINGS = 3, PITCH_BLACK = 4)
+			# --------------------------------------------------------------------------
+			var city_vfx = $"../CityVisualEffects"
+			var is_darkest_stages: bool = false
+			if is_instance_valid(city_vfx) and city_vfx.get("current_city_light_stage") != null:
+				# Stage 3: DARK_BUILDINGS, Stage 4: PITCH_BLACK
+				is_darkest_stages = (int(city_vfx.current_city_light_stage) >= 3)
+
+			var flashlight_spot = ped.get_node_or_null("Flashlight/FlashlightSpot")
+			if is_instance_valid(flashlight_spot):
+				var target_energy: float = 6.5 if is_darkest_stages else 0.0
+				flashlight_spot.light_energy = move_toward(flashlight_spot.light_energy, target_energy, delta * 15.0)
+
+			# --------------------------------------------------------------------------
+			# ANIMATION: NORMAL WALKING BOB VS IMPATIENT AGITATED SHELTER BOPPING
+			# --------------------------------------------------------------------------
+			var phase: float = ped.get_meta("anim_phase", 0.0)
+			if is_sheltered:
+				# Fast, impatient jittery/agitated bopping while waiting under building shelter
+				phase += delta * 16.0
+				ped.set_meta("anim_phase", phase)
+				ped.position.y = abs(sin(phase)) * 0.12 + (sin(phase * 0.5) * 0.03)
+			else:
+				# Standard walking oscillation
+				phase += delta * (8.0 if ped.velocity.length() <= walk_speed else 14.0)
+				ped.set_meta("anim_phase", phase)
+				ped.position.y = abs(sin(phase)) * 0.1
