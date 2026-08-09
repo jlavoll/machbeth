@@ -38,6 +38,9 @@ var on_foot_node: CharacterBody3D = null
 ## on_foot_reenter() doesn't also fire _exit_to_on_foot() again in this node
 var _reenter_guard: bool = false
 
+## Reference to WeatherAmbienceManager for cabin filter transition
+var _weather_ambience: Node = null
+
 # ==============================================================================
 # VISUAL BODY DYNAMICS (LEANING, BANKING & PITCH)
 # ==============================================================================
@@ -91,8 +94,21 @@ var current_headlight_mode: HeadlightMode = HeadlightMode.NEAR
 
 var spot_light_left: SpotLight3D
 var spot_light_right: SpotLight3D
-@onready var headlight_mesh_left: MeshInstance3D = $HeadLightLeft
+@onready var headlight_mesh_left:  MeshInstance3D = $HeadLightLeft
 @onready var headlight_mesh_right: MeshInstance3D = $HeadLightRight
+@onready var tail_light_mesh:      MeshInstance3D = $TailLight
+
+# ==============================================================================
+# BRAKE LIGHT EMISSION PARAMETERS
+# ==============================================================================
+# Full-bright emission when coasting/braking (feels like a brake light)
+@export_range(1.0, 20.0, 0.5) var tail_emission_brake:  float = 6.0
+# Dimmed emission while pressing throttle forward
+@export_range(0.0, 10.0, 0.5) var tail_emission_drive:  float = 3
+# How fast the emission transitions between states (units/sec)
+@export_range(1.0, 50.0, 1.0) var tail_emission_speed:  float = 28.0
+
+var _tail_mat: StandardMaterial3D = null
 
 # ==============================================================================
 # CAMERA & ZOOM CONTROL PARAMETERS
@@ -137,9 +153,17 @@ var base_fov: float = 85.0
 
 func _ready() -> void:
 	if camera:
-		base_fov = camera.fov
+		base_fov = camera.fov  # Capture scene-configured base FOV for zoom calculations
+		# Start (and always return to) 5 scroll steps back from the maximum zoom-in level.
+		# ultra_min_fov (35) + 5 × zoom_step (3) = 50 — close behind-the-car driving view.
+		camera.fov = ultra_min_fov + 5.0 * zoom_step
 	_update_camera_transform()
 	_setup_3d_headlights()
+	# Cache tail-light material for brake-light emission updates
+	if is_instance_valid(tail_light_mesh):
+		_tail_mat = tail_light_mesh.get_surface_override_material(0) as StandardMaterial3D
+	# Cache WeatherAmbienceManager reference for cabin filter transitions
+	_weather_ambience = get_node_or_null("../WeatherAmbienceManager")
 
 func _setup_3d_headlights() -> void:
 	# Create 3D SpotLight3D projectors for left and right headlights
@@ -313,6 +337,14 @@ func _physics_process(delta: float) -> void:
 	velocity = forward_dir * current_speed
 	move_and_slide()
 
+	# --------------------------------------------------------------------------
+	# 7. BRAKE LIGHT — dim while pressing forward, full brightness otherwise
+	# --------------------------------------------------------------------------
+	if _tail_mat != null:
+		var target_emission: float = tail_emission_drive if throttle_input > 0.0 else tail_emission_brake
+		_tail_mat.emission_energy_multiplier = move_toward(
+			_tail_mat.emission_energy_multiplier, target_emission, tail_emission_speed * delta)
+
 # ==============================================================================
 # MOUSE WHEEL CAMERA ZOOM HANDLER
 # ==============================================================================
@@ -326,6 +358,14 @@ func _unhandled_input(event: InputEvent) -> void:
 		# 'E' key exits the car — guard prevents double-fire on the same press as re-entry
 		if event.keycode == KEY_E and not is_on_foot and not _reenter_guard:
 			_exit_to_on_foot()
+
+		# 'T' key — DEV TEST: instantly opens Porter dialogue while on foot (no Area3D needed)
+		if event.keycode == KEY_T and is_on_foot and is_instance_valid(on_foot_node):
+			var dialogue_sys = get_parent().get_node_or_null("DialogueSystem")
+			if dialogue_sys:
+				on_foot_node._nearby_dialogue_source = "res://scripts/porter_at_the_pit.json"
+				dialogue_sys.start_dialogue("res://scripts/porter_at_the_pit.json")
+				print("[DEV] T key: opened Porter dialogue for testing.")
 
 	# Clear the reenter guard one frame after it was set
 	if _reenter_guard:
@@ -350,6 +390,10 @@ func _exit_to_on_foot() -> void:
 	current_speed = 0.0
 	velocity = Vector3.ZERO
 
+	# Notify ambience manager so it smoothly opens the cabin filter
+	if is_instance_valid(_weather_ambience) and _weather_ambience.has_method("set_player_in_car"):
+		_weather_ambience.set_player_in_car(false)
+
 	# Spawn the player figure at ground level beside the car
 	var spawn_offset: Vector3 = global_transform.basis.x * 1.5  # step out to the right
 	var spawn_pos: Vector3 = global_position + spawn_offset
@@ -363,25 +407,61 @@ func _exit_to_on_foot() -> void:
 	# setup() reparents the camera, builds the figure, and starts lerping
 	on_foot_node.setup(self, camera, spawn_pos)
 
+	# Wire the DialogueSystem to PlayerOnFoot so it can open dialogue overlays.
+	# The DialogueSystem node lives as a CanvasLayer child of Main.
+	var dialogue_sys_node = get_parent().get_node_or_null("DialogueSystem")
+	if dialogue_sys_node:
+		on_foot_node.dialogue_system = dialogue_sys_node
+		print("[DIALOGUE] DialogueSystem wired to PlayerOnFoot.")
+	else:
+		print("[DIALOGUE] Warning: DialogueSystem node not found in Main — add it to Main.tscn first.")
+
+	# Wire the WeatherAmbienceManager so PlayerOnFoot can trigger footstep sounds.
+	var ambience_node = get_parent().get_node_or_null("WeatherAmbienceManager")
+	if ambience_node:
+		on_foot_node.ambience_manager = ambience_node
+		print("[AMBIENCE] WeatherAmbienceManager wired to PlayerOnFoot.")
+	else:
+		print("[AMBIENCE] Warning: WeatherAmbienceManager node not found in Main — footstep audio will be silent.")
+
+	# Default walking zoom: 1 step past over-shoulder (FOOT_ZOOM_MAX=2.0, ZOOM_STEP=0.08).
+	# 1.08 gives the over-shoulder view with a very gentle upward tilt — scroll to adjust.
+	on_foot_node._foot_zoom = 1.08
+
 	print("[ON FOOT] Player exited car at ", global_position)
 
-## Called by PlayerOnFoot when the player walks back to the car and presses E
-func on_foot_reenter(cam: Camera3D) -> void:
+## Called by PlayerOnFoot when the player walks back to the car and presses E.
+func on_foot_reenter(cam: Camera3D, foot_zoom: float = 0.0) -> void:
 	is_on_foot = false
 	_reenter_guard = true  # Block the same E press from immediately re-exiting
 
-	# Reparent camera back from the foot node to this car
-	var world_cam_transform: Transform3D = cam.global_transform
+	# Notify ambience manager so it smoothly closes the cabin filter
+	if is_instance_valid(_weather_ambience) and _weather_ambience.has_method("set_player_in_car"):
+		_weather_ambience.set_player_in_car(true)
+
+	# Reparent camera back from the foot node to this car.
 	on_foot_node.remove_child(cam)
+	# Null the foot node's camera reference NOW — queue_free() is deferred to end-of-frame,
+	# so _physics_process on the foot node will still run this frame. Without this,
+	# _update_camera() would call look_at() and overwrite our transform reset below.
+	on_foot_node.camera = null
 	add_child(cam)
-	cam.global_transform = world_cam_transform
 
 	# Free the on-foot figure
 	if is_instance_valid(on_foot_node):
 		on_foot_node.queue_free()
 	on_foot_node = null
 
-	# Restore camera to driving position (will lerp naturally next _update_camera_transform call)
+	# Hard-reset the camera transform before applying the driving position.
+	# The foot camera's look_at() leaves a rotated basis that can survive reparenting;
+	# wiping it first guarantees a clean, straight view with no leftover tilt.
+	camera.transform = Transform3D.IDENTITY
+
+	# Always snap back to the standard entry FOV: 5 steps back from max zoom-in.
+	# Keeps re-entry feeling clean and consistent regardless of how zoomed the foot view was.
+	camera.fov = ultra_min_fov + 5.0 * zoom_step
+
+	# Place camera at the correct driving position for the new FOV
 	_update_camera_transform()
 
-	print("[ON FOOT] Player re-entered car")
+	print("[ON FOOT] Player re-entered car | FOV reset to ", snappedf(camera.fov, 0.1))

@@ -19,19 +19,38 @@ const RE_ENTER_RADIUS:  float   = 5.0
 const TURN_SPEED:       float   = 3.2   # rad/s — matches car steer_speed
 const CAM_LERP_SPEED:   float   = 4.0   # how fast offset lerps to target
 const CAM_RETURN_SPEED: float   = 3.5   # how fast orbit yaw snaps back when walking
-const ZOOM_STEP:        float   = 0.08  # zoom per scroll notch (0–1 range)
+const ZOOM_STEP:        float   = 0.08  # zoom per scroll notch
 const ORBIT_SENS:       float   = 0.004 # radians per pixel of mouse drag
 
-# Camera offset extremes (zoom 0 = far/top-down, zoom 1 = near/over-shoulder)
+# Zoom range: 0 = far/top-down, 1 = over-shoulder, 1–2 = scenery-tilt (camera stays at
+# shoulder position but tilts upward so you can enjoy the buildings and skyline)
+const FOOT_ZOOM_MAX:    float   = 2.0
+
+# Camera offset extremes (zoom 0 = far/top-down, zoom 1+ = near/over-shoulder)
 const CAM_FAR_OFFSET:  Vector3 = Vector3(0.0,  18.0, 5.0)
 const CAM_NEAR_OFFSET: Vector3 = Vector3(0.35,  2.0, 3.5)
+
+# World Y height the look-at target rises to at maximum scenery tilt (zoom = 2.0)
+# Set this to roughly the average mid-height of your skyscrapers for best feel
+const CAM_SCENERY_LOOK_HEIGHT: float = 22.0
 
 # ==============================================================================
 # STATE
 # ==============================================================================
 
-var player_car: PlayerCar
-var camera:     Camera3D
+var player_car:      PlayerCar
+var camera:          Camera3D
+var dialogue_system: DialogueSystem   # Set by Main scene after adding DialogueSystem node
+var ambience_manager: Node            # WeatherAmbienceManager — set by Main/PlayerCar after spawn
+
+# Surface type for footstep audio.
+# Set this from an Area3D trigger when the player enters/leaves a grass zone.
+# Defaults to CONCRETE (city streets).
+# Use the WeatherAmbienceManager.FootstepSurface enum values:
+#   0 = CONCRETE | 1 = CONCRETE_RAIN | 2 = GRASS | 3 = GRASS_RAIN
+# The _fire_footstep() function automatically promotes CONCRETE → CONCRETE_RAIN
+# and GRASS → GRASS_RAIN when rain weather is active, so just set the dry variant.
+var current_surface: int = 0  # WeatherAmbienceManager.FootstepSurface.CONCRETE
 
 var _foot_zoom:          float   = 0.0   # 0 = top-down, 1 = over-shoulder
 var _cam_offset_current: Vector3          # smoothed offset (lerped each frame)
@@ -40,12 +59,19 @@ var _cam_yaw:            float   = 0.0   # orbital yaw offset in LOCAL space (0 
 var _cam_pitch:          float   = 0.0   # orbital pitch offset in radians (0 = default)
 var _is_orbiting:        bool    = false  # true while LMB held
 
+# Interaction state: set by the scene when player enters an NPC/object trigger area
+var _nearby_dialogue_source:  String = ""   # Path to dialogue JSON, empty = no NPC nearby
+var _interaction_hint_label:  Label  = null  # "[F] Talk" HUD hint — created on demand
+
 # Walk bob
 var _bob_phase:     float = 0.0   # running sine phase
 var _body_inst:     MeshInstance3D   # reference for bobbing
 var _head_inst:     MeshInstance3D   # reference for bobbing
 const BOB_BASE_Y_BODY: float = 0.6
 const BOB_BASE_Y_HEAD: float = 1.35
+
+# Footstep trigger — fires once per full bob cycle
+var _last_step_floor: int = 0   # tracks which half-cycle we were in last frame
 
 # ==============================================================================
 # SETUP  (called by PlayerCar immediately after adding this node to scene)
@@ -121,6 +147,9 @@ func _build_figure() -> void:
 # ==============================================================================
 
 func _physics_process(delta: float) -> void:
+	# Freeze all movement while dialogue is active so Mack stands still during conversations
+	if is_instance_valid(dialogue_system) and dialogue_system._is_dialogue_active:
+		return
 	_handle_movement(delta)
 	_update_camera(delta)
 
@@ -171,19 +200,68 @@ func _handle_movement(delta: float) -> void:
 			var bob_y: float = abs(sin(_bob_phase)) * 0.1
 			_body_inst.position.y = BOB_BASE_Y_BODY + bob_y
 			_head_inst.position.y = BOB_BASE_Y_HEAD + bob_y
+
+			# ----------------------------------------------------------------
+			# FOOTSTEP TRIGGER
+			# Fire once per full stride: detect when bob_phase crosses an
+			# integer multiple of PI (bottom of each step).
+			# ----------------------------------------------------------------
+			var step_floor: int = int(_bob_phase / PI)
+			if step_floor != _last_step_floor:
+				_last_step_floor = step_floor
+				_fire_footstep()
 		else:
 			# Smoothly settle back to rest position when stopping
 			_body_inst.position.y = lerpf(_body_inst.position.y, BOB_BASE_Y_BODY, delta * 10.0)
 			_head_inst.position.y = lerpf(_head_inst.position.y, BOB_BASE_Y_HEAD, delta * 10.0)
 
 # ------------------------------------------------------------------------------
+# FOOTSTEP AUDIO
+# Resolves wet/dry variant from weather, then delegates to WeatherAmbienceManager.
+# ------------------------------------------------------------------------------
+func _fire_footstep() -> void:
+	if not is_instance_valid(ambience_manager):
+		return
+	if not ambience_manager.has_method("trigger_footstep"):
+		return
+
+	# Check whether rain is currently active
+	var rain_active: bool = false
+	var ws = ambience_manager.get("weather_system")
+	if is_instance_valid(ws):
+		var w = int(ws.current_weather)
+		rain_active = (w == 0 or w == 2)  # NEON_RAIN or GLITCH_STORM
+
+	# Resolve surface enum: promote dry → wet variant automatically when raining.
+	# current_surface should always be the DRY base (CONCRETE=0, GRASS=2);
+	# we add 1 to get the rain variant (CONCRETE_RAIN=1, GRASS_RAIN=3).
+	var surface: int = current_surface
+	if rain_active:
+		# CONCRETE(0)->CONCRETE_RAIN(1), GRASS(2)->GRASS_RAIN(3)
+		# Already-wet variants are left unchanged.
+		if surface == 0:  # CONCRETE
+			surface = 1   # CONCRETE_RAIN
+		elif surface == 2:  # GRASS
+			surface = 3   # GRASS_RAIN
+
+	ambience_manager.trigger_footstep(surface)
+
+# ------------------------------------------------------------------------------
 # INPUT — mouse orbit (LMB drag), scroll zoom, E re-enter
 # ------------------------------------------------------------------------------
 func _input(event: InputEvent) -> void:
-	# LMB hold to orbit
-	if event is InputEventMouseButton:
+	# Block all camera orbit input while dialogue is active so LMB clicks
+	# pass through to the choice buttons unobstructed.
+	var dialogue_active: bool = is_instance_valid(dialogue_system) and dialogue_system._is_dialogue_active
+
+	# LMB hold to orbit — skip entirely during dialogue
+	if event is InputEventMouseButton and not dialogue_active:
 		if event.button_index == MOUSE_BUTTON_LEFT:
 			_is_orbiting = event.pressed
+
+	# If dialogue just opened while orbiting, release the orbit lock immediately
+	if dialogue_active:
+		_is_orbiting = false
 
 	# Mouse drag while orbiting: horizontal = yaw, vertical = pitch
 	if event is InputEventMouseMotion and _is_orbiting:
@@ -193,21 +271,30 @@ func _input(event: InputEvent) -> void:
 		_cam_pitch  = clamp(_cam_pitch + event.relative.y * ORBIT_SENS, -0.8, 0.8)
 
 func _unhandled_input(event: InputEvent) -> void:
-	# Scroll wheel zoom
-	if event is InputEventMouseButton and event.is_pressed():
-		if event.button_index == MOUSE_BUTTON_WHEEL_UP:
-			_foot_zoom = clamp(_foot_zoom + ZOOM_STEP, 0.0, 1.0)
-		elif event.button_index == MOUSE_BUTTON_WHEEL_DOWN:
-			_foot_zoom = clamp(_foot_zoom - ZOOM_STEP, 0.0, 1.0)
+	# Scroll wheel zoom — range 0 (top-down) → 1 (shoulder) → 2 (scenery tilt)
+	# Block zoom input while dialogue is active
+	var dialogue_blocking_input: bool = is_instance_valid(dialogue_system) and dialogue_system._is_dialogue_active
 
-	# E key: re-enter the parked car when close enough
+	if not dialogue_blocking_input and event is InputEventMouseButton and event.is_pressed():
+		if event.button_index == MOUSE_BUTTON_WHEEL_UP:
+			_foot_zoom = clamp(_foot_zoom + ZOOM_STEP, 0.0, FOOT_ZOOM_MAX)
+		elif event.button_index == MOUSE_BUTTON_WHEEL_DOWN:
+			_foot_zoom = clamp(_foot_zoom - ZOOM_STEP, 0.0, FOOT_ZOOM_MAX)
+
 	if event is InputEventKey and event.pressed and not event.echo:
-		if event.keycode == KEY_E and is_instance_valid(player_car):
+		# E key: re-enter the parked car when close enough
+		if event.keycode == KEY_E and is_instance_valid(player_car) and not dialogue_blocking_input:
 			var dist: float = global_position.distance_to(player_car.global_position)
 			if dist <= RE_ENTER_RADIUS:
-				player_car.on_foot_reenter(camera)
+				player_car.on_foot_reenter(camera, _foot_zoom)
 				# Mark handled so PlayerCar's _unhandled_input doesn't see the
 				# same E press and immediately re-exits the car
+				get_viewport().set_input_as_handled()
+
+		# F key: interact with nearby NPC / object (opens dialogue overlay)
+		elif event.keycode == KEY_F and not dialogue_blocking_input:
+			if _nearby_dialogue_source != "" and is_instance_valid(dialogue_system):
+				dialogue_system.start_dialogue(_nearby_dialogue_source)
 				get_viewport().set_input_as_handled()
 
 # ------------------------------------------------------------------------------
@@ -217,8 +304,11 @@ func _update_camera(delta: float) -> void:
 	if not is_instance_valid(camera):
 		return
 
-	# Lerp the local offset toward the current zoom target
-	var target_offset: Vector3 = CAM_FAR_OFFSET.lerp(CAM_NEAR_OFFSET, _foot_zoom)
+	# Lerp the local offset toward the current zoom target.
+	# The offset only interpolates over the 0–1 range; beyond 1.0 it stays at
+	# CAM_NEAR_OFFSET and the camera instead tilts upward (scenery mode).
+	var offset_zoom: float = clamp(_foot_zoom, 0.0, 1.0)
+	var target_offset: Vector3 = CAM_FAR_OFFSET.lerp(CAM_NEAR_OFFSET, offset_zoom)
 	_cam_offset_current = _cam_offset_current.lerp(target_offset, delta * CAM_LERP_SPEED)
 
 	# --- Apply orbital yaw (rotate offset around local Y) ---
@@ -240,7 +330,12 @@ func _update_camera(delta: float) -> void:
 
 	camera.position = rotated
 
-	# Always look at the player's head — gives natural pitch at all zoom/orbit angles
-	var head_world: Vector3 = global_position + Vector3(0.0, 1.2, 0.0)
-	if camera.global_position.distance_to(head_world) > 0.05:
-		camera.look_at(head_world, Vector3.UP)
+	# --- Look-at target ---
+	# 0–1 zoom: look at the player's head (y = 1.2) for a grounded view.
+	# 1–2 zoom: smoothly raise the look-at target upward so the camera tilts
+	#           to reveal the cityscape, buildings, and neon skyline.
+	var scenery_factor: float = clamp(_foot_zoom - 1.0, 0.0, 1.0)
+	var look_y: float = lerpf(1.2, CAM_SCENERY_LOOK_HEIGHT, scenery_factor)
+	var look_world: Vector3 = global_position + Vector3(0.0, look_y, 0.0)
+	if camera.global_position.distance_to(look_world) > 0.05:
+		camera.look_at(look_world, Vector3.UP)

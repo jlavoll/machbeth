@@ -1,0 +1,114 @@
+{
+	"speaker_display_name": "Porter",
+	"speaker_subtitle": "NEURAL-ID: GREASE_MONK_077 | The Pit — Sublevel 3",
+	"speaker_color": "#FF6B35",
+	"nodes": {
+		"start": {
+			"text": "Oh, it's you. Mack. Took your sweet time rolling in — I heard the highway screaming from three sectors away. Your war-rig's got cracks in the chassis plating and the Ordnance coolant is running hot. You want it fixed, or you just here to look pretty under neon?",
+			"portrait_emotion": "gruff",
+			"choices": [
+				{ "text": "Fix everything. Whatever it costs.", "target": "full_repair" },
+				{ "text": "Just the Ordnance coolant, fast.", "target": "quick_repair" },
+				{ "text": "Forget the rig. Tell me what's happening on the grid.", "target": "grid_intel" },
+				{ "text": "I need to think. [Leave]", "target": "exit" }
+			]
+		},
+		"full_repair": {
+			"text": "Full service. Right. You know what they say about the Porter's garage — if it goes in broken and comes out broken, it's because the client was an idiot. Give me forty cycles. Ordnance topped, coolant flushed, chassis sealed with graphene weave. Don't touch anything while I work.",
+			"portrait_emotion": "satisfied",
+			"choices": [
+				{ "text": "What's the going rate?", "target": "full_repair_cost" },
+				{ "text": "While you work — what's the grid chatter?", "target": "grid_intel" },
+				{ "text": "Good. I'll wait. [Continue]", "target": "exit_repaired" }
+			]
+		},
+		"full_repair_cost": {
+			"text": "400 credits. And don't give me that look — graphene weave costs more than your dignity at this point, and you haven't got much of that left either, Director. Or is it CEO now? Word spreads fast down here in the sub-levels.",
+			"portrait_emotion": "knowing",
+			"choices": [
+				{ "text": "Pay 400 credits. [CEO now. Keep that offline.]", "target": "porter_knows" },
+				{ "text": "CEO? Where'd you hear that?", "target": "porter_knows" },
+				{ "text": "That's too steep. Just the coolant.", "target": "quick_repair" }
+			]
+		},
+		"porter_knows": {
+			"text": "Where'd I hear it? Porter hears everything. Duncan's signal went dark forty-eight hours ago. Whole corporate board's running diagnostics on empty. You didn't exactly leave a clean log-trail, Mack. But hey — I ain't paid to audit your conscience. Just your chassis. Credits first.",
+			"portrait_emotion": "conspiratorial",
+			"choices": [
+				{ "text": "Credits transferred. Keep your mouth shut.", "target": "exit_repaired" },
+				{ "text": "You talk too much, Porter.", "target": "porter_warning" }
+			]
+		},
+		"porter_warning": {
+			"text": "Ha! That's a good one from the man who just handed me his war-rig leaking Ordnance coolant. Relax, Mack. I've had a corporate hit-squad try to scrub this garage twice already. Still here. Still talking. Your secrets are safer with me than they are in your own neural stack — and judging by your glitch count, that's saying something.",
+			"portrait_emotion": "amused",
+			"choices": [
+				{ "text": "Fair point. Carry on, Porter.", "target": "exit_repaired" }
+			]
+		},
+		"quick_repair": {
+			"text": "Quick patch? Alright, 80 credits, ten cycles. But I'm telling you now — that chassis crack is gonna bite you mid-pursuit. Birnam Purge convoy won't care that you tried to save money on the repair bill.",
+			"portrait_emotion": "warning",
+			"choices": [
+				{ "text": "Pay 80 credits. Do the coolant.", "target": "exit_quick" },
+				{ "text": "Wait — Birnam Purge? Talk.", "target": "birnam_intel" },
+				{ "text": "Actually, do the full repair.", "target": "full_repair" }
+			]
+		},
+		"grid_intel": {
+			"text": "Grid's gone paranoid. Macduff's pulled his whole Fife Security battalion out of station — that's sixty-four vehicles, all off-network so your ICE-Breaker can't ping them. Lady M's uplink's been broadcasting distress packets — you know anything about that?",
+			"portrait_emotion": "concerned",
+			"choices": [
+				{ "text": "Lady M is fine. What about Birnam?", "target": "birnam_intel" },
+				{ "text": "Off-network convoy. How do I track them?", "target": "tracking_intel" },
+				{ "text": "That's not my problem right now.", "target": "start" }
+			]
+		},
+		"birnam_intel": {
+			"text": "Oh, you haven't heard? Beautiful. The Birnam Purge — Macduff's been coordinating with every displaced district boss you stepped on getting up the ladder. They're not coming as a convoy. They're rerouting through the grid as distributed micro-clusters. Four entry vectors. Simultaneously. Your tactical map won't see it coming unless you're watching ALL four highway gates at once.",
+			"portrait_emotion": "grave",
+			"choices": [
+				{ "text": "Then I hold the central highway. One chokepoint.", "target": "porter_approves" },
+				{ "text": "How long do I have?", "target": "time_estimate" },
+				{ "text": "This is worse than I thought.", "target": "time_estimate" }
+			]
+		},
+		"tracking_intel": {
+			"text": "Off-network means no ICE-tag, no radar blip, no kill-switch. You want to track sixty-four ghost vehicles? You do it with your own eyes, your own headlights, and a very fast car. Good thing you're in the right garage.",
+			"portrait_emotion": "grim",
+			"choices": [
+				{ "text": "What about Birnam?", "target": "birnam_intel" },
+				{ "text": "Just fix the rig and get me mobile.", "target": "quick_repair" }
+			]
+		},
+		"porter_approves": {
+			"text": "Central highway. Now THAT's the Mack I've been servicing for three years. Old-school chokepoint logic. Force the split-convoy to funnel — one lane, your lane. It's insane enough to work. Now stop standing in my garage and let me finish your rig. You've got maybe two hours before they hit the perimeter.",
+			"portrait_emotion": "respect",
+			"choices": [
+				{ "text": "Two hours. Make it count, Porter.", "target": "exit_repaired" }
+			]
+		},
+		"time_estimate": {
+			"text": "At their current convergence rate? My junction sensor's showing distributed cluster movement — two hours. Maybe less if Macduff's running a sprint-formation. I'd be in the car, not chatting with the mechanic.",
+			"portrait_emotion": "urgent",
+			"choices": [
+				{ "text": "Understood. Fix the rig, fast.", "target": "quick_repair" },
+				{ "text": "Central highway. That's my play.", "target": "porter_approves" }
+			]
+		},
+		"exit_repaired": {
+			"text": "War-rig's ready. Ordnance is live, coolant's clean, chassis is sealed. One more thing — if Bankes shows up on your HUD tonight... don't let it rattle you. Ghost-code doesn't steer. You do. Good luck out there, Director. Or CEO. Whatever they're calling you these days.",
+			"portrait_emotion": "solemn",
+			"choices": [
+				{ "text": "[Drive out of The Pit]", "target": "exit" }
+			]
+		},
+		"exit_quick": {
+			"text": "Coolant done. She'll hold — for a while. Don't take any serious hull hits or that chassis crack's going to be the least of your problems. Watch the highway.",
+			"portrait_emotion": "gruff",
+			"choices": [
+				{ "text": "[Head out]", "target": "exit" }
+			]
+		}
+	}
+}

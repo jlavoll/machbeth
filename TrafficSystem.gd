@@ -24,6 +24,13 @@ class_name TrafficSystem
 #   South (+Z): offset direction = West  (-X)
 #   West  (-X): offset direction = North (-Z)
 #   North (-Z): offset direction = East  (+X)
+#
+# ENGINE AUDIO
+# ------------
+# Each traffic car is given an AudioStreamPlayer3D (Doppler tracking enabled).
+# The hum pitch is updated every frame proportional to the car's current speed.
+# Godot's physics-based Doppler then stacks the approach/recede pitch shift on
+# top automatically, so fast racers scream past while heavy haulers rumble by.
 # ==============================================================================
 
 # ------------------------------------------------------------------------------
@@ -52,6 +59,29 @@ class_name TrafficSystem
 # Full stop distance from the car ahead (meters).
 
 # ------------------------------------------------------------------------------
+# ENGINE AUDIO SETTINGS
+# ------------------------------------------------------------------------------
+
+# Path to the shared engine hum asset (same file used by the player car)
+const ENGINE_HUM_PATH: String = "res://sfx/engine_hum.ogg"
+
+# How far (m) the engine can be heard at full volume; audible well beyond that
+@export var engine_audio_unit_size:   float = 18.0
+@export var engine_audio_max_distance: float = 50.0
+
+# Idle hum volume (dB) — full-volume when car is at top speed
+@export var engine_idle_volume_db:    float = -14.0
+@export var engine_full_volume_db:    float = 0.0
+
+# Pitch scale at idle speed and at top speed (in linear pitch, not semitones)
+# These are per-car base values; Doppler shift stacks on top automatically.
+@export var engine_idle_pitch:  float = 0.72
+@export var engine_full_pitch:  float = 1.55
+
+# Pitch lerp response speed (higher = snappier engine response)
+@export var engine_pitch_response: float = 3.5
+
+# ------------------------------------------------------------------------------
 # INTERNAL STATE
 # ------------------------------------------------------------------------------
 
@@ -63,6 +93,9 @@ var _van_body_mesh:       BoxMesh
 var _limo_body_mesh:      BoxMesh
 
 var active_traffic_cars: Array[Node3D] = []
+
+# Pre-loaded engine hum stream (shared across all traffic cars)
+var _engine_hum_stream: AudioStream = null
 
 # Pre-built loop routes: each is Array[Vector3] with 8 waypoints.
 # Cars pick one and loop it forever.
@@ -80,7 +113,18 @@ var _rng: RandomNumberGenerator = RandomNumberGenerator.new()
 func _ready() -> void:
 	_rng.randomize()
 	_create_vehicle_mesh_templates()
+	_load_engine_hum()
 	call_deferred("_on_city_ready")
+
+func _load_engine_hum() -> void:
+	var stream = load(ENGINE_HUM_PATH)
+	if stream:
+		if stream is AudioStreamOggVorbis:
+			stream.loop = true
+		_engine_hum_stream = stream
+		print("[TrafficSystem] Engine hum loaded: ", ENGINE_HUM_PATH)
+	else:
+		print("[TrafficSystem] WARN: Could not load engine hum at: ", ENGINE_HUM_PATH)
 
 func _on_city_ready() -> void:
 	if not is_instance_valid(city_generator):
@@ -410,8 +454,6 @@ func _spawn_car_on_loop(loop_route: Array[Vector3], start_waypoint_index: int) -
 	var next_index: int     = (start_waypoint_index + 1) % loop_route.size()
 	var next_pos: Vector3   = loop_route[next_index]
 
-	car_node.global_position = start_pos
-
 	var initial_dir: Vector3 = (next_pos - start_pos)
 	initial_dir.y = 0.0
 	if initial_dir.length_squared() > 0.001:
@@ -445,8 +487,50 @@ func _spawn_car_on_loop(loop_route: Array[Vector3], start_waypoint_index: int) -
 
 	add_child(car_node)
 
+	# Must set global_position after add_child — global_transform requires the node to be in the tree
+	car_node.global_position = start_pos
+
 	if initial_dir.length_squared() > 0.001:
 		car_node.look_at(start_pos + initial_dir, Vector3.UP)
+
+	# ---- Engine Audio ----
+	# Attach a spatial AudioStreamPlayer3D to the car with Doppler tracking.
+	# Pitch range and base volume are tuned per archetype, then updated each
+	# frame in _update_engine_audio() to reflect the car's current speed.
+	if _engine_hum_stream != null:
+		var eng := AudioStreamPlayer3D.new()
+		eng.name             = "TrafficEngineAudio"
+		eng.stream           = _engine_hum_stream
+		eng.bus              = "Master"
+		eng.unit_size        = engine_audio_unit_size
+		eng.max_distance     = engine_audio_max_distance
+		eng.attenuation_model = AudioStreamPlayer3D.ATTENUATION_INVERSE_DISTANCE
+		# Enable Doppler tracking — Godot will automatically shift pitch based on
+		# velocity relative to the listener (camera). PHYSICS_STEP matches the car’s
+		# CharacterBody3D movement which is driven by move_and_slide().
+		eng.doppler_tracking = AudioStreamPlayer3D.DOPPLER_TRACKING_PHYSICS_STEP
+
+		# Per-archetype base pitch variation: fast cars hum higher, heavy ones lower
+		var idle_pitch: float = engine_idle_pitch
+		var full_pitch: float = engine_full_pitch
+		match archetype:
+			"hauler":   idle_pitch = .52; full_pitch = 0.95   # Deep diesel rumble
+			"enforcer": idle_pitch = 0.80; full_pitch = 1.70   # High-revving pursuit engine
+			"racer":    idle_pitch = 1.90; full_pitch = 3.10   # Screaming high-pitched racer
+			"van":      idle_pitch = 0.60; full_pitch = 1.10   # Mid utility hum
+			"limo":     idle_pitch = 0.65; full_pitch = 1.20   # Smooth low luxury
+			_:          idle_pitch = 0.72; full_pitch = 1.55   # Commuter baseline
+
+		eng.pitch_scale = idle_pitch
+		eng.volume_db   = engine_idle_volume_db
+
+		car_node.add_child(eng)
+		eng.play()
+
+		# Store pitch range in metadata so _update_engine_audio() can lerp each frame
+		car_node.set_meta("engine_idle_pitch", idle_pitch)
+		car_node.set_meta("engine_full_pitch", full_pitch)
+		car_node.set_meta("engine_current_speed", 0.0)
 
 	active_traffic_cars.append(car_node)
 
@@ -476,6 +560,7 @@ func _process(delta: float) -> void:
 		var move_speed: float = _drive_loop(car, space_state)
 
 		_update_body_dynamics(car, move_speed, delta)
+		_update_engine_audio(car, move_speed, delta)
 
 		var drive_dir: Vector3 = car.get_meta("drive_direction", Vector3.FORWARD)
 		car.velocity = drive_dir * move_speed
@@ -575,7 +660,36 @@ func _update_body_dynamics(car: Node3D, current_speed: float, delta: float) -> v
 	car_body.rotation.x = smoothed_pitch
 
 # ==============================================================================
-# 7. HEADLIGHTS
+# 7. ENGINE AUDIO
+# ==============================================================================
+# Smoothly lerps pitch and volume of the car’s TrafficEngineAudio player based
+# on its current speed vs top speed.  Godot’s Doppler tracking then stacks
+# its own frequency shift on top automatically.
+# ==============================================================================
+
+func _update_engine_audio(car: Node3D, current_speed: float, delta: float) -> void:
+	var eng: AudioStreamPlayer3D = car.get_node_or_null("TrafficEngineAudio") as AudioStreamPlayer3D
+	if not is_instance_valid(eng):
+		return
+
+	var top_speed:   float = car.get_meta("top_speed",        base_traffic_speed)
+	var idle_pitch:  float = car.get_meta("engine_idle_pitch", engine_idle_pitch)
+	var full_pitch:  float = car.get_meta("engine_full_pitch", engine_full_pitch)
+
+	var speed_ratio: float = clamp(current_speed / max(top_speed, 0.001), 0.0, 1.0)
+
+	var target_pitch:  float = lerp(idle_pitch,            full_pitch,            speed_ratio)
+	var target_volume: float = lerp(engine_idle_volume_db, engine_full_volume_db, speed_ratio)
+
+	var t: float = clamp(engine_pitch_response * delta, 0.0, 1.0)
+	eng.pitch_scale = lerp(eng.pitch_scale, target_pitch,  t)
+	eng.volume_db   = lerp(eng.volume_db,   target_volume, t)
+
+	if not eng.playing:
+		eng.play()
+
+# ==============================================================================
+# 8. HEADLIGHTS
 # ==============================================================================
 
 func _update_headlights(car: Node3D, is_dark_stage: bool, delta: float) -> void:

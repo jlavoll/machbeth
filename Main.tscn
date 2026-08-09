@@ -16,6 +16,7 @@
 [ext_resource type="Script" uid="uid://cemywsq2ghv2h" path="res://AudioSettingsMenu.gd" id="14_audiomenu"]
 [ext_resource type="Script" uid="uid://3dxvow48b5wt" path="res://TrafficSystem.gd" id="15_traffic"]
 [ext_resource type="Script" uid="uid://bflf00k1lk4sc" path="res://PedestrianSystem.gd" id="16_pedestrians"]
+[ext_resource type="Script" uid="uid://rjei6geo1tin" path="res://DialogueSystem.gd" id="17_dialogue"]
 
 [sub_resource type="Environment" id="Environment_1"]
 background_mode = 1
@@ -95,6 +96,9 @@ script = ExtResource("13_engine")
 [node name="AudioSettingsMenu" type="CanvasLayer" parent="." unique_id=-2061521730]
 script = ExtResource("14_audiomenu")
 
+[node name="DialogueSystem" type="CanvasLayer" parent="." unique_id=1234567890]
+script = ExtResource("17_dialogue")
+
 [node name="TrafficSystem" type="Node3D" parent="." unique_id=578341031]
 script = ExtResource("15_traffic")
 
@@ -128,4 +132,5 @@ surface_material_override/0 = SubResource("StandardMaterial3D_Head")
 shape = SubResource("BoxShape3D_Car")
 
 [node name="Camera3D" type="Camera3D" parent="PlayerCar" unique_id=1736342020]
+doppler_tracking = 2
 fov = 85.0

@@ -694,11 +694,13 @@ func _spawn_cyber_park(center: Vector3, b_size: Vector2, neon_colors: Array) -> 
 	# Track park bounding box rectangle
 	var park_rect = Rect2(center.x - b_size.x / 2.0, center.z - b_size.y / 2.0, b_size.x, b_size.y)
 	active_park_boxes.append(park_rect)
-	# 0. Impassable StaticBody3D Wall around Park Perimeter (Collision Layer 3: Traffic Obstacles)
+	# 0. Impassable StaticBody3D Wall around Park Perimeter (AI Traffic Obstacle only)
+	# collision_layer = 4, collision_mask = 0: blocks AI traffic (which checks layer 4)
+	# but is invisible to the player car and on-foot character (which use default mask 1)
 	var park_block_body = StaticBody3D.new()
 	park_block_body.name = "CyberParkBlockBoundary"
 	park_block_body.position = center
-	park_block_body.collision_layer = 4 # Layer 3 (bit 3 / mask value 4)
+	park_block_body.collision_layer = 4
 	park_block_body.collision_mask = 0
 
 	var park_block_collision_shape = CollisionShape3D.new()
@@ -785,11 +787,13 @@ func _spawn_parking_lot(center: Vector3, b_size: Vector2, neon_colors: Array) ->
 	# Track lot bounding box rectangle
 	var lot_rect = Rect2(center.x - b_size.x / 2.0, center.z - b_size.y / 2.0, b_size.x, b_size.y)
 	active_lot_boxes.append(lot_rect)
-	# 0. Impassable StaticBody3D Wall around Parking Lot Perimeter (Collision Layer 3: Traffic Obstacles)
+	# 0. Impassable StaticBody3D Wall around Parking Lot Perimeter (AI Traffic Obstacle only)
+	# collision_layer = 4, collision_mask = 0: blocks AI traffic (which checks layer 4)
+	# but is invisible to the player car and on-foot character (which use default mask 1)
 	var lot_block_body = StaticBody3D.new()
 	lot_block_body.name = "ParkingLotBlockBoundary"
 	lot_block_body.position = center
-	lot_block_body.collision_layer = 4 # Layer 3 (bit 3 / mask value 4)
+	lot_block_body.collision_layer = 4
 	lot_block_body.collision_mask = 0
 
 	var lot_block_collision_shape = CollisionShape3D.new()

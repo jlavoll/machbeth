@@ -57,6 +57,7 @@ Main (Node3D)
 ├── BattleTriggerManager       # Detects combat conditions (B key)
 ├── BattleSystemManager       # Manages ATB combat encounters
 ├── CockpitDashboardUI (CanvasLayer)   # First-person HUD
+├── DialogueSystem (CanvasLayer)       # Visual novel dialogue overlay (F key / API)
 ├── TacticalOvermapManager    # Satellite map view (M key)
 ├── CityVisualEffects         # BPM-synced lighting, glitches
 ├── WeatherSystem              # Neon rain, cyber snow, clear night
@@ -103,6 +104,7 @@ Main (Node3D)
 | **CockpitDashboardUI.gd** | Combat UI | Windshield viewport, Orbitron synth-deck panel, ATB meters (Ordnance, ICE-Breaker, Nitrous, Overclock), action buttons |
 | **Enemies.gd** | Enemy definitions | Profiles: Corporate Enforcers, Heavy War-Rigs, Hunter Drones, stats, weaknesses, 3D mesh generation |
 | **NeuralGlitchSystem.gd** | Paranoia system | Mack's glitch gauge, passive decay, Banquo ghost button spawns (B_ANKES_GHOST.EXE) |
+| **DialogueSystem.gd** | Visual novel dialogue overlay | CanvasLayer (layer 20), JSON-driven branching dialogue trees, typewriter animation, cubic-eased panel slide, scanline shader, dynamically styled choice buttons, player movement lock during active dialogue |
 | **TacticalOvermapManager.gd** | Map system | M key satellite view, top-right PIP feed (220x140px), camera state preservation |
 
 ### Weather & Atmosphere

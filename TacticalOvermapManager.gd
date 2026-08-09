@@ -142,15 +142,36 @@ func _process(_delta: float) -> void:
 		if is_instance_valid(map_title_label):
 			map_title_label.text = "TACTICAL OVERMAP\n // SATELLITE UPLINK\n CITY SEED: " + active_seed_str
 
+		# Use on-foot position when walking, car position when driving
+		var tracked_pos: Vector3 = _get_active_player_position()
+
 		# Project player's 3D world position to 2D screen coordinates on satellite camera
-		var screen_pos: Vector2 = map_camera.unproject_position(player_car.global_position)
+		var screen_pos: Vector2 = map_camera.unproject_position(tracked_pos)
 		player_blip_marker.position = screen_pos - (player_blip_marker.size / 2.0)
-		
-		# Keep PIP camera synced to player car global position & orientation
+
+		# Keep PIP camera synced to the active player position & orientation
 		if is_instance_valid(pip_live_camera):
-			var local_offset = Vector3(0.0, 4.0, 8.0) # Close ground height & Z distance behind car
-			pip_live_camera.global_position = player_car.global_transform * local_offset
-			pip_live_camera.rotation_degrees = Vector3(-20.0, player_car.rotation_degrees.y, 0.0)
+			var pip_yaw: float = player_car.rotation_degrees.y
+			if player_car.is_on_foot and is_instance_valid(player_car.on_foot_node):
+				pip_yaw = player_car.on_foot_node.rotation_degrees.y
+			pip_live_camera.global_position = tracked_pos + Vector3(0.0, 4.0, 0.0) + \
+				(Vector3(0.0, 0.0, 8.0).rotated(Vector3.UP, deg_to_rad(pip_yaw)))
+			pip_live_camera.rotation_degrees = Vector3(-20.0, pip_yaw, 0.0)
+
+# Returns the active player's world position — foot node when on foot, car otherwise
+func _get_active_player_position() -> Vector3:
+	if player_car.is_on_foot and is_instance_valid(player_car.on_foot_node):
+		return player_car.on_foot_node.global_position
+	return player_car.global_position
+
+# Returns the active game camera — foot node's camera when on foot, main car camera otherwise
+func _get_active_camera() -> Camera3D:
+	if player_car.is_on_foot and is_instance_valid(player_car.on_foot_node):
+		# The shared camera was reparented to the foot node on exit
+		var foot_cam: Camera3D = player_car.on_foot_node.get_node_or_null("Camera3D")
+		if is_instance_valid(foot_cam):
+			return foot_cam
+	return main_camera
 
 func _toggle_tactical_overmap() -> void:
 	is_map_active = not is_map_active
@@ -161,11 +182,12 @@ func _toggle_tactical_overmap() -> void:
 
 	if is_map_active:
 		print("[OVERMAP] Opening tactical overmap. Clearing high-altitude fog & dust for satellite feed...")
-		
+
 		# SAVE player's exact camera settings before switching views
-		if is_instance_valid(main_camera):
-			saved_player_fov = main_camera.fov
-			saved_player_camera_transform = main_camera.transform
+		var active_cam: Camera3D = _get_active_camera()
+		if is_instance_valid(active_cam):
+			saved_player_fov = active_cam.fov
+			saved_player_camera_transform = active_cam.transform
 
 		# Temporarily disable volumetric fog so 450m high camera view isn't darkened
 		if is_instance_valid(world_env) and world_env.environment:
@@ -234,11 +256,13 @@ func _toggle_tactical_overmap() -> void:
 			pip_live_camera.current = false
 
 		# RESTORE player's exact FOV and camera transform
-		if is_instance_valid(main_camera):
-			main_camera.transform = saved_player_camera_transform
-			main_camera.fov = saved_player_fov
-			main_camera.current = true
-			if player_car.has_method("_update_camera_transform"):
+		var active_cam: Camera3D = _get_active_camera()
+		if is_instance_valid(active_cam):
+			active_cam.transform = saved_player_camera_transform
+			active_cam.fov = saved_player_fov
+			active_cam.current = true
+			# Only call _update_camera_transform when actually driving
+			if not player_car.is_on_foot and player_car.has_method("_update_camera_transform"):
 				player_car._update_camera_transform()
 
 		map_hud_layer.visible = false

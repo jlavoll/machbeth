@@ -20,8 +20,12 @@
    - Whenever changing camera viewing angles or zoom levels on behalf of the player (e.g., satellite map screen), save the original camera FOV, offset, and pitch settings and restore them perfectly upon exit.
 
 5. **Separate Narrative & Dialogue Files**
-   - All story lore, mission briefings, character dialogue logs, and cutscene text **MUST** exist in their own separate, dedicated files (`.txt`, `.json`, or `.md`) in a dedicated directory/structure.
+   - All story lore, mission briefings, character dialogue logs, and cutscene text **MUST** exist in their own separate, dedicated files (`.txt`, `.json`, or `.md`) in a dedicated directory/structure (`scripts/` folder for JSON dialogue assets).
    - Never hardcode long story narratives or dialogue scripts directly inside GDScript game logic. Game scripts only load and parse external story files.
+
+6. **Default Dialogue Overlay UI Layout Baseline**
+   - The verified default baseline state for `DialogueSystem.gd` is a single left portrait box (`24px` to `184px` X, `0.62` to `0.94` Y) and a middle dialogue box (`200px` to `-24px` X, `0.62` to `0.94` Y matching height).
+   - The slide-in animation directly interpolates `_dialogue_panel.offset_bottom` from `_panel_hidden_y_offset` (`340px`) to `0.0`. Do not modify container hierarchy or panel anchor bounds without preserving this animation contract.
 
 ---
 

@@ -425,7 +425,7 @@ func _process(delta: float) -> void:
 
 			var phase: float = ped.get_meta("anim_phase", 0.0)
 			if is_in_food_queue and queue_slot == 0 and not is_raining:
-				# Customer #1 at counter window: Gentle, friendly bopping simulating chatting & ordering food
+				# Customer #1 at counter window: gentle friendly bopping (chatting & ordering food)
 				phase += delta * 7.0
 				ped.set_meta("anim_phase", phase)
 				ped.position.y = abs(sin(phase)) * 0.05 + (sin(phase * 0.5) * 0.015)
@@ -436,10 +436,24 @@ func _process(delta: float) -> void:
 					# Received food! Depart queue and become a regular roaming pedestrian
 					ped.remove_meta("food_truck_queue_target")
 					ped.remove_meta("queue_slot_index")
-					ped.set_meta("food_cooldown_timer", 90.0) # 90-second cooldown so they walk far away before ever wanting food again!
+					ped.remove_meta("queue_personality")
+					ped.set_meta("food_cooldown_timer", 90.0) # 90-second cooldown before wanting food again
 					var new_dest: Vector3 = _pick_new_pedestrian_target_objective(ped_pos)
 					ped.set_meta("target_destination", new_dest)
 					ped.set_meta("walk_direction", (new_dest - ped_pos).normalized())
+			elif is_in_food_queue and queue_slot > 0:
+				# Waiting in line — behaviour driven by personality stamped at queue-join time
+				var personality: String = ped.get_meta("queue_personality", "bouncy")
+				if personality == "bouncy":
+					# Agitated, impatient bouncer: fast jittery hop
+					phase += delta * 14.0
+					ped.set_meta("anim_phase", phase)
+					ped.position.y = abs(sin(phase)) * 0.1 + sin(phase * 0.4) * 0.025
+				else:
+					# Chill personality: slow lazy sway, barely moves
+					phase += delta * 1.8
+					ped.set_meta("anim_phase", phase)
+					ped.position.y = abs(sin(phase)) * 0.018 + sin(phase * 0.3) * 0.008
 			elif is_sheltered:
 				# Fast, impatient jittery/agitated bopping while waiting under building shelter
 				phase += delta * 16.0
@@ -522,3 +536,6 @@ func _manage_food_truck_queues(delta: float) -> void:
 				candidate_ped.set_meta("food_truck_queue_target", truck)
 				candidate_ped.set_meta("queue_slot_index", queued_peds.size())
 				candidate_ped.set_meta("food_order_timer", rng.randf_range(4.0, 7.0))
+				# Stamp personality: 70% bouncy/agitated, 30% chill/relaxed
+				var personality: String = "bouncy" if rng.randf() < 0.7 else "chill"
+				candidate_ped.set_meta("queue_personality", personality)

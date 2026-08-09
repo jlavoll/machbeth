@@ -106,6 +106,22 @@ func create_parking_lot_streetlight(center_target: Vector3, position_world: Vect
 	spot_light.shadow_enabled = false
 	prop_root.add_child(spot_light)
 
+	# --------------------------------------------------------------------------
+	# 5. SOLID POLE COLLISION (Prevents car & player from walking through)
+	# --------------------------------------------------------------------------
+	var pole_body = StaticBody3D.new()
+	pole_body.name = "StreetlampPoleCollider"
+	# Default collision_layer = 1, collision_mask = 1 — visible to player car & on-foot
+
+	var pole_col_shape = CollisionShape3D.new()
+	var pole_cylinder = CylinderShape3D.new()
+	pole_cylinder.radius = pole_radius_bottom  # Slightly generous radius for reliable hits
+	pole_cylinder.height = pole_height
+	pole_col_shape.shape = pole_cylinder
+	pole_col_shape.position = Vector3(0.0, pole_height / 2.0, 0.0)
+	pole_body.add_child(pole_col_shape)
+	prop_root.add_child(pole_body)
+
 	# Orient spotlight and lamp head box to face directly toward parking lot center
 	lamp_head_instance.look_at_from_position(lamp_head_instance.position, center_target + Vector3(0.0, 0.5, 0.0), Vector3.UP)
 	spot_light.look_at_from_position(spot_light.position, center_target + Vector3(0.0, 0.5, 0.0), Vector3.UP)
@@ -218,11 +234,10 @@ func create_food_truck(spawn_pos: Vector3, facing_dir: Vector3, neon_color: Colo
 	counter_light.omni_attenuation = 0.8
 	truck_root.add_child(counter_light)
 
-	# 7. Impassable Solid Collision Box for Player Car & Traffic
+	# 7. Impassable Solid Collision Box for Player Car, Traffic & On-Foot Player
+	# collision_layer = 1 (default) — matches player car and on-foot CharacterBody3D mask
 	var static_body = StaticBody3D.new()
 	static_body.name = "FoodTruckCollision"
-	static_body.collision_layer = 4 # Layer 3 Traffic/Prop obstacle
-	static_body.collision_mask = 0
 
 	var col_shape = CollisionShape3D.new()
 	var box_shape = BoxShape3D.new()
