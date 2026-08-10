@@ -903,6 +903,15 @@ func _spawn_dodgy_park_character(park: Rect2) -> void:
 	head_inst.position = Vector3(0.0, 1.35, 0.0)
 	ped_node.add_child(head_inst)
 
+	# Collision Capsule
+	var col_shape = CollisionShape3D.new()
+	var cap_shape = CapsuleShape3D.new()
+	cap_shape.radius = 0.3
+	cap_shape.height = 1.5
+	col_shape.shape = cap_shape
+	col_shape.position = Vector3(0.0, 0.75, 0.0)
+	ped_node.add_child(col_shape)
+
 	# --- CIGARETTE PROP & GLOWING EMBER TIP ---
 	var cig_node = Node3D.new()
 	cig_node.name = "Cigarette"
@@ -1750,44 +1759,6 @@ func _try_trigger_character_dialogue(player_pos: Vector3, dialogue_sys: Dialogue
 
 	# Identify character archetype & build dynamic dialogue dictionary
 	var char_name: String = closest_node.name
-	var role_title: String = "CYBERPUNK CITIZEN"
-	var dialogue_text: String = "Yeah? What do you want, stranger?"
-	var theme_hex: String = "#00FFD5"
-
-	# Archetype Branching
-	if "Fixer" in char_name:
-		role_title = "NET-FIXER / INFORMANT"
-		dialogue_text = "Yes, I'm a Fixer. Keep your voice down."
-		theme_hex = "#FF0033"
-	elif "Gang" in char_name:
-		var is_leader: bool = closest_node.get_meta("is_leader", false)
-		role_title = "PARKING LOT GANG LEADER" if is_leader else "PARKING LOT GANG MEMBER"
-		dialogue_text = "You're in our lot now. Watch your step." if is_leader else "Boss says we're watching you."
-		theme_hex = "#9900FF"
-	elif "NarrowStreet" in char_name:
-		role_title = "SOLITARY ALLEY RESIDENT"
-		dialogue_text = "This is my street. Mind your own business."
-		theme_hex = "#0066FF"
-	elif "Dancer" in char_name:
-		role_title = "PARK RAVE DANCER"
-		dialogue_text = "Can't talk, feeling the beat!"
-		theme_hex = "#FF00AA"
-	elif "Vendor" in char_name:
-		role_title = "STREET HAWKER"
-		dialogue_text = "Hot synth-noodles! Best prices in Night District!"
-		theme_hex = "#FF9900"
-	elif "Busker" in char_name:
-		role_title = "SYNTH BUSKER"
-		dialogue_text = "Throw some credits in the pod if you like the tune."
-		theme_hex = "#00FF88"
-	elif "Tech" in char_name:
-		role_title = "MAINTENANCE TECH"
-		dialogue_text = "Grid panel's shorting out. Stand back."
-		theme_hex = "#FFCC00"
-	elif "Jogger" in char_name:
-		role_title = "CYBER-RUNNER"
-		dialogue_text = "Outta the way! Keeping the heart rate at 180!"
-		theme_hex = "#00FFFF"
 
 	# Special multi-node branching conversation for Mr. Dodgy!
 	if "Dodgy" in char_name:
@@ -1848,6 +1819,45 @@ func _try_trigger_character_dialogue(player_pos: Vector3, dialogue_sys: Dialogue
 		}
 		dialogue_sys.start_dialogue_dict(dodgy_tree)
 		return true
+
+	var role_title: String = "CYBERPUNK CITIZEN"
+	var dialogue_text: String = "Yeah? What do you want, stranger?"
+	var theme_hex: String = "#00FFD5"
+
+	# Archetype Branching
+	if "Fixer" in char_name:
+		role_title = "NET-FIXER / INFORMANT"
+		dialogue_text = "Yes, I'm a Fixer. Keep your voice down."
+		theme_hex = "#FF0033"
+	elif "Gang" in char_name:
+		var is_leader: bool = closest_node.get_meta("is_leader", false)
+		role_title = "PARKING LOT GANG LEADER" if is_leader else "PARKING LOT GANG MEMBER"
+		dialogue_text = "You're in our lot now. Watch your step." if is_leader else "Boss says we're watching you."
+		theme_hex = "#9900FF"
+	elif "NarrowStreet" in char_name:
+		role_title = "SOLITARY ALLEY RESIDENT"
+		dialogue_text = "This is my street. Mind your own business."
+		theme_hex = "#0066FF"
+	elif "Dancer" in char_name:
+		role_title = "PARK RAVE DANCER"
+		dialogue_text = "Can't talk, feeling the beat!"
+		theme_hex = "#FF00AA"
+	elif "Vendor" in char_name:
+		role_title = "STREET HAWKER"
+		dialogue_text = "Hot synth-noodles! Best prices in Night District!"
+		theme_hex = "#FF9900"
+	elif "Busker" in char_name:
+		role_title = "SYNTH BUSKER"
+		dialogue_text = "Throw some credits in the pod if you like the tune."
+		theme_hex = "#00FF88"
+	elif "Tech" in char_name:
+		role_title = "MAINTENANCE TECH"
+		dialogue_text = "Grid panel's shorting out. Stand back."
+		theme_hex = "#FFCC00"
+	elif "Jogger" in char_name:
+		role_title = "CYBER-RUNNER"
+		dialogue_text = "Outta the way! Keeping the heart rate at 180!"
+		theme_hex = "#00FFFF"
 
 	var dialogue_dict: Dictionary = {
 		"speaker_display_name": char_name.to_upper(),
