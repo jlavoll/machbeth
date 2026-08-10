@@ -1,0 +1,16 @@
+{
+	"speaker_display_name": "PARK DANCER",
+	"speaker_subtitle": "NEON RAVE LOCAL",
+	"speaker_color": "#FF00AA",
+	"nodes": {
+		"start": {
+			"text": "Can't talk, feeling the beat!",
+			"choices": [
+				{
+					"text": "[OK]",
+					"target": "exit"
+				}
+			]
+		}
+	}
+}

@@ -1758,208 +1758,46 @@ func _try_trigger_character_dialogue(player_pos: Vector3, dialogue_sys: Dialogue
 	if closest_node == null:
 		return false
 
-	# Identify character archetype & build dynamic dialogue dictionary
+	# Identify character archetype & load dedicated JSON dialogue asset
 	var char_name: String = closest_node.name
 	var is_dodgy_meta: bool = closest_node.get_meta("is_dodgy", false)
-	print("[DIALOGUE INTERACT] Nearest node: ", char_name, " (is_dodgy=", is_dodgy_meta, ") at dist=", min_dist)
+	var is_gang_meta: bool = closest_node.get_meta("is_gang_member", false) or "Gang" in char_name
+	var is_leader: bool = closest_node.get_meta("is_leader", false)
+	
+	var json_path: String = ""
 
-	# Special multi-node branching conversation for Mr. Dodgy!
 	if "Dodgy" in char_name or is_dodgy_meta:
-		var dodgy_tree: Dictionary = {
-			"speaker_display_name": "MR. DODGY",
-			"speaker_subtitle": "SHADY PARK LOCAL",
-			"speaker_color": "#FF5500",
-			"nodes": {
-				"start": {
-					"text": "Hey... got a light, stranger? Or maybe a few credits to spare?",
-					"choices": [
-						{
-							"text": "\"Who are you?\"",
-							"target": "who_are_you"
-						},
-						{
-							"text": "\"What are you doing hanging under this lamp?\"",
-							"target": "hanging_around"
-						},
-						{
-							"text": "\"Sorry, I've got to go.\"",
-							"target": "exit"
-						}
-					]
-				},
-				"who_are_you": {
-					"text": "Name's Dodgy. I keep an eye on the park... and the park keeps an eye on me. Quiet corner, if you don't mind the neon smoke.",
-					"choices": [
-						{
-							"text": "\"What do you know about this city?\"",
-							"target": "city_secrets"
-						},
-						{
-							"text": "\"Take care, Dodgy.\"",
-							"target": "exit"
-						}
-					]
-				},
-				"hanging_around": {
-					"text": "Best shadow in the district. The light keeps the corporate drones away, and the dancers over there keep the music loud enough to drown out bad thoughts.",
-					"choices": [
-						{
-							"text": "\"Fair enough. Stay safe.\"",
-							"target": "exit"
-						}
-					]
-				},
-				"city_secrets": {
-					"text": "Secrets? Plenty. Watch out for the parking lot boys in red and purple... and don't drive into the canal unless you like swimming with synth-eels.",
-					"choices": [
-						{
-							"text": "\"Thanks for the tip. Goodbye.\"",
-							"target": "exit"
-						}
-					]
-				}
-			}
-		}
-		dialogue_sys.start_dialogue_dict(dodgy_tree)
+		json_path = "res://scripts/mr_dodgy.json"
+	elif is_gang_meta:
+		json_path = "res://scripts/gang_leader.json" if is_leader else "res://scripts/gang_member.json"
+	elif "Fixer" in char_name:
+		json_path = "res://scripts/fixer.json"
+	elif "NarrowStreet" in char_name:
+		json_path = "res://scripts/narrow_street_resident.json"
+	elif "Dancer" in char_name:
+		json_path = "res://scripts/park_dancer.json"
+	elif "Vendor" in char_name:
+		json_path = "res://scripts/street_vendor.json"
+	elif "Busker" in char_name:
+		json_path = "res://scripts/street_busker.json"
+	elif "Tech" in char_name:
+		json_path = "res://scripts/tech_drone.json"
+	elif "Jogger" in char_name:
+		json_path = "res://scripts/cyber_jogger.json"
+
+	if json_path != "" and FileAccess.file_exists(json_path):
+		print("[DIALOGUE INTERACT] Launching dialogue JSON: ", json_path)
+		dialogue_sys.start_dialogue(json_path)
 		return true
 
-	# Special multi-node branching conversation for Gang Leader & Gang Members!
-	var is_gang_meta: bool = closest_node.get_meta("is_gang_member", false) or "Gang" in char_name
-	if is_gang_meta:
-		var is_leader: bool = closest_node.get_meta("is_leader", false)
-		if is_leader:
-			var leader_tree: Dictionary = {
-				"speaker_display_name": "GANG LEADER",
-				"speaker_subtitle": "PARKING LOT SYNDICATE BOSS",
-				"speaker_color": "#FF0055",
-				"nodes": {
-					"start": {
-						"text": "You got nerve walking right into our turf on foot. What's your business here?",
-						"choices": [
-							{
-								"text": "\"Whose turf is this?\"",
-								"target": "turf_info"
-							},
-							{
-								"text": "\"Just passing through. No trouble.\"",
-								"target": "no_trouble"
-							},
-							{
-								"text": "\"Back off.\"",
-								"target": "threaten"
-							}
-						]
-					},
-					"turf_info": {
-						"text": "This parking lot belongs to the Neon Syndicate. We run the asphalt in this block. You drive clean, we don't have a problem.",
-						"choices": [
-							{
-								"text": "\"Understood. I'll be moving along.\"",
-								"target": "exit"
-							}
-						]
-					},
-					"no_trouble": {
-						"text": "Keep it that way. My crew is watching every step you take.",
-						"choices": [
-							{
-								"text": "\"[Leave quietly]\"",
-								"target": "exit"
-							}
-						]
-					},
-					"threaten": {
-						"text": "Big words for someone standing surrounded. Don't test me, stranger.",
-						"choices": [
-							{
-								"text": "\"[Step back]\"",
-								"target": "exit"
-							}
-						]
-					}
-				}
-			}
-			dialogue_sys.start_dialogue_dict(leader_tree)
-			return true
-		else:
-			var member_tree: Dictionary = {
-				"speaker_display_name": "GANG MEMBER",
-				"speaker_subtitle": "PARKING LOT LURKER",
-				"speaker_color": "#AA00FF",
-				"nodes": {
-					"start": {
-						"text": "Boss is keeping an eye on you. You better talk to him before you start wandering around.",
-						"choices": [
-							{
-								"text": "\"Who's the boss?\"",
-								"target": "boss_info"
-							},
-							{
-								"text": "\"Alright, alright.\"",
-								"target": "exit"
-							}
-						]
-					},
-					"boss_info": {
-						"text": "The one standing out in front with the brightest glow. Go speak with him.",
-						"choices": [
-							{
-								"text": "\"Got it.\"",
-								"target": "exit"
-							}
-						]
-					}
-				}
-			}
-			dialogue_sys.start_dialogue_dict(member_tree)
-			return true
-
-	var role_title: String = "CYBERPUNK CITIZEN"
-	var dialogue_text: String = "Yeah? What do you want, stranger?"
-	var theme_hex: String = "#00FFD5"
-
-	# Archetype Branching
-	if "Fixer" in char_name:
-		role_title = "NET-FIXER / INFORMANT"
-		dialogue_text = "Yes, I'm a Fixer. Keep your voice down."
-		theme_hex = "#FF0033"
-	elif "Gang" in char_name:
-		var is_leader: bool = closest_node.get_meta("is_leader", false)
-		role_title = "PARKING LOT GANG LEADER" if is_leader else "PARKING LOT GANG MEMBER"
-		dialogue_text = "You're in our lot now. Watch your step." if is_leader else "Boss says we're watching you."
-		theme_hex = "#9900FF"
-	elif "NarrowStreet" in char_name:
-		role_title = "SOLITARY ALLEY RESIDENT"
-		dialogue_text = "This is my street. Mind your own business."
-		theme_hex = "#0066FF"
-	elif "Dancer" in char_name:
-		role_title = "PARK RAVE DANCER"
-		dialogue_text = "Can't talk, feeling the beat!"
-		theme_hex = "#FF00AA"
-	elif "Vendor" in char_name:
-		role_title = "STREET HAWKER"
-		dialogue_text = "Hot synth-noodles! Best prices in Night District!"
-		theme_hex = "#FF9900"
-	elif "Busker" in char_name:
-		role_title = "SYNTH BUSKER"
-		dialogue_text = "Throw some credits in the pod if you like the tune."
-		theme_hex = "#00FF88"
-	elif "Tech" in char_name:
-		role_title = "MAINTENANCE TECH"
-		dialogue_text = "Grid panel's shorting out. Stand back."
-		theme_hex = "#FFCC00"
-	elif "Jogger" in char_name:
-		role_title = "CYBER-RUNNER"
-		dialogue_text = "Outta the way! Keeping the heart rate at 180!"
-		theme_hex = "#00FFFF"
-
-	var dialogue_dict: Dictionary = {
+	# Fallback generic citizen dialogue dictionary if no specific JSON file exists
+	var fallback_dict: Dictionary = {
 		"speaker_display_name": char_name.to_upper(),
-		"speaker_subtitle": role_title,
-		"speaker_color": theme_hex,
+		"speaker_subtitle": "CYBERPUNK CITIZEN",
+		"speaker_color": "#00FFD5",
 		"nodes": {
 			"start": {
-				"text": dialogue_text,
+				"text": "Yeah? What do you want, stranger?",
 				"choices": [
 					{
 						"text": "[OK]",
@@ -1969,6 +1807,5 @@ func _try_trigger_character_dialogue(player_pos: Vector3, dialogue_sys: Dialogue
 			}
 		}
 	}
-
-	dialogue_sys.start_dialogue_dict(dialogue_dict)
+	dialogue_sys.start_dialogue_dict(fallback_dict)
 	return true

@@ -1,0 +1,16 @@
+{
+	"speaker_display_name": "NET-FIXER",
+	"speaker_subtitle": "INFORMANT | SECTOR 4",
+	"speaker_color": "#FF0033",
+	"nodes": {
+		"start": {
+			"text": "Yes, I'm a Fixer. Keep your voice down — eyes are everywhere in this corridor.",
+			"choices": [
+				{
+					"text": "[OK]",
+					"target": "exit"
+				}
+			]
+		}
+	}
+}

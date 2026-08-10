@@ -1,0 +1,16 @@
+{
+	"speaker_display_name": "MAINTENANCE TECH",
+	"speaker_subtitle": "GRID REPAIR DRONE",
+	"speaker_color": "#FFCC00",
+	"nodes": {
+		"start": {
+			"text": "Grid panel's shorting out. Stand back.",
+			"choices": [
+				{
+					"text": "[OK]",
+					"target": "exit"
+				}
+			]
+		}
+	}
+}

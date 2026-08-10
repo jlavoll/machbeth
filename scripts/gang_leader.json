@@ -1,0 +1,51 @@
+{
+	"speaker_display_name": "GANG LEADER",
+	"speaker_subtitle": "PARKING LOT SYNDICATE BOSS",
+	"speaker_color": "#FF0055",
+	"nodes": {
+		"start": {
+			"text": "You got nerve walking right into our turf on foot. What's your business here?",
+			"choices": [
+				{
+					"text": "\"Whose turf is this?\"",
+					"target": "turf_info"
+				},
+				{
+					"text": "\"Just passing through. No trouble.\"",
+					"target": "no_trouble"
+				},
+				{
+					"text": "\"Back off.\"",
+					"target": "threaten"
+				}
+			]
+		},
+		"turf_info": {
+			"text": "This parking lot belongs to the Neon Syndicate. We run the asphalt in this block. You drive clean, we don't have a problem.",
+			"choices": [
+				{
+					"text": "\"Understood. I'll be moving along.\"",
+					"target": "exit"
+				}
+			]
+		},
+		"no_trouble": {
+			"text": "Keep it that way. My crew is watching every step you take.",
+			"choices": [
+				{
+					"text": "\"[Leave quietly]\"",
+					"target": "exit"
+				}
+			]
+		},
+		"threaten": {
+			"text": "Big words for someone standing surrounded. Don't test me, stranger.",
+			"choices": [
+				{
+					"text": "\"[Step back]\"",
+					"target": "exit"
+				}
+			]
+		}
+	}
+}

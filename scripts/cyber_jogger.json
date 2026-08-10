@@ -1,0 +1,16 @@
+{
+	"speaker_display_name": "CYBER-RUNNER",
+	"speaker_subtitle": "DISTRICT JOGGER",
+	"speaker_color": "#00FFFF",
+	"nodes": {
+		"start": {
+			"text": "Outta the way! Keeping the heart rate at 180!",
+			"choices": [
+				{
+					"text": "[OK]",
+					"target": "exit"
+				}
+			]
+		}
+	}
+}

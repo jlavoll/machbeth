@@ -1,0 +1,16 @@
+{
+	"speaker_display_name": "SYNTH BUSKER",
+	"speaker_subtitle": "PARK MUSICIAN",
+	"speaker_color": "#00FF88",
+	"nodes": {
+		"start": {
+			"text": "Throw some credits in the pod if you like the tune.",
+			"choices": [
+				{
+					"text": "[OK]",
+					"target": "exit"
+				}
+			]
+		}
+	}
+}

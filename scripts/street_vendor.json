@@ -1,0 +1,16 @@
+{
+	"speaker_display_name": "STREET HAWKER",
+	"speaker_subtitle": "SYNTH-FOOD TRADER",
+	"speaker_color": "#FF9900",
+	"nodes": {
+		"start": {
+			"text": "Hot synth-noodles! Best prices in Night District!",
+			"choices": [
+				{
+					"text": "[OK]",
+					"target": "exit"
+				}
+			]
+		}
+	}
+}

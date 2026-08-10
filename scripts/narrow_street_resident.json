@@ -1,0 +1,16 @@
+{
+	"speaker_display_name": "ALLEY LOCAL",
+	"speaker_subtitle": "NARROW STREET RESIDENT",
+	"speaker_color": "#0066FF",
+	"nodes": {
+		"start": {
+			"text": "This is my street. Mind your own business.",
+			"choices": [
+				{
+					"text": "[OK]",
+					"target": "exit"
+				}
+			]
+		}
+	}
+}

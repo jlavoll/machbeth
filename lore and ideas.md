@@ -1,5 +1,41 @@
 # CYBERPUNK MACBETH: LORE & DEVELOPMENT ROADMAP
 
+
+todo:
+all dialogue things should be in json files simialr to the one that is triggered by the letter "t"
+
+also:
+Well, acktually: to make this system far more scalable, readable, and performant, the biggest win lies in moving away from a single monolithic script (PedestrianSystem.gd) that handles generation, state management, movement, geometry checks, array filtering, and UI dialogue for every archetype.  Here are the key structural improvements for refactoring:1. Extract Archetypes into Dedicated State Classes or Sub-NodesRight now, _process and _update_archetype_behaviors iterate through separate tracking arrays (active_pedestrians, active_park_dancers, active_fixers, etc.) and branch using meta-variables.  The Refactor: Create a base PedestrianAgent class (extending CharacterBody3D) with its own internal State Machine (or State pattern sub-nodes).Why: Each agent handles its own physics, timer updates, and state transitions locally (_physics_process). PedestrianSystem transitions into a clean manager/factory responsible solely for spawning, pooling, and spatial distribution.  res://
+├── scripts/
+│   ├── pedestrian_system.gd       # Manager & Pooling only
+│   ├── agents/
+│   │   ├── pedestrian_agent.gd    # Base Agent (Movement, Flashlight, Health)
+│   │   ├── states/
+│   │   │   ├── state_idle.gd
+│   │   │   ├── state_walk.gd
+│   │   │   ├── state_evade.gd
+│   │   │   └── state_queue.gd
+2. Replace Direct Meta Checking with Strongly Typed Data & EnumsThe system currently relies heavily on string dictionary keys and untyped metadata via set_meta() and get_meta() (e.g., get_meta("is_tipsy_stumbler"), get_meta("stroll_state")).  The Refactor: Replace metadata dictionaries with strongly typed @export properties or custom Resource definitions (PedestrianArchetypeData).Why: Type safety prevents silent runtime typo bugs, improves autocomplete performance in GDScript, and reduces the memory overhead of GDScript Variant metadata dictionaries.
+
+3. Replace Raycasts in _process with Spatial Collision TriggersDuring rain or shelter-seeking, every pedestrian casts 8 raycasts in 360 degrees every single frame:  GDScript# Current implementation runs 8 raycasts per active pedestrian per frame
+for check_angle in [0.0, 45.0, 90.0, 135.0, 180.0, 225.0, 270.0, 315.0]:
+    var query = PhysicsRayQueryParameters3D.create(...)
+    var result = space_state.intersect_ray(query)
+The Refactor: Place Area3D nodes ("Shelter Zones") under building overhangs and bus stops.Why: Instead of hundreds of physics raycasts per frame across the crowd, pedestrians simply query the nearest ShelterZone center or respond when entering/exiting an Area3D trigger, eliminating frame drops during weather transitions.
+
+4. Decouple Dialogue Trees into Data Resources (.tres or JSON)Currently, complex dialogue dictionaries like Mr. Dodgy's and the Gang Leader's are built inline as hardcoded dictionaries inside PedestrianSystem.gd.  The Refactor: Extract dialogue into standalone JSON files or custom DialogueResource assets.Why: Keeps code clean and allows you to edit or localize dialogue without modifying NPC logic.
+
+5. Use Multimesh / Server-Driven rendering for distant crowdsIf you plan to scale the crowd size beyond 50+ simultaneous pedestrians, individual Node3D hierarchies (Body + Head + Flashlight + SpotLight) will eventually hit node graph processing limits.  The Refactor: Group low-priority distant pedestrians into a MultiMeshInstance3D or handle movement directly on the RenderingServer and PhysicsServer3D.
+
+
+
+
+
+
+
+
+
+
 A synthwave/cyberpunk 3D arcade driving & tactical combat adaptation of Shakespeare’s *Macbeth*, built in **Godot 4**.
 
 ---

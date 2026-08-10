@@ -1,0 +1,29 @@
+{
+	"speaker_display_name": "GANG MEMBER",
+	"speaker_subtitle": "PARKING LOT LURKER",
+	"speaker_color": "#AA00FF",
+	"nodes": {
+		"start": {
+			"text": "Boss is keeping an eye on you. You better talk to him before you start wandering around.",
+			"choices": [
+				{
+					"text": "\"Who's the boss?\"",
+					"target": "boss_info"
+				},
+				{
+					"text": "\"Alright, alright.\"",
+					"target": "exit"
+				}
+			]
+		},
+		"boss_info": {
+			"text": "The one standing out in front with the brightest glow. Go speak with him.",
+			"choices": [
+				{
+					"text": "\"Got it.\"",
+					"target": "exit"
+				}
+			]
+		}
+	}
+}
