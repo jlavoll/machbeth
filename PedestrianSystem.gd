@@ -1758,39 +1758,65 @@ func _try_trigger_character_dialogue(player_pos: Vector3, dialogue_sys: Dialogue
 		role_title = "NET-FIXER / INFORMANT"
 		dialogue_text = "Yes, I'm a Fixer. Keep your voice down."
 		theme_hex = "#FF0033"
-	elif "Dodgy" in char_name:
-		role_title = "SHADY PARK LOCAL"
-		dialogue_text = "Got a light? No? Then keep moving, pal."
-		theme_hex = "#FF5500"
-	elif "Gang" in char_name:
-		var is_leader: bool = closest_node.get_meta("is_leader", false)
-		role_title = "PARKING LOT GANG LEADER" if is_leader else "PARKING LOT GANG MEMBER"
-		dialogue_text = "You're in our lot now. Watch your step." if is_leader else "Boss says we're watching you."
-		theme_hex = "#9900FF"
-	elif "NarrowStreet" in char_name:
-		role_title = "SOLITARY ALLEY RESIDENT"
-		dialogue_text = "This is my street. Mind your own business."
-		theme_hex = "#0066FF"
-	elif "Dancer" in char_name:
-		role_title = "PARK RAVE DANCER"
-		dialogue_text = "Can't talk, feeling the beat!"
-		theme_hex = "#FF00AA"
-	elif "Vendor" in char_name:
-		role_title = "STREET HAWKER"
-		dialogue_text = "Hot synth-noodles! Best prices in Night District!"
-		theme_hex = "#FF9900"
-	elif "Busker" in char_name:
-		role_title = "SYNTH BUSKER"
-		dialogue_text = "Throw some credits in the pod if you like the tune."
-		theme_hex = "#00FF88"
-	elif "Tech" in char_name:
-		role_title = "MAINTENANCE TECH"
-		dialogue_text = "Grid panel's shorting out. Stand back."
-		theme_hex = "#FFCC00"
-	elif "Jogger" in char_name:
-		role_title = "CYBER-RUNNER"
-		dialogue_text = "Outta the way! Keeping the heart rate at 180!"
-		theme_hex = "#00FFFF"
+	# Special multi-node branching conversation for Mr. Dodgy!
+	if "Dodgy" in char_name:
+		var dodgy_tree: Dictionary = {
+			"speaker_display_name": "MR. DODGY",
+			"speaker_subtitle": "SHADY PARK LOCAL",
+			"speaker_color": "#FF5500",
+			"nodes": {
+				"start": {
+					"text": "Hey... got a light, stranger? Or maybe a few credits to spare?",
+					"choices": [
+						{
+							"text": "\"Who are you?\"",
+							"target": "who_are_you"
+						},
+						{
+							"text": "\"What are you doing hanging under this lamp?\"",
+							"target": "hanging_around"
+						},
+						{
+							"text": "\"Sorry, I've got to go.\"",
+							"target": "exit"
+						}
+					]
+				},
+				"who_are_you": {
+					"text": "Name's Dodgy. I keep an eye on the park... and the park keeps an eye on me. Quiet corner, if you don't mind the neon smoke.",
+					"choices": [
+						{
+							"text": "\"What do you know about this city?\"",
+							"target": "city_secrets"
+						},
+						{
+							"text": "\"Take care, Dodgy.\"",
+							"target": "exit"
+						}
+					]
+				},
+				"hanging_around": {
+					"text": "Best shadow in the district. The light keeps the corporate drones away, and the dancers over there keep the music loud enough to drown out bad thoughts.",
+					"choices": [
+						{
+							"text": "\"Fair enough. Stay safe.\"",
+							"target": "exit"
+						}
+					]
+				},
+				"city_secrets": {
+					"text": "Secrets? Plenty. Watch out for the parking lot boys in red and purple... and don't drive into the canal unless you like swimming with synth-eels.",
+					"choices": [
+						{
+							"text": "\"Thanks for the tip. Goodbye.\"",
+							"target": "exit"
+						}
+					]
+				}
+			}
+		}
+		dialogue_sys.start_dialogue_dict(dodgy_tree)
+		return true
 
 	var dialogue_dict: Dictionary = {
 		"speaker_display_name": char_name.to_upper(),
