@@ -84,8 +84,70 @@ func generate_city_from_seed(target_seed: int) -> void:
 
 	_build_ground_and_grid()
 	_generate_city_grid()
+	_spawn_exit_points()
 	_spawn_food_trucks()
 	_eject_entities_from_water()
+
+# Spawns glowing highway exit gates at the 4 city edge boundaries (North, South, East, West)
+func _spawn_exit_points() -> void:
+	var half_x: float = city_size_x / 2.0
+	var half_z: float = city_size_z / 2.0
+	
+	# Edge road locations (Broadway or central street corridor)
+	var exits = [
+		{"dir": "NORTH", "pos": Vector3(active_broadway_x, 0.0, -half_z + 10.0), "size": Vector3(30.0, 8.0, 4.0), "color": Color(0.0, 0.85, 1.0)}, # Cyan
+		{"dir": "SOUTH", "pos": Vector3(active_broadway_x, 0.0, half_z - 10.0), "size": Vector3(30.0, 8.0, 4.0), "color": Color(1.0, 0.0, 0.8)}, # Magenta
+		{"dir": "WEST", "pos": Vector3(-half_x + 10.0, 0.0, active_broadway_z), "size": Vector3(4.0, 8.0, 30.0), "color": Color(0.0, 1.0, 0.4)}, # Emerald
+		{"dir": "EAST", "pos": Vector3(half_x - 10.0, 0.0, active_broadway_z), "size": Vector3(4.0, 8.0, 30.0), "color": Color(1.0, 0.8, 0.0)}  # Amber
+	]
+
+	for exit_info in exits:
+		var gate = Node3D.new()
+		gate.name = "ExitPoint_" + exit_info["dir"]
+		gate.position = exit_info["pos"]
+
+		# Holographic glowing arch portal mesh
+		var arch_mesh = MeshInstance3D.new()
+		var box = BoxMesh.new()
+		box.size = exit_info["size"]
+		arch_mesh.mesh = box
+		arch_mesh.position = Vector3(0.0, exit_info["size"].y / 2.0, 0.0)
+
+		var mat = StandardMaterial3D.new()
+		mat.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
+		mat.albedo_color = Color(exit_info["color"].r, exit_info["color"].g, exit_info["color"].b, 0.35)
+		mat.emission_enabled = true
+		mat.emission = exit_info["color"]
+		mat.emission_energy_multiplier = 4.0
+		arch_mesh.material_override = mat
+		gate.add_child(arch_mesh)
+
+		# Light source for environmental glow
+		var light = OmniLight3D.new()
+		light.light_color = exit_info["color"]
+		light.light_energy = 8.0
+		light.omni_range = 25.0
+		light.position = Vector3(0.0, exit_info["size"].y / 2.0, 0.0)
+		gate.add_child(light)
+
+		add_child(gate)
+
+# Returns edge spawn location in local coordinates given entry direction ("NORTH", "SOUTH", "EAST", "WEST")
+func get_edge_spawn_position(entry_from_direction: String) -> Vector3:
+	var half_x: float = city_size_x / 2.0 - 25.0
+	var half_z: float = city_size_z / 2.0 - 25.0
+	
+	# If entering from NORTH (exited North boundary), spawn at SOUTH edge
+	match entry_from_direction:
+		"NORTH":
+			return Vector3(active_broadway_x, 1.0, half_z)
+		"SOUTH":
+			return Vector3(active_broadway_x, 1.0, -half_z)
+		"WEST":
+			return Vector3(half_x, 1.0, active_broadway_z)
+		"EAST":
+			return Vector3(-half_x, 1.0, active_broadway_z)
+	return Vector3(0.0, 1.0, 0.0)
 
 # Spawns between 2 and 5 cyberpunk food trucks parked along road edges next to parks & parking lots
 func _spawn_food_trucks() -> void:

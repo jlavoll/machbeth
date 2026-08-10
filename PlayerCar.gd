@@ -337,6 +337,8 @@ func _physics_process(delta: float) -> void:
 	velocity = forward_dir * current_speed
 	move_and_slide()
 
+	_check_city_edge_transition()
+
 	# --------------------------------------------------------------------------
 	# 7. BRAKE LIGHT — dim while pressing forward, full brightness otherwise
 	# --------------------------------------------------------------------------
@@ -463,5 +465,44 @@ func on_foot_reenter(cam: Camera3D, foot_zoom: float = 0.0) -> void:
 
 	# Place camera at the correct driving position for the new FOV
 	_update_camera_transform()
+
+# Checks if car reached edge exit boundary (600m city size = +-290m limit)
+func _check_city_edge_transition() -> void:
+	var city_gen = get_parent().get_node_or_null("CityGenerator")
+	if not is_instance_valid(city_gen):
+		return
+
+	var size_x: float = city_gen.city_size_x
+	var size_z: float = city_gen.city_size_z
+	var half_x: float = size_x / 2.0 - 5.0 # Boundary trigger edge threshold (295m for 600m map)
+	var half_z: float = size_z / 2.0 - 5.0
+
+	var pos: Vector3 = global_position
+	var crossed_dir: String = ""
+	var new_seed: int = city_gen.city_seed
+
+	if pos.z < -half_z:
+		crossed_dir = "NORTH"
+		new_seed += 1
+	elif pos.z > half_z:
+		crossed_dir = "SOUTH"
+		new_seed -= 1
+	elif pos.x > half_x:
+		crossed_dir = "EAST"
+		new_seed += 10
+	elif pos.x < -half_x:
+		crossed_dir = "WEST"
+		new_seed -= 10
+
+	if crossed_dir != "":
+		print("[CITY SEED EXIT] Player crossed ", crossed_dir, " exit! Changing city seed from ", city_gen.city_seed, " to ", new_seed)
+		city_gen.regenerate_city(new_seed)
+		
+		var spawn_pos: Vector3 = city_gen.get_edge_spawn_position(crossed_dir)
+		global_position = spawn_pos
+		
+		# If walking on foot during exit transition, update on-foot player position too
+		if is_on_foot and is_instance_valid(on_foot_node):
+			on_foot_node.global_position = spawn_pos
 
 	print("[ON FOOT] Player re-entered car | FOV reset to ", snappedf(camera.fov, 0.1))
