@@ -16,6 +16,16 @@ class_name PedestrianSystem
 var active_pedestrians: Array[Node3D] = []
 var active_park_dancers: Array[Node3D] = []
 var active_dodgy_characters: Array[Node3D] = []
+var active_gang_members: Array[Node3D] = []
+var active_narrow_street_residents: Array[Node3D] = []
+
+# Gang color themes (each parking lot gang picks 1 theme: Blood Red, Deep Purple, Electric Blue, Toxic Green)
+var gang_color_themes: Array[Color] = [
+	Color(0.9, 0.1, 0.1),  # Blood Crimson
+	Color(0.6, 0.1, 0.9),  # Cyber Purple
+	Color(0.0, 0.4, 1.0),  # Cobalt Blue
+	Color(0.2, 0.9, 0.1)   # Toxic Acid Green
+]
 
 # Mesh templates
 var body_mesh_template: CapsuleMesh
@@ -51,6 +61,8 @@ func _ready() -> void:
 	_create_pedestrian_templates()
 	_spawn_initial_pedestrians()
 	call_deferred("_spawn_park_dance_groups")
+	call_deferred("_spawn_parking_lot_gangs")
+	call_deferred("_spawn_narrow_street_residents")
 
 func _create_pedestrian_templates() -> void:
 	# Slim Cylinder/Capsule Body (0.3m diameter, 1.2m tall)
@@ -559,6 +571,8 @@ func _manage_food_truck_queues(delta: float) -> void:
 				candidate_ped.set_meta("queue_personality", personality)
 
 	_update_park_dancers(delta)
+	_update_parking_lot_gangs(delta)
+	_update_narrow_street_residents(delta)
 
 # ==============================================================================
 # UNIQUE PARK DANCE GROUPS (Circle / Line / Partner Couples)
@@ -904,3 +918,430 @@ func _spawn_dodgy_park_character(park: Rect2) -> void:
 	add_child(ped_node)
 	active_dodgy_characters.append(ped_node)
 	print("[PARK DANCERS] Spawned DodgyParkCharacter at ", char_pos, " near streetlamp ", lamp_pos)
+
+# ==============================================================================
+# INDEPENDENT PARKING LOT GANG SYSTEM
+# ==============================================================================
+
+func _spawn_parking_lot_gangs() -> void:
+	var city_gen = $"../CityGenerator"
+	if not is_instance_valid(city_gen) or city_gen.get("active_lot_boxes") == null:
+		return
+
+	var lot_boxes: Array[Rect2] = city_gen.active_lot_boxes
+	if lot_boxes.is_empty():
+		return
+
+	# Clear existing gang members if any
+	for member in active_gang_members:
+		if is_instance_valid(member):
+			member.queue_free()
+	active_gang_members.clear()
+
+	var color_idx: int = 0
+	for lot in lot_boxes:
+		# Pick 1 unified color theme for this gang (Blood Red, Cyber Purple, etc.)
+		var theme_color: Color = gang_color_themes[color_idx % gang_color_themes.size()]
+		color_idx += 1
+
+		var center_2d: Vector2 = lot.get_center()
+		var lot_center: Vector3 = Vector3(center_2d.x, 0.0, center_2d.y)
+		var gang_size: int = rng.randi_range(4, 7)
+
+		# Spawn Leader + Members hanging around parking lot
+		for i in range(gang_size):
+			var is_leader: bool = (i == 0)
+			
+			# Gang member position offset around lot
+			var angle: float = (float(i) / float(gang_size)) * TAU + rng.randf_range(-0.3, 0.3)
+			var radius: float = rng.randf_range(3.0, 8.0) if not is_leader else rng.randf_range(1.0, 3.0)
+			var member_pos: Vector3 = lot_center + Vector3(cos(angle) * radius, 0.0, sin(angle) * radius)
+
+			var ped_node = CharacterBody3D.new()
+			ped_node.name = "GangLeader" if is_leader else "GangMember"
+			ped_node.global_position = member_pos
+
+			# Body Material: Dark tactical jacket
+			var body_mat = StandardMaterial3D.new()
+			body_mat.albedo_color = Color(0.05, 0.05, 0.07)
+
+			# Head Material: Shared gang color theme! Leader is significantly brighter/radiant!
+			var head_mat = StandardMaterial3D.new()
+			head_mat.albedo_color = theme_color
+			head_mat.emission_enabled = true
+			head_mat.emission = theme_color
+			head_mat.emission_energy_multiplier = 7.0 if is_leader else 2.5 # Leader is much brighter!
+
+			# Body Mesh Instance
+			var body_inst = MeshInstance3D.new()
+			body_inst.mesh = body_mesh_template
+			body_inst.material_override = body_mat
+			body_inst.position = Vector3(0.0, 0.6, 0.0)
+			ped_node.add_child(body_inst)
+
+			# Head Mesh Instance (Leader slightly larger head sphere)
+			var head_inst = MeshInstance3D.new()
+			if is_leader:
+				var leader_head_mesh = SphereMesh.new()
+				leader_head_mesh.radius = 0.22
+				leader_head_mesh.height = 0.44
+				head_inst.mesh = leader_head_mesh
+			else:
+				head_inst.mesh = head_mesh_template
+
+			head_inst.material_override = head_mat
+			head_inst.position = Vector3(0.0, 1.35 if not is_leader else 1.4, 0.0)
+			ped_node.add_child(head_inst)
+
+			# Collision Capsule
+			var col_shape = CollisionShape3D.new()
+			var cap_shape = CapsuleShape3D.new()
+			cap_shape.radius = 0.25
+			cap_shape.height = 1.5
+			col_shape.shape = cap_shape
+			col_shape.position = Vector3(0.0, 0.75, 0.0)
+			ped_node.add_child(col_shape)
+
+			# Gang AI metadata
+			ped_node.set_meta("is_gang_member", true)
+			ped_node.set_meta("is_leader", is_leader)
+			ped_node.set_meta("lot_rect", lot)
+			ped_node.set_meta("lot_center", lot_center)
+			ped_node.set_meta("home_pos", member_pos)
+			
+			# Staggered interest delay: Leader walks FIRST (1.2s delay); followers start independently at random times (3.0s to 7.5s)
+			ped_node.set_meta("interest_delay", 1.2 if is_leader else rng.randf_range(3.0, 7.5))
+			ped_node.set_meta("interest_timer", 0.0)
+			
+			# Individual speed variation: Leader moves with purposeful pace (0.45x walk_speed), members vary between 0.25x and 0.55x walk_speed
+			var member_speed: float = walk_speed * (0.45 if is_leader else rng.randf_range(0.25, 0.55))
+			ped_node.set_meta("move_speed", member_speed)
+
+			# Lurk distance stop offset (Leader comes close 2.2m; members lurk behind at 5.0m - 11.0m)
+			ped_node.set_meta("lurk_stop_distance", 2.2 if is_leader else rng.randf_range(5.0, 11.0))
+			ped_node.set_meta("walk_phase", rng.randf_range(0.0, TAU))
+
+			# Face towards lot center initially
+			ped_node.look_at(lot_center, Vector3.UP)
+
+			add_child(ped_node)
+			active_gang_members.append(ped_node)
+
+func _update_parking_lot_gangs(delta: float) -> void:
+	var player_pos: Vector3 = _get_player_world_position()
+
+	for member in active_gang_members:
+		if not is_instance_valid(member):
+			continue
+
+		var lot: Rect2 = member.get_meta("lot_rect", Rect2())
+		var home_pos: Vector3 = member.get_meta("home_pos", Vector3.ZERO)
+		var is_leader: bool = member.get_meta("is_leader", false)
+		var delay_limit: float = member.get_meta("interest_delay", 3.0)
+		var lurk_dist: float = member.get_meta("lurk_stop_distance", 6.0)
+		var current_speed: float = member.get_meta("move_speed", walk_speed * 0.35)
+
+		# Check if player is inside this parking lot (2D Rect2 check)
+		var player_in_lot: bool = lot.has_point(Vector2(player_pos.x, player_pos.z))
+
+		var interest_timer: float = member.get_meta("interest_timer", 0.0)
+		if player_in_lot:
+			interest_timer += delta
+		else:
+			# Player left parking lot: interest cools off
+			interest_timer = move_toward(interest_timer, 0.0, delta * 1.5)
+		member.set_meta("interest_timer", interest_timer)
+
+		var is_interested: bool = interest_timer >= delay_limit
+		var target_dest: Vector3 = home_pos
+
+		if is_interested:
+			# Calculate vector from member to player
+			var dist_to_player: float = member.global_position.distance_to(player_pos)
+			if dist_to_player > lurk_dist:
+				# Walk towards player until reaching assigned lurking distance limit
+				var approach_dir: Vector3 = (player_pos - member.global_position).normalized()
+				approach_dir.y = 0.0
+				target_dest = member.global_position + approach_dir * 2.0
+				
+				var move_dir: Vector3 = (target_dest - member.global_position).normalized()
+				member.velocity = move_dir * current_speed
+				member.move_and_slide()
+
+				# Face player while approaching
+				var look_target: Vector3 = Vector3(player_pos.x, member.global_position.y, player_pos.z)
+				if member.global_position.distance_to(look_target) > 0.1:
+					member.look_at(look_target, Vector3.UP)
+			else:
+				# Reached lurking distance: stop and stare at player menacingly
+				member.velocity = Vector3.ZERO
+				var look_target: Vector3 = Vector3(player_pos.x, member.global_position.y, player_pos.z)
+				if member.global_position.distance_to(look_target) > 0.1:
+					member.look_at(look_target, Vector3.UP)
+		else:
+			# Not interested / chilling at home position in parking lot
+			if member.global_position.distance_to(home_pos) > 0.5:
+				var return_dir: Vector3 = (home_pos - member.global_position).normalized()
+				member.velocity = return_dir * (walk_speed * 0.4)
+				member.move_and_slide()
+				var look_target: Vector3 = Vector3(home_pos.x, member.global_position.y, home_pos.z)
+				if member.global_position.distance_to(look_target) > 0.1:
+					member.look_at(look_target, Vector3.UP)
+			else:
+				member.velocity = Vector3.ZERO
+
+# ==============================================================================
+# INDEPENDENT NARROW STREET RESIDENTS (Alley / Narrow Corridor Solitary Locals)
+# ==============================================================================
+
+func _spawn_narrow_street_residents() -> void:
+	var city_gen = $"../CityGenerator"
+	if not is_instance_valid(city_gen) or city_gen.get("active_alley_corridors") == null:
+		return
+
+	var alley_corridors: Array = city_gen.active_alley_corridors
+	if alley_corridors.is_empty():
+		return
+
+	# Clear existing narrow street residents if any
+	for resident in active_narrow_street_residents:
+		if is_instance_valid(resident):
+			resident.queue_free()
+	active_narrow_street_residents.clear()
+
+	# Head color variants for narrow street residents: Dark Red or Dark Blue
+	var resident_head_colors: Array[Color] = [
+		Color(0.7, 0.08, 0.08), # Dark Crimson Red
+		Color(0.05, 0.15, 0.7)  # Dark Cobalt Blue
+	]
+
+	# Each narrow street corridor is claimed by 1 resident (stationary solitary local)
+	for alley in alley_corridors:
+		var axis: String = alley["axis"]
+		var pos_fixed: float = alley["pos_fixed"]
+		var min_val: float = alley["min"]
+		var max_val: float = alley["max"]
+
+		# Spawn position: Hugging building wall (4.2m offset from corridor center line)
+		var wall_side: float = -4.2 if rng.randf() > 0.5 else 4.2
+		var mid_var: float = rng.randf_range(min_val + 6.0, max_val - 6.0)
+		
+		var spawn_pos: Vector3 = Vector3(pos_fixed + wall_side, 0.0, mid_var) if axis == "Z" else Vector3(mid_var, 0.0, pos_fixed + wall_side)
+
+		var head_color: Color = resident_head_colors[rng.randi() % resident_head_colors.size()]
+
+		var ped_node = CharacterBody3D.new()
+		ped_node.name = "NarrowStreetResident"
+		ped_node.global_position = spawn_pos
+
+		# Body Material: Weathered dark slate coat
+		var body_mat = StandardMaterial3D.new()
+		body_mat.albedo_color = Color(0.04, 0.04, 0.06)
+
+		# Head Material: Dim Dark Red / Dark Blue glow
+		var head_mat = StandardMaterial3D.new()
+		head_mat.albedo_color = head_color
+		head_mat.emission_enabled = true
+		head_mat.emission = head_color
+		head_mat.emission_energy_multiplier = 2.2 # Dim mysterious head glow
+
+		# Body Mesh Instance
+		var body_inst = MeshInstance3D.new()
+		body_inst.mesh = body_mesh_template
+		body_inst.material_override = body_mat
+		body_inst.position = Vector3(0.0, 0.6, 0.0)
+		ped_node.add_child(body_inst)
+
+		# Head Mesh Instance
+		var head_inst = MeshInstance3D.new()
+		head_inst.mesh = head_mesh_template
+		head_inst.material_override = head_mat
+		head_inst.position = Vector3(0.0, 1.35, 0.0)
+		ped_node.add_child(head_inst)
+
+		# Collision Capsule
+		var col_shape = CollisionShape3D.new()
+		var cap_shape = CapsuleShape3D.new()
+		cap_shape.radius = 0.25
+		cap_shape.height = 1.5
+		col_shape.shape = cap_shape
+		col_shape.position = Vector3(0.0, 0.75, 0.0)
+		ped_node.add_child(col_shape)
+
+		# Resident Metadata & Stroll Routine State
+		ped_node.set_meta("is_street_resident", true)
+		ped_node.set_meta("home_pos", spawn_pos)
+		ped_node.set_meta("alley_data", alley)
+		ped_node.set_meta("flee_timer", 0.0)
+		ped_node.set_meta("stroll_timer", rng.randf_range(6.0, 16.0)) # Next stroll in 6-16s
+		ped_node.set_meta("stroll_state", "IDLE")
+		ped_node.set_meta("stroll_target", spawn_pos)
+		ped_node.set_meta("stroll_phase", rng.randf_range(0.0, TAU))
+		# 35% of narrow street residents are tipsy/drunk stumblers who occasionally trip over and pick themselves back up!
+		ped_node.set_meta("is_tipsy_stumbler", rng.randf() < 0.35)
+		ped_node.set_meta("fall_timer", 0.0)
+
+		# Facing direction facing slightly out into alley from building wall
+		var facing_dir: Vector3 = Vector3(0.0, 0.0, -wall_side).normalized() if axis == "Z" else Vector3(-wall_side, 0.0, 0.0).normalized()
+		ped_node.look_at(spawn_pos + facing_dir, Vector3.UP)
+
+		add_child(ped_node)
+		active_narrow_street_residents.append(ped_node)
+	
+	print("[STREET RESIDENTS] Spawned ", active_narrow_street_residents.size(), " solitary narrow street residents in alleys.")
+
+func _update_narrow_street_residents(delta: float) -> void:
+	# Check distance to player vehicle
+	var car_pos: Vector3 = player_car.global_position if is_instance_valid(player_car) else Vector3.ZERO
+	var car_speed: float = player_car.linear_velocity.length() if is_instance_valid(player_car) and player_car is RigidBody3D else (player_car.current_speed if is_instance_valid(player_car) and "current_speed" in player_car else 0.0)
+
+	for resident in active_narrow_street_residents:
+		if not is_instance_valid(resident):
+			continue
+
+		var home_pos: Vector3 = resident.get_meta("home_pos", Vector3.ZERO)
+		var alley: Dictionary = resident.get_meta("alley_data", {})
+		var dist_to_car: float = resident.global_position.distance_to(car_pos)
+
+		# CAR DANGER REACTION: Only runs away from CARS (if car gets within 16m and is moving or near 6m)
+		# Ignores on-foot player completely!
+		var is_threatened_by_car: bool = dist_to_car < 16.0 and (car_speed > 2.0 or dist_to_car < 6.0)
+
+		var flee_timer: float = resident.get_meta("flee_timer", 0.0)
+		if is_threatened_by_car:
+			flee_timer = 4.0 # Flee away from car for 4 seconds
+			resident.set_meta("flee_timer", flee_timer)
+		elif flee_timer > 0.0:
+			flee_timer -= delta
+			resident.set_meta("flee_timer", flee_timer)
+
+		if flee_timer > 0.0:
+			# Sprint-flee away from car along narrow street corridor
+			var flee_dir: Vector3 = (resident.global_position - car_pos).normalized()
+			flee_dir.y = 0.0
+			if flee_dir.length_squared() < 0.01:
+				flee_dir = Vector3.FORWARD
+
+			resident.velocity = flee_dir * (walk_speed * 2.8) # Fast escape sprint
+			resident.move_and_slide()
+
+			# Fast panic animation step
+			var beat_fast: float = Time.get_ticks_msec() / 1000.0 * 14.0
+			resident.position.y = abs(sin(beat_fast)) * 0.2
+			var look_target: Vector3 = resident.global_position + flee_dir
+			if resident.global_position.distance_to(look_target) > 0.1:
+				resident.look_at(look_target, Vector3.UP)
+		else:
+			# SAFE AT HOME: Stationary or doing periodic mini-strolls (tiny circle / corner check)
+			var stroll_state: String = resident.get_meta("stroll_state", "IDLE")
+			var stroll_timer: float = resident.get_meta("stroll_timer", 10.0) - delta
+			resident.set_meta("stroll_timer", stroll_timer)
+
+			if stroll_state == "IDLE":
+				if stroll_timer <= 0.0:
+					# Trigger a new stroll: 60% chance tiny circle stroll, 40% chance corner check
+					stroll_state = "CIRCLE_STROLL" if rng.randf() < 0.6 else "CORNER_CHECK"
+					resident.set_meta("stroll_state", stroll_state)
+					resident.set_meta("stroll_phase", 0.0)
+					resident.set_meta("stroll_duration", rng.randf_range(4.0, 7.0))
+				else:
+					# Standard idle standing against wall
+					resident.velocity = Vector3.ZERO
+					if resident.global_position.distance_to(home_pos) > 0.3:
+						var return_dir: Vector3 = (home_pos - resident.global_position).normalized()
+						resident.velocity = return_dir * (walk_speed * 0.8)
+						resident.move_and_slide()
+						var look_target: Vector3 = resident.global_position + return_dir
+						if resident.global_position.distance_to(look_target) > 0.1:
+							resident.look_at(look_target, Vector3.UP)
+					else:
+						resident.global_position = home_pos
+
+			elif stroll_state == "FALLEN":
+				# Stumbled & fell over! Lie on ground for a couple of seconds before picking self back up
+				var fall_t: float = resident.get_meta("fall_timer", 0.0) + delta
+				resident.set_meta("fall_timer", fall_t)
+				resident.velocity = Vector3.ZERO
+				
+				if fall_t < 2.5:
+					# Lying flat on ground (tilted 85 degrees roll)
+					resident.rotation_degrees.z = move_toward(resident.rotation_degrees.z, 85.0, delta * 300.0)
+					resident.position.y = 0.1
+				elif fall_t < 4.0:
+					# Picking self back up! (Struggling tilt back to 0 degrees)
+					var getup_progress: float = (fall_t - 2.5) / 1.5
+					resident.rotation_degrees.z = lerpf(85.0, 0.0, getup_progress)
+					resident.position.y = abs(sin(getup_progress * PI)) * 0.08
+				else:
+					# Fully recovered! Stand upright and return to IDLE
+					resident.rotation_degrees.z = 0.0
+					resident.position.y = 0.0
+					resident.set_meta("stroll_state", "IDLE")
+					resident.set_meta("stroll_timer", rng.randf_range(10.0, 22.0))
+
+			elif stroll_state == "CIRCLE_STROLL":
+				# Tiny 2m circle stroll near home wall — tipsy stumbler has a 25% chance to trip halfway!
+				var dur: float = resident.get_meta("stroll_duration", 5.0)
+				var phase: float = resident.get_meta("stroll_phase", 0.0) + delta
+				resident.set_meta("stroll_phase", phase)
+
+				var is_stumbler: bool = resident.get_meta("is_tipsy_stumbler", false)
+				if is_stumbler and phase > dur * 0.45 and phase < dur * 0.55 and rng.randf() < 0.25:
+					# Trip & fall over!
+					resident.set_meta("stroll_state", "FALLEN")
+					resident.set_meta("fall_timer", 0.0)
+				elif phase >= dur:
+					# Finished circle stroll: return to IDLE
+					resident.set_meta("stroll_state", "IDLE")
+					resident.set_meta("stroll_timer", rng.randf_range(12.0, 25.0))
+				else:
+					var circle_r: float = 1.8
+					var angle: float = (phase / dur) * TAU
+					var target: Vector3 = home_pos + Vector3(cos(angle) * circle_r, 0.0, sin(angle) * circle_r)
+					
+					var move_dir: Vector3 = (target - resident.global_position).normalized()
+					resident.velocity = move_dir * (walk_speed * 0.45) # Slow lazy stroll
+					resident.move_and_slide()
+					
+					var anim_beat: float = Time.get_ticks_msec() / 1000.0 * 6.0
+					resident.position.y = abs(sin(anim_beat)) * 0.04
+					var look_target: Vector3 = resident.global_position + move_dir
+					if resident.global_position.distance_to(look_target) > 0.1:
+						resident.look_at(look_target, Vector3.UP)
+
+			elif stroll_state == "CORNER_CHECK":
+				# Takes a few steps to the alley mouth/corner, looks around, then returns
+				var dur: float = resident.get_meta("stroll_duration", 6.0)
+				var phase: float = resident.get_meta("stroll_phase", 0.0) + delta
+				resident.set_meta("stroll_phase", phase)
+
+				if phase >= dur:
+					# Finished checking corner: return to IDLE
+					resident.set_meta("stroll_state", "IDLE")
+					resident.set_meta("stroll_timer", rng.randf_range(12.0, 25.0))
+				else:
+					# Step out towards alley mouth corner, pause to look, then walk back
+					var mid_point: float = dur * 0.5
+					var corner_offset: Vector3 = Vector3(3.5, 0.0, 0.0) if alley.get("axis", "Z") == "Z" else Vector3(0.0, 0.0, 3.5)
+					var corner_target: Vector3 = home_pos + corner_offset
+
+					if phase < mid_point:
+						# Walking to corner
+						var move_dir: Vector3 = (corner_target - resident.global_position).normalized()
+						resident.velocity = move_dir * (walk_speed * 0.5)
+						resident.move_and_slide()
+						var anim_beat: float = Time.get_ticks_msec() / 1000.0 * 6.0
+						resident.position.y = abs(sin(anim_beat)) * 0.04
+						var look_target: Vector3 = resident.global_position + move_dir
+						if resident.global_position.distance_to(look_target) > 0.1:
+							resident.look_at(look_target, Vector3.UP)
+					else:
+						# Walking back to home wall
+						var return_dir: Vector3 = (home_pos - resident.global_position).normalized()
+						resident.velocity = return_dir * (walk_speed * 0.5)
+						resident.move_and_slide()
+						var anim_beat: float = Time.get_ticks_msec() / 1000.0 * 6.0
+						resident.position.y = abs(sin(anim_beat)) * 0.04
+						var look_target: Vector3 = resident.global_position + return_dir
+						if resident.global_position.distance_to(look_target) > 0.1:
+							resident.look_at(look_target, Vector3.UP)

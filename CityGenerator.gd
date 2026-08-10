@@ -40,6 +40,7 @@ var active_x_streets: Array[float] = []
 var active_z_streets: Array[float] = []
 var active_broadway_x: float = 0.0
 var active_broadway_z: float = 0.0
+var active_alley_corridors: Array[Dictionary] = []
 
 # ==============================================================================
 # INITIALIZATION LOOPS
@@ -77,6 +78,7 @@ func generate_city_from_seed(target_seed: int) -> void:
 	active_food_trucks.clear()
 	active_x_streets.clear()
 	active_z_streets.clear()
+	active_alley_corridors.clear()
 	if target_seed != 0:
 		rng.seed = target_seed
 	else:
@@ -89,8 +91,13 @@ func generate_city_from_seed(target_seed: int) -> void:
 	_eject_entities_from_water()
 	
 	var ped_system = get_parent().get_node_or_null("PedestrianSystem")
-	if is_instance_valid(ped_system) and ped_system.has_method("_spawn_park_dance_groups"):
-		ped_system.call_deferred("_spawn_park_dance_groups")
+	if is_instance_valid(ped_system):
+		if ped_system.has_method("_spawn_park_dance_groups"):
+			ped_system.call_deferred("_spawn_park_dance_groups")
+		if ped_system.has_method("_spawn_parking_lot_gangs"):
+			ped_system.call_deferred("_spawn_parking_lot_gangs")
+		if ped_system.has_method("_spawn_narrow_street_residents"):
+			ped_system.call_deferred("_spawn_narrow_street_residents")
 
 # Spawns glowing highway exit gates at the 4 city edge boundaries (North, South, East, West)
 func _spawn_exit_points() -> void:
@@ -584,6 +591,17 @@ func _create_block_cluster(center: Vector3, size: Vector2, neon_colors: Array) -
 
 	var start_x: float = center.x - inner_size_x / 2.0 + plot_w / 2.0
 	var start_z: float = center.z - inner_size_z / 2.0 + plot_d / 2.0
+
+	# Record narrow alley corridors inside this block for narrow street resident placement
+	if num_x > 1:
+		for ix in range(num_x - 1):
+			var alley_x: float = start_x + float(ix) * (plot_w + alley_width) + plot_w / 2.0 + alley_width / 2.0
+			active_alley_corridors.append({"axis": "Z", "pos_fixed": alley_x, "min": center.z - inner_size_z / 2.0, "max": center.z + inner_size_z / 2.0})
+
+	if num_z > 1:
+		for iz in range(num_z - 1):
+			var alley_z: float = start_z + float(iz) * (plot_d + alley_width) + plot_d / 2.0 + alley_width / 2.0
+			active_alley_corridors.append({"axis": "X", "pos_fixed": alley_z, "min": center.x - inner_size_x / 2.0, "max": center.x + inner_size_x / 2.0})
 
 	# Architectural variation selector per block (0: Standard Grid, 1: Corner Plaza Cutout, 2: L-Tower Split)
 	var block_style_variant: int = rng.randi() % 3

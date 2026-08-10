@@ -27,8 +27,8 @@ const ORBIT_SENS:       float   = 0.004 # radians per pixel of mouse drag
 # Zoom 1.0: Perfect Over-The-Shoulder view (swoops down right behind shoulder)
 # Zoom 2.0: Skyline Look-Up (stays at over-shoulder position, tilts look target upwards to skyline)
 const FOOT_ZOOM_MAX:    float   = 2.0
-const CAM_FAR_OFFSET:  Vector3 = Vector3(0.0, 10.0, 5.5)  # High overview (pitched down looking at character + street ahead)
-const CAM_NEAR_OFFSET: Vector3 = Vector3(0.35, 1.7, 1.8)  # Perfect Over-The-Shoulder (just behind right shoulder)
+const CAM_FAR_OFFSET:  Vector3 = Vector3(0.0, 11.5, 7.5)  # High overview (pitched down looking at character + street ahead)
+const CAM_NEAR_OFFSET: Vector3 = Vector3(0.45, 1.9, 4.8)  # Over-The-Shoulder pulled back ~3m further behind character
 
 # World Y height look target rises to during Stage 3 (Skyline Look-Up)
 const CAM_SCENERY_LOOK_HEIGHT: float = 16.0
@@ -101,11 +101,11 @@ func setup(car: PlayerCar, cam: Camera3D, spawn_pos: Vector3) -> void:
 # ==============================================================================
 
 func _build_figure() -> void:
-	var neon_color := Color(0.4, 1.0, 1.0)   # Ice-cyan — subtly different from crowd
+	var neon_color := Color(0.85, 0.35, 0.05)   # Mysterious Dark Ember Orange
 
-	# --- Body capsule ---
+	# --- Body capsule --- (Dark charcoal trench coat / tactical outfit)
 	var body_mat          := StandardMaterial3D.new()
-	body_mat.albedo_color  = Color(0.05, 0.05, 0.08)
+	body_mat.albedo_color  = Color(0.03, 0.03, 0.04)
 	var body_mesh         := CapsuleMesh.new()
 	body_mesh.radius       = 0.15
 	body_mesh.height       = 1.2
@@ -116,12 +116,12 @@ func _build_figure() -> void:
 	_body_inst.position    = Vector3(0.0, BOB_BASE_Y_BODY, 0.0)
 	add_child(_body_inst)
 
-	# --- Glowing head sphere ---
+	# --- Mysterious dark orange head sphere ---
 	var head_mat                        := StandardMaterial3D.new()
-	head_mat.albedo_color                = neon_color
+	head_mat.albedo_color                = Color(0.2, 0.08, 0.02)
 	head_mat.emission_enabled            = true
 	head_mat.emission                    = neon_color
-	head_mat.emission_energy_multiplier  = 4.5   # Slightly brighter than NPCs (3.5)
+	head_mat.emission_energy_multiplier  = 1.8   # Toned down subtle mysterious glow
 	var head_mesh := SphereMesh.new()
 	head_mesh.radius = 0.18
 	head_mesh.height = 0.36
