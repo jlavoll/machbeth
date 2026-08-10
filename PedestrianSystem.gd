@@ -12,12 +12,24 @@ class_name PedestrianSystem
 @export var despawn_radius: float = 120.0
 @export var walk_speed: float = 2.5
 
+# ==============================================================================
+# PEDESTRIAN STATE MACHINE ENUM
+# ==============================================================================
+enum PedState { IDLE, WALKING, QUEUING, EVADING, SHELTERING, STROLLING, DISTRACTED }
+
 # Pedestrian instances pool
 var active_pedestrians: Array[Node3D] = []
 var active_park_dancers: Array[Node3D] = []
 var active_dodgy_characters: Array[Node3D] = []
 var active_gang_members: Array[Node3D] = []
 var active_narrow_street_residents: Array[Node3D] = []
+
+# New Archetype Tracking Arrays
+var active_street_vendors: Array[Node3D] = []
+var active_fixers: Array[Node3D] = []
+var active_buskers: Array[Node3D] = []
+var active_tech_drones: Array[Node3D] = []
+var active_joggers: Array[Node3D] = []
 
 # Gang color themes (each parking lot gang picks 1 theme: Blood Red, Deep Purple, Electric Blue, Toxic Green)
 var gang_color_themes: Array[Color] = [
@@ -63,6 +75,7 @@ func _ready() -> void:
 	call_deferred("_spawn_park_dance_groups")
 	call_deferred("_spawn_parking_lot_gangs")
 	call_deferred("_spawn_narrow_street_residents")
+	call_deferred("_spawn_new_archetypes")
 
 func _create_pedestrian_templates() -> void:
 	# Slim Cylinder/Capsule Body (0.3m diameter, 1.2m tall)
@@ -194,12 +207,33 @@ func _spawn_pedestrian(is_initial_citywide_spawn: bool = false) -> void:
 
 	ped_node.set_meta("target_destination", target_destination)
 	ped_node.set_meta("walk_direction", walk_dir)
+	
+	# Explicit State Machine Initialization (PedState.WALKING or PedState.DISTRACTED)
+	var is_distracted: bool = (rng.randf() < 0.18) # 18% chance for phone/holo-deck distraction
+	var initial_state: PedState = PedState.DISTRACTED if is_distracted else PedState.WALKING
+	ped_node.set_meta("state", initial_state)
+
 	# Personality Roll: 75% Rule-Abiding Citizens (Walk on Sidewalks), 25% Anarchistic Street Roamers
 	var is_rule_abiding: bool = (rng.randf() > 0.25)
 	ped_node.set_meta("is_rule_abiding", is_rule_abiding)
 	ped_node.set_meta("flashlight_on", false)
 	ped_node.set_meta("flashlight_delay_timer", 0.0)
 	ped_node.set_meta("flashlight_reaction_lag", rng.randf_range(0.3, 3.2))
+
+	# Holo-Phone Prop for Distracted Pedestrians
+	if is_distracted:
+		var phone_inst = MeshInstance3D.new()
+		var phone_box = BoxMesh.new()
+		phone_box.size = Vector3(0.08, 0.015, 0.14)
+		phone_inst.mesh = phone_box
+		phone_inst.position = Vector3(0.0, 1.0, 0.22)
+		var phone_mat = StandardMaterial3D.new()
+		phone_mat.albedo_color = neon_color
+		phone_mat.emission_enabled = true
+		phone_mat.emission = neon_color
+		phone_mat.emission_energy_multiplier = 6.0
+		phone_inst.material_override = phone_mat
+		ped_node.add_child(phone_inst)
 
 	add_child(ped_node)
 	active_pedestrians.append(ped_node)
@@ -1345,3 +1379,343 @@ func _update_narrow_street_residents(delta: float) -> void:
 						var look_target: Vector3 = resident.global_position + return_dir
 						if resident.global_position.distance_to(look_target) > 0.1:
 							resident.look_at(look_target, Vector3.UP)
+
+# ==============================================================================
+# NEW ARCHETYPES: VENDORS, FIXERS, BUSKERS, TECH DRONES, JOGGERS
+# ==============================================================================
+
+func _spawn_new_archetypes() -> void:
+	var city_gen = $"../CityGenerator"
+	if not is_instance_valid(city_gen):
+		return
+
+	# 1. STREET VENDORS & HAWKING TRADERS (Spawn near food trucks & crosswalk corners)
+	_spawn_street_vendors(city_gen)
+
+	# 2. FIXERS & INFORMANTS (Pairs in dark alcoves/alleys)
+	_spawn_fixers_and_informants(city_gen)
+
+	# 3. STREET MUSICIANS / BUSKERS (Parks & wide sidewalks with synth pod)
+	_spawn_street_buskers(city_gen)
+
+	# 4. MAINTENANCE / REPAIR DRONES & TECHS (Kneeling near streetlights/building bases)
+	_spawn_tech_drones(city_gen)
+
+	# 5. JOGGERS / CYBER-RUNNERS (Park perimeter loops & sidewalks at 2.2x speed)
+	_spawn_cyber_joggers(city_gen)
+
+func _spawn_street_vendors(city_gen) -> void:
+	var target_boxes: Array[Rect2] = []
+	if city_gen.get("active_park_boxes") != null:
+		target_boxes.append_array(city_gen.active_park_boxes)
+	if city_gen.get("active_lot_boxes") != null:
+		target_boxes.append_array(city_gen.active_lot_boxes)
+
+	var count: int = min(target_boxes.size(), 4)
+	for i in range(count):
+		var box: Rect2 = target_boxes[i]
+		var center_2d: Vector2 = box.get_center()
+		var pos: Vector3 = Vector3(center_2d.x + 8.0, 0.0, center_2d.y - 8.0)
+
+		var vendor_node = CharacterBody3D.new()
+		vendor_node.name = "StreetVendor"
+		vendor_node.global_position = pos
+
+		var color: Color = Color(1.0, 0.5, 0.0) # Radiant Amber Orange
+		var body_mat = StandardMaterial3D.new()
+		body_mat.albedo_color = Color(0.1, 0.08, 0.05)
+		var head_mat = StandardMaterial3D.new()
+		head_mat.albedo_color = color
+		head_mat.emission_enabled = true
+		head_mat.emission = color
+		head_mat.emission_energy_multiplier = 4.0
+
+		var body_inst = MeshInstance3D.new()
+		body_inst.mesh = body_mesh_template
+		body_inst.material_override = body_mat
+		body_inst.position = Vector3(0.0, 0.6, 0.0)
+		vendor_node.add_child(body_inst)
+
+		var head_inst = MeshInstance3D.new()
+		head_inst.mesh = head_mesh_template
+		head_inst.material_override = head_mat
+		head_inst.position = Vector3(0.0, 1.35, 0.0)
+		vendor_node.add_child(head_inst)
+
+		# Vendor Cart Prop
+		var cart_inst = MeshInstance3D.new()
+		var cart_box = BoxMesh.new()
+		cart_box.size = Vector3(1.2, 0.9, 0.8)
+		cart_inst.mesh = cart_box
+		cart_inst.position = Vector3(0.0, 0.45, 0.7)
+		var cart_mat = StandardMaterial3D.new()
+		cart_mat.albedo_color = Color(0.15, 0.15, 0.2)
+		cart_inst.material_override = cart_mat
+		vendor_node.add_child(cart_inst)
+
+		vendor_node.set_meta("shout_timer", rng.randf_range(3.0, 8.0))
+		add_child(vendor_node)
+		active_street_vendors.append(vendor_node)
+
+func _spawn_fixers_and_informants(city_gen) -> void:
+	if city_gen.get("active_alley_corridors") == null or city_gen.active_alley_corridors.is_empty():
+		return
+
+	var count: int = min(city_gen.active_alley_corridors.size(), 3)
+	for i in range(count):
+		var alley: Dictionary = city_gen.active_alley_corridors[i]
+		var pos_fixed: float = alley["pos_fixed"]
+		var min_val: float = alley["min"]
+		var base_pos: Vector3 = Vector3(pos_fixed, 0.0, min_val + 10.0) if alley["axis"] == "Z" else Vector3(min_val + 10.0, 0.0, pos_fixed)
+
+		# Pair of 2 Fixers in dark conversation
+		for p in range(2):
+			var fixer_node = CharacterBody3D.new()
+			fixer_node.name = "FixerInformant"
+			var offset: Vector3 = Vector3(-0.6 if p == 0 else 0.6, 0.0, 0.0)
+			fixer_node.global_position = base_pos + offset
+
+			var glitch_red: Color = Color(0.8, 0.0, 0.2)
+			var body_mat = StandardMaterial3D.new()
+			body_mat.albedo_color = Color(0.02, 0.02, 0.03)
+
+			var head_mat = StandardMaterial3D.new()
+			head_mat.albedo_color = glitch_red
+			head_mat.emission_enabled = true
+			head_mat.emission = glitch_red
+			head_mat.emission_energy_multiplier = 3.0
+
+			var body_inst = MeshInstance3D.new()
+			body_inst.mesh = body_mesh_template
+			body_inst.material_override = body_mat
+			body_inst.position = Vector3(0.0, 0.6, 0.0)
+			fixer_node.add_child(body_inst)
+
+			var head_inst = MeshInstance3D.new()
+			head_inst.mesh = head_mesh_template
+			head_inst.material_override = head_mat
+			head_inst.position = Vector3(0.0, 1.35, 0.0)
+			fixer_node.add_child(head_inst)
+
+			fixer_node.set_meta("home_pos", base_pos + offset)
+			fixer_node.set_meta("glitch_timer", 0.0)
+			fixer_node.set_meta("partner_index", p)
+
+			# Face each other
+			var partner_pos: Vector3 = base_pos + Vector3(0.6 if p == 0 else -0.6, 0.0, 0.0)
+			fixer_node.look_at(partner_pos, Vector3.UP)
+
+			add_child(fixer_node)
+			active_fixers.append(fixer_node)
+
+func _spawn_street_buskers(city_gen) -> void:
+	if city_gen.get("active_park_boxes") == null or city_gen.active_park_boxes.is_empty():
+		return
+
+	for park in city_gen.active_park_boxes:
+		var center_2d: Vector2 = park.get_center()
+		var busker_pos: Vector3 = Vector3(center_2d.x - 6.0, 0.0, center_2d.y - 6.0)
+
+		var busker_node = CharacterBody3D.new()
+		busker_node.name = "StreetBusker"
+		busker_node.global_position = busker_pos
+
+		var magenta: Color = Color(1.0, 0.0, 0.6)
+		var body_mat = StandardMaterial3D.new()
+		body_mat.albedo_color = Color(0.08, 0.05, 0.1)
+
+		var head_mat = StandardMaterial3D.new()
+		head_mat.albedo_color = magenta
+		head_mat.emission_enabled = true
+		head_mat.emission = magenta
+		head_mat.emission_energy_multiplier = 5.0
+
+		var body_inst = MeshInstance3D.new()
+		body_inst.mesh = body_mesh_template
+		body_inst.material_override = body_mat
+		body_inst.position = Vector3(0.0, 0.6, 0.0)
+		busker_node.add_child(body_inst)
+
+		var head_inst = MeshInstance3D.new()
+		head_inst.mesh = head_mesh_template
+		head_inst.material_override = head_mat
+		head_inst.position = Vector3(0.0, 1.35, 0.0)
+		busker_node.add_child(head_inst)
+
+		# Synth Pod / Keytar Prop
+		var synth_inst = MeshInstance3D.new()
+		var synth_box = BoxMesh.new()
+		synth_box.size = Vector3(0.9, 0.1, 0.35)
+		synth_inst.mesh = synth_box
+		synth_inst.position = Vector3(0.0, 0.9, 0.3)
+		var synth_mat = StandardMaterial3D.new()
+		synth_mat.albedo_color = magenta
+		synth_mat.emission_enabled = true
+		synth_mat.emission = magenta
+		synth_mat.emission_energy_multiplier = 4.0
+		synth_inst.material_override = synth_mat
+		busker_node.add_child(synth_inst)
+
+		add_child(busker_node)
+		active_buskers.append(busker_node)
+
+func _spawn_tech_drones(city_gen) -> void:
+	if city_gen.get("active_park_boxes") == null or city_gen.active_park_boxes.is_empty():
+		return
+
+	for park in city_gen.active_park_boxes:
+		var center_2d: Vector2 = park.get_center()
+		var pos: Vector3 = Vector3(center_2d.x + 12.0, 0.0, center_2d.y + 12.0)
+
+		var tech_node = CharacterBody3D.new()
+		tech_node.name = "TechDrone"
+		tech_node.global_position = pos
+
+		var yellow: Color = Color(1.0, 0.8, 0.0)
+		var body_mat = StandardMaterial3D.new()
+		body_mat.albedo_color = Color(0.1, 0.1, 0.05)
+
+		var head_mat = StandardMaterial3D.new()
+		head_mat.albedo_color = yellow
+		head_mat.emission_enabled = true
+		head_mat.emission = yellow
+		head_mat.emission_energy_multiplier = 3.0
+
+		var body_inst = MeshInstance3D.new()
+		body_inst.mesh = body_mesh_template
+		body_inst.material_override = body_mat
+		body_inst.position = Vector3(0.0, 0.4, 0.0) # Kneeling height
+		tech_node.add_child(body_inst)
+
+		var head_inst = MeshInstance3D.new()
+		head_inst.mesh = head_mesh_template
+		head_inst.material_override = head_mat
+		head_inst.position = Vector3(0.0, 0.95, 0.0)
+		tech_node.add_child(head_inst)
+
+		# Work Spotlight
+		var spot = SpotLight3D.new()
+		spot.name = "TechSpotlight"
+		spot.light_color = yellow
+		spot.light_energy = 8.0
+		spot.spot_range = 6.0
+		spot.spot_angle = 35.0
+		spot.position = Vector3(0.0, 0.8, 0.2)
+		spot.rotation_degrees = Vector3(-45, 0, 0)
+		tech_node.add_child(spot)
+
+		tech_node.set_meta("spark_timer", 0.0)
+		add_child(tech_node)
+		active_tech_drones.append(tech_node)
+
+func _spawn_cyber_joggers(city_gen) -> void:
+	# Spawn 4 Cyber-Runners along park loops at 2.2x speed
+	if city_gen.get("active_park_boxes") == null or city_gen.active_park_boxes.is_empty():
+		return
+
+	for park in city_gen.active_park_boxes:
+		var center_2d: Vector2 = park.get_center()
+		var center_pos: Vector3 = Vector3(center_2d.x, 0.0, center_2d.y)
+
+		for j in range(2):
+			var jogger_node = CharacterBody3D.new()
+			jogger_node.name = "CyberJogger"
+			jogger_node.global_position = center_pos + Vector3(float(j * 4), 0.0, 0.0)
+
+			var cyan: Color = Color(0.0, 1.0, 0.9) if j == 0 else Color(0.2, 1.0, 0.3)
+			var body_mat = StandardMaterial3D.new()
+			body_mat.albedo_color = Color(0.05, 0.1, 0.1)
+
+			var head_mat = StandardMaterial3D.new()
+			head_mat.albedo_color = cyan
+			head_mat.emission_enabled = true
+			head_mat.emission = cyan
+			head_mat.emission_energy_multiplier = 4.5
+
+			var body_inst = MeshInstance3D.new()
+			body_inst.mesh = body_mesh_template
+			body_inst.material_override = body_mat
+			body_inst.position = Vector3(0.0, 0.6, 0.0)
+			jogger_node.add_child(body_inst)
+
+			var head_inst = MeshInstance3D.new()
+			head_inst.mesh = head_mesh_template
+			head_inst.material_override = head_mat
+			head_inst.position = Vector3(0.0, 1.35, 0.0)
+			jogger_node.add_child(head_inst)
+
+			jogger_node.set_meta("park_center", center_pos)
+			jogger_node.set_meta("jog_angle", float(j) * PI)
+			add_child(jogger_node)
+			active_joggers.append(jogger_node)
+
+# ==============================================================================
+# ARCHETYPE UPDATE AI LOOPS
+# ==============================================================================
+
+func _update_narrow_street_residents(delta: float) -> void:
+	_update_archetype_behaviors(delta)
+
+func _update_archetype_behaviors(delta: float) -> void:
+	var player_pos: Vector3 = _get_player_world_position()
+	var time: float = Time.get_ticks_msec() / 1000.0
+
+	# 1. STREET VENDORS: Periodic head-tilt shout animation
+	for vendor in active_street_vendors:
+		if is_instance_valid(vendor):
+			var timer: float = vendor.get_meta("shout_timer", 5.0) - delta
+			if timer <= 0.0:
+				timer = rng.randf_range(4.0, 9.0)
+				vendor.rotation_degrees.y += rng.randf_range(-30.0, 30.0)
+			vendor.set_meta("shout_timer", timer)
+
+	# 2. FIXERS: Glitch head emission & silence on player approach
+	for fixer in active_fixers:
+		if is_instance_valid(fixer):
+			var home_pos: Vector3 = fixer.get_meta("home_pos", Vector3.ZERO)
+			var dist: float = fixer.global_position.distance_to(player_pos)
+			var head: MeshInstance3D = fixer.get_child(1) as MeshInstance3D
+			
+			if dist < 6.0:
+				# Player approaches: break off conversation, step back & turn away
+				fixer.velocity = (fixer.global_position - player_pos).normalized() * (walk_speed * 0.4)
+				fixer.move_and_slide()
+				var look_away: Vector3 = fixer.global_position + (fixer.global_position - player_pos).normalized()
+				if fixer.global_position.distance_to(look_away) > 0.1:
+					fixer.look_at(look_away, Vector3.UP)
+			else:
+				# Glitch head emission pulse
+				if is_instance_valid(head) and head.material_override:
+					var mat: StandardMaterial3D = head.material_override
+					mat.emission_energy_multiplier = 3.0 + sin(time * 25.0) * 1.5
+
+	# 3. BUSKERS: Rhythm-synced head bob & pulse
+	for busker in active_buskers:
+		if is_instance_valid(busker):
+			busker.position.y = abs(sin(time * 10.0)) * 0.08
+
+	# 4. TECH DRONES: Periodic spark light pulse
+	for tech in active_tech_drones:
+		if is_instance_valid(tech):
+			var spot: SpotLight3D = tech.get_node_or_null("TechSpotlight") as SpotLight3D
+			if is_instance_valid(spot):
+				spot.light_energy = 8.0 + sin(time * 30.0) * 4.0
+
+	# 5. JOGGERS: Fast 2.2x perimeter loop running
+	for jogger in active_joggers:
+		if is_instance_valid(jogger):
+			var center: Vector3 = jogger.get_meta("park_center", Vector3.ZERO)
+			var angle: float = jogger.get_meta("jog_angle", 0.0) + delta * 0.6
+			jogger.set_meta("jog_angle", angle)
+
+			var r: float = 12.0
+			var target_pos: Vector3 = center + Vector3(cos(angle) * r, 0.0, sin(angle) * r)
+			var move_dir: Vector3 = (target_pos - jogger.global_position).normalized()
+			jogger.velocity = move_dir * (walk_speed * 2.2) # 5.5 m/s fast jog
+			jogger.move_and_slide()
+
+			# Fast vertical bounce oscillation
+			jogger.position.y = abs(sin(time * 16.0)) * 0.15
+			var look_target: Vector3 = jogger.global_position + move_dir
+			if jogger.global_position.distance_to(look_target) > 0.1:
+				jogger.look_at(look_target, Vector3.UP)
