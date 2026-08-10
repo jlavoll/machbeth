@@ -152,6 +152,26 @@ func start_dialogue(json_res_path: String, start_node_override: String = "start"
 
 	emit_signal("dialogue_started", json_res_path)
 
+## Starts dialogue directly from a Dictionary data structure (no JSON file required!)
+func start_dialogue_dict(dialogue_tree: Dictionary, start_node_override: String = "start") -> void:
+	if _is_dialogue_active:
+		push_warning("DialogueSystem: start_dialogue called while already active — ignoring.")
+		return
+
+	if dialogue_tree.is_empty():
+		return
+
+	_active_dialogue_tree = dialogue_tree
+	_is_dialogue_active   = true
+
+	_dialogue_root_control.visible = true
+	Input.mouse_mode = Input.MOUSE_MODE_VISIBLE
+
+	_begin_slide_in()
+	_display_node(start_node_override)
+
+	emit_signal("dialogue_started", "dynamic_dict")
+
 ## Cleanly ends dialogue and restores input state.
 func end_dialogue() -> void:
 	if not _is_dialogue_active:

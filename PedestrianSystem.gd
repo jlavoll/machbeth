@@ -1717,3 +1717,97 @@ func _update_archetype_behaviors(delta: float) -> void:
 			var look_target: Vector3 = jogger.global_position + move_dir
 			if jogger.global_position.distance_to(look_target) > 0.1:
 				jogger.look_at(look_target, Vector3.UP)
+
+# Checks for nearest character/NPC within 3.5m and opens identification dialogue
+func _try_trigger_character_dialogue(player_pos: Vector3, dialogue_sys: DialogueSystem) -> bool:
+	if not is_instance_valid(dialogue_sys):
+		return false
+
+	var all_nodes: Array[Node3D] = []
+	all_nodes.append_array(active_pedestrians)
+	all_nodes.append_array(active_park_dancers)
+	all_nodes.append_array(active_dodgy_characters)
+	all_nodes.append_array(active_gang_members)
+	all_nodes.append_array(active_narrow_street_residents)
+	all_nodes.append_array(active_street_vendors)
+	all_nodes.append_array(active_fixers)
+	all_nodes.append_array(active_buskers)
+	all_nodes.append_array(active_tech_drones)
+	all_nodes.append_array(active_joggers)
+
+	var closest_node: Node3D = null
+	var min_dist: float = 3.5 # Interaction range
+
+	for node in all_nodes:
+		if is_instance_valid(node):
+			var d: float = node.global_position.distance_to(player_pos)
+			if d < min_dist:
+				min_dist = d
+				closest_node = node
+
+	if closest_node == null:
+		return false
+
+	# Identify character archetype & build dynamic dialogue dictionary
+	var char_name: String = closest_node.name
+	var role_title: String = "CYBERPUNK CITIZEN"
+	var dialogue_text: String = "Yeah? What do you want, stranger?"
+	var theme_hex: String = "#00FFD5"
+
+	if "Fixer" in char_name:
+		role_title = "NET-FIXER / INFORMANT"
+		dialogue_text = "Yes, I'm a Fixer. Keep your voice down."
+		theme_hex = "#FF0033"
+	elif "Dodgy" in char_name:
+		role_title = "SHADY PARK LOCAL"
+		dialogue_text = "Got a light? No? Then keep moving, pal."
+		theme_hex = "#FF5500"
+	elif "Gang" in char_name:
+		var is_leader: bool = closest_node.get_meta("is_leader", false)
+		role_title = "PARKING LOT GANG LEADER" if is_leader else "PARKING LOT GANG MEMBER"
+		dialogue_text = "You're in our lot now. Watch your step." if is_leader else "Boss says we're watching you."
+		theme_hex = "#9900FF"
+	elif "NarrowStreet" in char_name:
+		role_title = "SOLITARY ALLEY RESIDENT"
+		dialogue_text = "This is my street. Mind your own business."
+		theme_hex = "#0066FF"
+	elif "Dancer" in char_name:
+		role_title = "PARK RAVE DANCER"
+		dialogue_text = "Can't talk, feeling the beat!"
+		theme_hex = "#FF00AA"
+	elif "Vendor" in char_name:
+		role_title = "STREET HAWKER"
+		dialogue_text = "Hot synth-noodles! Best prices in Night District!"
+		theme_hex = "#FF9900"
+	elif "Busker" in char_name:
+		role_title = "SYNTH BUSKER"
+		dialogue_text = "Throw some credits in the pod if you like the tune."
+		theme_hex = "#00FF88"
+	elif "Tech" in char_name:
+		role_title = "MAINTENANCE TECH"
+		dialogue_text = "Grid panel's shorting out. Stand back."
+		theme_hex = "#FFCC00"
+	elif "Jogger" in char_name:
+		role_title = "CYBER-RUNNER"
+		dialogue_text = "Outta the way! Keeping the heart rate at 180!"
+		theme_hex = "#00FFFF"
+
+	var dialogue_dict: Dictionary = {
+		"speaker_display_name": char_name.to_upper(),
+		"speaker_subtitle": role_title,
+		"speaker_color": theme_hex,
+		"nodes": {
+			"start": {
+				"text": dialogue_text,
+				"choices": [
+					{
+						"text": "[OK]",
+						"target": "exit"
+					}
+				]
+			}
+		}
+	}
+
+	dialogue_sys.start_dialogue_dict(dialogue_dict)
+	return true

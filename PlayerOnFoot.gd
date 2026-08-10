@@ -283,14 +283,21 @@ func _unhandled_input(event: InputEvent) -> void:
 			_foot_zoom = clamp(_foot_zoom - step, 0.0, FOOT_ZOOM_MAX)
 
 	if event is InputEventKey and event.pressed and not event.echo:
-		# E key: re-enter the parked car when close enough
-		if event.keycode == KEY_E and is_instance_valid(player_car) and not dialogue_blocking_input:
-			var dist: float = global_position.distance_to(player_car.global_position)
-			if dist <= RE_ENTER_RADIUS:
-				player_car.on_foot_reenter(camera, _foot_zoom)
-				# Mark handled so PlayerCar's _unhandled_input doesn't see the
-				# same E press and immediately re-exits the car
+		# E key: Talk to nearby character or re-enter parked car when close enough
+		if event.keycode == KEY_E and not dialogue_blocking_input:
+			# First check if standing near an NPC / character to talk!
+			var ped_system = get_parent().get_node_or_null("PedestrianSystem")
+			var talk_triggered: bool = false
+			if is_instance_valid(ped_system) and ped_system.has_method("_try_trigger_character_dialogue"):
+				talk_triggered = ped_system._try_trigger_character_dialogue(global_position, dialogue_system)
+
+			if talk_triggered:
 				get_viewport().set_input_as_handled()
+			elif is_instance_valid(player_car):
+				var dist: float = global_position.distance_to(player_car.global_position)
+				if dist <= RE_ENTER_RADIUS:
+					player_car.on_foot_reenter(camera, _foot_zoom)
+					get_viewport().set_input_as_handled()
 
 		# F key: interact with nearby NPC / object (opens dialogue overlay)
 		elif event.keycode == KEY_F and not dialogue_blocking_input:
