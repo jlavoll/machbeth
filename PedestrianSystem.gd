@@ -1823,6 +1823,97 @@ func _try_trigger_character_dialogue(player_pos: Vector3, dialogue_sys: Dialogue
 		dialogue_sys.start_dialogue_dict(dodgy_tree)
 		return true
 
+	# Special multi-node branching conversation for Gang Leader & Gang Members!
+	var is_gang_meta: bool = closest_node.get_meta("is_gang_member", false) or "Gang" in char_name
+	if is_gang_meta:
+		var is_leader: bool = closest_node.get_meta("is_leader", false)
+		if is_leader:
+			var leader_tree: Dictionary = {
+				"speaker_display_name": "GANG LEADER",
+				"speaker_subtitle": "PARKING LOT SYNDICATE BOSS",
+				"speaker_color": "#FF0055",
+				"nodes": {
+					"start": {
+						"text": "You got nerve walking right into our turf on foot. What's your business here?",
+						"choices": [
+							{
+								"text": "\"Whose turf is this?\"",
+								"target": "turf_info"
+							},
+							{
+								"text": "\"Just passing through. No trouble.\"",
+								"target": "no_trouble"
+							},
+							{
+								"text": "\"Back off.\"",
+								"target": "threaten"
+							}
+						]
+					},
+					"turf_info": {
+						"text": "This parking lot belongs to the Neon Syndicate. We run the asphalt in this block. You drive clean, we don't have a problem.",
+						"choices": [
+							{
+								"text": "\"Understood. I'll be moving along.\"",
+								"target": "exit"
+							}
+						]
+					},
+					"no_trouble": {
+						"text": "Keep it that way. My crew is watching every step you take.",
+						"choices": [
+							{
+								"text": "\"[Leave quietly]\"",
+								"target": "exit"
+							}
+						]
+					},
+					"threaten": {
+						"text": "Big words for someone standing surrounded. Don't test me, stranger.",
+						"choices": [
+							{
+								"text": "\"[Step back]\"",
+								"target": "exit"
+							}
+						]
+					}
+				}
+			}
+			dialogue_sys.start_dialogue_dict(leader_tree)
+			return true
+		else:
+			var member_tree: Dictionary = {
+				"speaker_display_name": "GANG MEMBER",
+				"speaker_subtitle": "PARKING LOT LURKER",
+				"speaker_color": "#AA00FF",
+				"nodes": {
+					"start": {
+						"text": "Boss is keeping an eye on you. You better talk to him before you start wandering around.",
+						"choices": [
+							{
+								"text": "\"Who's the boss?\"",
+								"target": "boss_info"
+							},
+							{
+								"text": "\"Alright, alright.\"",
+								"target": "exit"
+							}
+						]
+					},
+					"boss_info": {
+						"text": "The one standing out in front with the brightest glow. Go speak with him.",
+						"choices": [
+							{
+								"text": "\"Got it.\"",
+								"target": "exit"
+							}
+						]
+					}
+				}
+			}
+			dialogue_sys.start_dialogue_dict(member_tree)
+			return true
+
 	var role_title: String = "CYBERPUNK CITIZEN"
 	var dialogue_text: String = "Yeah? What do you want, stranger?"
 	var theme_hex: String = "#00FFD5"
