@@ -877,6 +877,7 @@ func _spawn_dodgy_park_character(park: Rect2) -> void:
 	var ped_node = CharacterBody3D.new()
 	ped_node.name = "DodgyParkCharacter"
 	ped_node.global_position = char_pos
+	ped_node.set_meta("is_dodgy", true)
 
 	# Dark shady coat material with dim crimson / deep amber accents
 	var body_mat = StandardMaterial3D.new()
@@ -1759,9 +1760,11 @@ func _try_trigger_character_dialogue(player_pos: Vector3, dialogue_sys: Dialogue
 
 	# Identify character archetype & build dynamic dialogue dictionary
 	var char_name: String = closest_node.name
+	var is_dodgy_meta: bool = closest_node.get_meta("is_dodgy", false)
+	print("[DIALOGUE INTERACT] Nearest node: ", char_name, " (is_dodgy=", is_dodgy_meta, ") at dist=", min_dist)
 
 	# Special multi-node branching conversation for Mr. Dodgy!
-	if "Dodgy" in char_name:
+	if "Dodgy" in char_name or is_dodgy_meta:
 		var dodgy_tree: Dictionary = {
 			"speaker_display_name": "MR. DODGY",
 			"speaker_subtitle": "SHADY PARK LOCAL",
