@@ -426,9 +426,8 @@ func _exit_to_on_foot() -> void:
 	else:
 		print("[AMBIENCE] Warning: WeatherAmbienceManager node not found in Main — footstep audio will be silent.")
 
-	# Default walking zoom: 1 step past over-shoulder (FOOT_ZOOM_MAX=2.0, ZOOM_STEP=0.08).
-	# 1.08 gives the over-shoulder view with a very gentle upward tilt — scroll to adjust.
-	on_foot_node._foot_zoom = 1.08
+	# Default walking zoom: Over-The-Shoulder sweet spot (_foot_zoom = 1.0)
+	on_foot_node._foot_zoom = 1.0
 
 	print("[ON FOOT] Player exited car at ", global_position)
 

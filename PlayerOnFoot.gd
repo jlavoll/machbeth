@@ -22,17 +22,16 @@ const CAM_RETURN_SPEED: float   = 3.5   # how fast orbit yaw snaps back when wal
 const ZOOM_STEP:        float   = 0.08  # zoom per scroll notch
 const ORBIT_SENS:       float   = 0.004 # radians per pixel of mouse drag
 
-# Zoom range: 0 = far/top-down, 1 = over-shoulder, 1–2 = scenery-tilt (camera stays at
-# shoulder position but tilts upward so you can enjoy the buildings and skyline)
+# 3-Stage Camera Arc:
+# Zoom 0.0: High-angle city overview (looking down/forward, includes character in frame)
+# Zoom 1.0: Perfect Over-The-Shoulder view (swoops down right behind shoulder)
+# Zoom 2.0: Skyline Look-Up (stays at over-shoulder position, tilts look target upwards to skyline)
 const FOOT_ZOOM_MAX:    float   = 2.0
+const CAM_FAR_OFFSET:  Vector3 = Vector3(0.0, 10.0, 5.5)  # High overview (pitched down looking at character + street ahead)
+const CAM_NEAR_OFFSET: Vector3 = Vector3(0.35, 1.7, 1.8)  # Perfect Over-The-Shoulder (just behind right shoulder)
 
-# Camera offset extremes (zoom 0 = far/top-down, zoom 1+ = near/over-shoulder)
-const CAM_FAR_OFFSET:  Vector3 = Vector3(0.0,  18.0, 5.0)
-const CAM_NEAR_OFFSET: Vector3 = Vector3(0.35,  2.0, 3.5)
-
-# World Y height the look-at target rises to at maximum scenery tilt (zoom = 2.0)
-# Set this to roughly the average mid-height of your skyscrapers for best feel
-const CAM_SCENERY_LOOK_HEIGHT: float = 22.0
+# World Y height look target rises to during Stage 3 (Skyline Look-Up)
+const CAM_SCENERY_LOOK_HEIGHT: float = 16.0
 
 # ==============================================================================
 # STATE
@@ -276,10 +275,12 @@ func _unhandled_input(event: InputEvent) -> void:
 	var dialogue_blocking_input: bool = is_instance_valid(dialogue_system) and dialogue_system._is_dialogue_active
 
 	if not dialogue_blocking_input and event is InputEventMouseButton and event.is_pressed():
+		# Dynamic step size: finer steps (0.035) during Stage 3 skyline look-up for ultra-smooth precision
+		var step: float = 0.035 if _foot_zoom >= 0.95 else 0.08
 		if event.button_index == MOUSE_BUTTON_WHEEL_UP:
-			_foot_zoom = clamp(_foot_zoom + ZOOM_STEP, 0.0, FOOT_ZOOM_MAX)
+			_foot_zoom = clamp(_foot_zoom + step, 0.0, FOOT_ZOOM_MAX)
 		elif event.button_index == MOUSE_BUTTON_WHEEL_DOWN:
-			_foot_zoom = clamp(_foot_zoom - ZOOM_STEP, 0.0, FOOT_ZOOM_MAX)
+			_foot_zoom = clamp(_foot_zoom - step, 0.0, FOOT_ZOOM_MAX)
 
 	if event is InputEventKey and event.pressed and not event.echo:
 		# E key: re-enter the parked car when close enough
@@ -330,12 +331,12 @@ func _update_camera(delta: float) -> void:
 
 	camera.position = rotated
 
-	# --- Look-at target ---
-	# 0–1 zoom: look at the player's head (y = 1.2) for a grounded view.
-	# 1–2 zoom: smoothly raise the look-at target upward so the camera tilts
-	#           to reveal the cityscape, buildings, and neon skyline.
+	# --- 3-STAGE CAMERA LOOK-AT ARC ---
+	# Zoom 0.0 -> 1.0: Swoops from high overview down to head/shoulder level (y = 1.35)
+	# Zoom 1.0 -> 2.0: Camera stays at shoulder position while look target smoothly tilts UPWARDS to skyline
+	var look_base_y: float = lerpf(0.6, 1.35, offset_zoom)
 	var scenery_factor: float = clamp(_foot_zoom - 1.0, 0.0, 1.0)
-	var look_y: float = lerpf(1.2, CAM_SCENERY_LOOK_HEIGHT, scenery_factor)
+	var look_y: float = lerpf(look_base_y, CAM_SCENERY_LOOK_HEIGHT, scenery_factor)
 	var look_world: Vector3 = global_position + Vector3(0.0, look_y, 0.0)
 	if camera.global_position.distance_to(look_world) > 0.05:
 		camera.look_at(look_world, Vector3.UP)

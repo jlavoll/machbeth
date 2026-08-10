@@ -14,10 +14,12 @@ class_name PedestrianSystem
 
 # Pedestrian instances pool
 var active_pedestrians: Array[Node3D] = []
+var active_park_dancers: Array[Node3D] = []
 
 # Mesh templates
 var body_mesh_template: CapsuleMesh
 var head_mesh_template: SphereMesh
+var crown_mesh_template: CylinderMesh
 
 @onready var player_car = $"../PlayerCar"
 
@@ -31,6 +33,14 @@ var neon_colors: Array[Color] = [
 	Color(0.2, 1.0, 0.4)    # Emerald Green
 ]
 
+# Party Dancer glowing colors (Vibrant Neon Gold, Purple, & Electric Violet)
+var dancer_colors: Array[Color] = [
+	Color(1.0, 0.7, 0.0),   # Radiant Gold
+	Color(0.8, 0.1, 1.0),   # Cyber Violet
+	Color(1.0, 0.2, 0.5),   # Neon Rose
+	Color(0.0, 1.0, 0.8)    # Aqua Mint
+]
+
 # ==============================================================================
 # INITIALIZATION & TEMPLATES
 # ==============================================================================
@@ -39,6 +49,7 @@ func _ready() -> void:
 	rng.randomize()
 	_create_pedestrian_templates()
 	_spawn_initial_pedestrians()
+	call_deferred("_spawn_park_dance_groups")
 
 func _create_pedestrian_templates() -> void:
 	# Slim Cylinder/Capsule Body (0.3m diameter, 1.2m tall)
@@ -50,6 +61,12 @@ func _create_pedestrian_templates() -> void:
 	head_mesh_template = SphereMesh.new()
 	head_mesh_template.radius = 0.18
 	head_mesh_template.height = 0.36
+
+	# Glowing Halo/Crown mesh for dancers
+	crown_mesh_template = CylinderMesh.new()
+	crown_mesh_template.top_radius = 0.22
+	crown_mesh_template.bottom_radius = 0.22
+	crown_mesh_template.height = 0.04
 
 # ==============================================================================
 # SPAWNING & POOLING LOOP
@@ -539,3 +556,344 @@ func _manage_food_truck_queues(delta: float) -> void:
 				# Stamp personality: 70% bouncy/agitated, 30% chill/relaxed
 				var personality: String = "bouncy" if rng.randf() < 0.7 else "chill"
 				candidate_ped.set_meta("queue_personality", personality)
+
+	_update_park_dancers(delta)
+
+# ==============================================================================
+# UNIQUE PARK DANCE GROUPS (Circle / Line / Partner Couples)
+# ==============================================================================
+
+func _spawn_park_dance_groups() -> void:
+	var city_gen = $"../CityGenerator"
+	if not is_instance_valid(city_gen) or city_gen.get("active_park_boxes") == null:
+		return
+
+	var park_boxes: Array[Rect2] = city_gen.active_park_boxes
+	if park_boxes.is_empty():
+		return
+
+	# Clear existing dancers if any
+	for dancer in active_park_dancers:
+		if is_instance_valid(dancer):
+			dancer.queue_free()
+	active_park_dancers.clear()
+
+	var dance_styles: Array[String] = ["CIRCLE", "PARTNERS", "LINE"]
+	var style_idx: int = 0
+
+	for park in park_boxes:
+		var center_2d: Vector2 = park.get_center()
+		var center_pos: Vector3 = Vector3(center_2d.x, 0.0, center_2d.y)
+		var style: String = dance_styles[style_idx % dance_styles.size()]
+		style_idx += 1
+
+		match style:
+			"CIRCLE":
+				_spawn_circle_dance_group(center_pos, 8)
+			"PARTNERS":
+				_spawn_partner_dance_group(center_pos, 3) # 3 couples (6 dancers)
+			"LINE":
+				_spawn_line_dance_group(center_pos, 6)
+
+		# Spawn a "dodgy character" hanging out under one of the corner streetlamps in the park
+		_spawn_dodgy_park_character(park)
+
+func _create_single_dancer(pos: Vector3, neon_color: Color, dance_style: String, group_center: Vector3, index: int, total_count: int) -> CharacterBody3D:
+	var ped_node = CharacterBody3D.new()
+	ped_node.name = "ParkDancer"
+	ped_node.global_position = pos
+
+	# Distinct glowing material with holographic halo/crown
+	var body_mat = StandardMaterial3D.new()
+	body_mat.albedo_color = Color(0.08, 0.08, 0.12)
+
+	var head_mat = StandardMaterial3D.new()
+	head_mat.albedo_color = neon_color
+	head_mat.emission_enabled = true
+	head_mat.emission = neon_color
+	head_mat.emission_energy_multiplier = 4.5
+
+	# Body Mesh Instance
+	var body_inst = MeshInstance3D.new()
+	body_inst.mesh = body_mesh_template
+	body_inst.material_override = body_mat
+	body_inst.position = Vector3(0.0, 0.6, 0.0)
+	ped_node.add_child(body_inst)
+
+	# Head Mesh Instance
+	var head_inst = MeshInstance3D.new()
+	head_inst.mesh = head_mesh_template
+	head_inst.material_override = head_mat
+	head_inst.position = Vector3(0.0, 1.35, 0.0)
+	ped_node.add_child(head_inst)
+
+	# Unique Party Halo/Crown above head
+	var crown_inst = MeshInstance3D.new()
+	crown_inst.mesh = crown_mesh_template
+	crown_inst.material_override = head_mat
+	crown_inst.position = Vector3(0.0, 1.62, 0.0)
+	ped_node.add_child(crown_inst)
+
+	# Collision Capsule so dancer can dodge / detect physical collisions
+	var col_shape = CollisionShape3D.new()
+	var cap_shape = CapsuleShape3D.new()
+	cap_shape.radius = 0.25
+	cap_shape.height = 1.5
+	col_shape.shape = cap_shape
+	col_shape.position = Vector3(0.0, 0.75, 0.0)
+	ped_node.add_child(col_shape)
+
+	# Metadata for dance math & panic state
+	ped_node.set_meta("is_park_dancer", true)
+	ped_node.set_meta("dance_style", dance_style)
+	ped_node.set_meta("group_center", group_center)
+	ped_node.set_meta("dancer_index", index)
+	ped_node.set_meta("total_dancers", total_count)
+	ped_node.set_meta("dance_phase", rng.randf_range(0.0, TAU))
+
+	add_child(ped_node)
+	active_park_dancers.append(ped_node)
+	return ped_node
+
+func _spawn_circle_dance_group(center: Vector3, count: int) -> void:
+	var radius: float = 3.5
+	for i in range(count):
+		var angle: float = (float(i) / float(count)) * TAU
+		var offset: Vector3 = Vector3(cos(angle) * radius, 0.0, sin(angle) * radius)
+		var color: Color = dancer_colors[i % dancer_colors.size()]
+		var dancer = _create_single_dancer(center + offset, color, "CIRCLE", center, i, count)
+		dancer.look_at(center, Vector3.UP)
+
+func _spawn_partner_dance_group(center: Vector3, couple_count: int) -> void:
+	var radius: float = 4.0
+	var total_count: int = couple_count * 2
+	for i in range(couple_count):
+		var angle: float = (float(i) / float(couple_count)) * TAU
+		var couple_center: Vector3 = center + Vector3(cos(angle) * radius, 0.0, sin(angle) * radius)
+		
+		var color1: Color = dancer_colors[(i * 2) % dancer_colors.size()]
+		var color2: Color = dancer_colors[(i * 2 + 1) % dancer_colors.size()]
+		
+		# Partner 1 & Partner 2 facing each other
+		var d1 = _create_single_dancer(couple_center + Vector3(-0.75, 0.0, 0.0), color1, "PARTNERS", couple_center, i * 2, total_count)
+		var d2 = _create_single_dancer(couple_center + Vector3(0.75, 0.0, 0.0), color2, "PARTNERS", couple_center, i * 2 + 1, total_count)
+		
+		d1.look_at(d2.global_position, Vector3.UP)
+		d2.look_at(d1.global_position, Vector3.UP)
+
+func _spawn_line_dance_group(center: Vector3, count: int) -> void:
+	var spacing: float = 1.2
+	var start_x: float = -((float(count) - 1.0) * spacing) / 2.0
+	for i in range(count):
+		var pos: Vector3 = center + Vector3(start_x + float(i) * spacing, 0.0, 0.0)
+		var color: Color = dancer_colors[i % dancer_colors.size()]
+		var dancer = _create_single_dancer(pos, color, "LINE", center, i, count)
+		dancer.rotation_degrees = Vector3(0, 0, 0) # Facing forward together
+
+# Procedural dance routine updates for all park dancers with car dodge & safe return logic
+func _update_park_dancers(delta: float) -> void:
+	var time: float = Time.get_ticks_msec() / 1000.0
+	var beat_fast: float = time * 12.0 # ~115 BPM rhythm
+	var beat_slow: float = time * 3.0
+
+	var player_pos: Vector3 = _get_player_world_position()
+	var player_speed: float = player_car.linear_velocity.length() if is_instance_valid(player_car) and player_car is RigidBody3D else (player_car.current_speed if is_instance_valid(player_car) and "current_speed" in player_car else 0.0)
+
+	for dancer in active_park_dancers:
+		if not is_instance_valid(dancer):
+			continue
+
+		var style: String = dancer.get_meta("dance_style", "CIRCLE")
+		var idx: int = dancer.get_meta("dancer_index", 0)
+		var total: int = dancer.get_meta("total_dancers", 8)
+		var center: Vector3 = dancer.get_meta("group_center", Vector3.ZERO)
+		var phase: float = dancer.get_meta("dance_phase", 0.0)
+
+		# ----------------------------------------------------------------------
+		# CAR THREAT REACTION (Scare / Dodge when vehicle gets within 14m)
+		# ----------------------------------------------------------------------
+		var dist_to_car: float = dancer.global_position.distance_to(player_pos)
+		var is_threatened: bool = dist_to_car < 14.0 and (player_speed > 2.0 or dist_to_car < 6.0)
+
+		var panic_timer: float = dancer.get_meta("panic_timer", 0.0)
+		if is_threatened:
+			panic_timer = 3.5 # Panic for 3.5 seconds before feeling safe to return to dance
+			dancer.set_meta("panic_timer", panic_timer)
+		elif panic_timer > 0.0:
+			panic_timer -= delta
+			dancer.set_meta("panic_timer", panic_timer)
+
+		if panic_timer > 0.0:
+			# Flee / Scatter outwards away from car threat!
+			var flee_dir: Vector3 = (dancer.global_position - player_pos).normalized()
+			flee_dir.y = 0.0
+			if flee_dir.length_squared() < 0.01:
+				flee_dir = Vector3.FORWARD
+
+			dancer.velocity = flee_dir * (walk_speed * 2.8) # Fast sprint dodge
+			dancer.move_and_slide()
+
+			# Fast panic hop animation
+			dancer.position.y = abs(sin(beat_fast * 1.5 + phase)) * 0.25
+			var look_target: Vector3 = dancer.global_position + flee_dir
+			dancer.look_at(look_target, Vector3.UP)
+			continue # Skip dance routine while panicked
+
+		# ----------------------------------------------------------------------
+		# SAFE ROUTINE: DANCING FORMATION (Circle / Partner / Line)
+		# ----------------------------------------------------------------------
+		var target_pos: Vector3 = dancer.global_position
+		match style:
+			"CIRCLE":
+				var circle_radius: float = 3.5
+				var rotation_speed: float = 0.4
+				var current_angle: float = (float(idx) / float(total)) * TAU + (time * rotation_speed)
+				target_pos = center + Vector3(cos(current_angle) * circle_radius, 0.0, sin(current_angle) * circle_radius)
+
+			"PARTNERS":
+				var partner_offset: float = 0.75
+				var spin_speed: float = 1.8
+				var is_partner_a: bool = (idx % 2 == 0)
+				var dir_mult: float = 1.0 if is_partner_a else -1.0
+				
+				var spin_angle: float = (time * spin_speed * dir_mult) + (float(idx / 2) * 1.5)
+				var rel_x: float = cos(spin_angle) * partner_offset
+				var rel_z: float = sin(spin_angle) * partner_offset
+				target_pos = center + Vector3(rel_x, 0.0, rel_z)
+
+			"LINE":
+				var spacing: float = 1.2
+				var start_x: float = -((float(total) - 1.0) * spacing) / 2.0
+				var base_x: float = start_x + float(idx) * spacing
+				var side_step: float = sin(beat_slow) * 0.4
+				var forward_step: float = abs(cos(beat_slow)) * 0.3
+				target_pos = center + Vector3(base_x + side_step, 0.0, forward_step)
+
+		# Smooth return step back to assigned dance formation position after scattering
+		if dancer.global_position.distance_to(target_pos) > 0.3:
+			var return_dir: Vector3 = (target_pos - dancer.global_position).normalized()
+			dancer.velocity = return_dir * (walk_speed * 1.5)
+			dancer.move_and_slide()
+			dancer.position.y = abs(sin(beat_fast + phase)) * 0.15
+			var look_target: Vector3 = dancer.global_position + return_dir
+			dancer.look_at(look_target, Vector3.UP)
+		else:
+			# In position: execute exact dance routine visuals & rotations
+			dancer.global_position = target_pos
+			match style:
+				"CIRCLE":
+					dancer.position.y = abs(sin(beat_fast + phase)) * 0.22
+					var look_pos: Vector3 = Vector3(center.x, dancer.global_position.y, center.z)
+					dancer.look_at(look_pos, Vector3.UP)
+					dancer.rotate_object_local(Vector3.UP, PI)
+				"PARTNERS":
+					dancer.position.y = abs(sin(beat_fast * 0.8 + phase)) * 0.15
+					var is_partner_a: bool = (idx % 2 == 0)
+					var rel_x: float = target_pos.x - center.x
+					var rel_z: float = target_pos.z - center.z
+					var partner_pos: Vector3 = center - Vector3(rel_x, 0.0, rel_z)
+					dancer.look_at(Vector3(partner_pos.x, dancer.global_position.y, partner_pos.z), Vector3.UP)
+				"LINE":
+					dancer.position.y = abs(sin(beat_fast + phase)) * 0.18
+					var turn_phase: int = int(time * 0.8) % 4
+					dancer.rotation_degrees = Vector3(0, turn_phase * 90.0, 0)
+
+# Spawns a "dodgy character" leaning against / hanging under a park streetlamp with a glowing cigarette & smoke puff particle effects
+func _spawn_dodgy_park_character(park: Rect2) -> void:
+	var center_2d: Vector2 = park.get_center()
+	var center_pos: Vector3 = Vector3(center_2d.x, 0.0, center_2d.y)
+	
+	var half_w: float = park.size.x / 2.0 - 1.5
+	var half_h: float = park.size.y / 2.0 - 1.5
+
+	# Pick one of the 4 park corner streetlamps
+	var corners: Array[Vector3] = [
+		center_pos + Vector3(-half_w, 0.0, -half_h),
+		center_pos + Vector3(half_w, 0.0, -half_h),
+		center_pos + Vector3(half_w, 0.0, half_h),
+		center_pos + Vector3(-half_w, 0.0, half_h)
+	]
+	var lamp_pos: Vector3 = corners[rng.randi() % corners.size()]
+	
+	# Position character right next to streetlamp pole (0.7m offset towards park center)
+	var dir_to_center: Vector3 = (center_pos - lamp_pos).normalized()
+	var char_pos: Vector3 = lamp_pos + dir_to_center * 0.7
+
+	var ped_node = CharacterBody3D.new()
+	ped_node.name = "DodgyParkCharacter"
+	ped_node.global_position = char_pos
+
+	# Dark shady coat material with dim crimson / deep amber accents
+	var body_mat = StandardMaterial3D.new()
+	body_mat.albedo_color = Color(0.04, 0.04, 0.05) # Charcoal trenchcoat
+
+	var head_mat = StandardMaterial3D.new()
+	var dim_red: Color = Color(0.9, 0.15, 0.1) # Dim shady red emission head
+	head_mat.albedo_color = dim_red
+	head_mat.emission_enabled = true
+	head_mat.emission = dim_red
+	head_mat.emission_energy_multiplier = 2.0
+
+	# Body Mesh Instance
+	var body_inst = MeshInstance3D.new()
+	body_inst.mesh = body_mesh_template
+	body_inst.material_override = body_mat
+	body_inst.position = Vector3(0.0, 0.6, 0.0)
+	ped_node.add_child(body_inst)
+
+	# Head Mesh Instance
+	var head_inst = MeshInstance3D.new()
+	head_inst.mesh = head_mesh_template
+	head_inst.material_override = head_mat
+	head_inst.position = Vector3(0.0, 1.35, 0.0)
+	ped_node.add_child(head_inst)
+
+	# --- CIGARETTE PROP & GLOWING EMBER TIP ---
+	var cig_node = Node3D.new()
+	cig_node.name = "Cigarette"
+	cig_node.position = Vector3(0.0, 1.32, 0.16) # Held near mouth/head
+	ped_node.add_child(cig_node)
+
+	# Cigarette stick mesh
+	var cig_mesh_inst = MeshInstance3D.new()
+	var cig_mesh = CylinderMesh.new()
+	cig_mesh.top_radius = 0.012
+	cig_mesh.bottom_radius = 0.012
+	cig_mesh.height = 0.09
+	cig_mesh_inst.mesh = cig_mesh
+	cig_mesh_inst.rotation_degrees = Vector3(90, 0, 0)
+	var cig_mat = StandardMaterial3D.new()
+	cig_mat.albedo_color = Color(0.9, 0.9, 0.85)
+	cig_mesh_inst.material_override = cig_mat
+	cig_node.add_child(cig_mesh_inst)
+
+	# Glowing Ember Tip (High Orange Emission Light)
+	var ember_inst = MeshInstance3D.new()
+	var ember_mesh = SphereMesh.new()
+	ember_mesh.radius = 0.016
+	ember_mesh.height = 0.032
+	ember_inst.mesh = ember_mesh
+	ember_inst.position = Vector3(0.0, 0.0, 0.045)
+	var ember_mat = StandardMaterial3D.new()
+	var ember_color: Color = Color(1.0, 0.35, 0.0)
+	ember_mat.albedo_color = ember_color
+	ember_mat.emission_enabled = true
+	ember_mat.emission = ember_color
+	ember_mat.emission_energy_multiplier = 8.0
+	ember_inst.material_override = ember_mat
+	cig_node.add_child(ember_inst)
+
+	# Small Ember Light source
+	var ember_light = OmniLight3D.new()
+	ember_light.light_color = ember_color
+	ember_light.light_energy = 1.5
+	ember_light.omni_range = 1.2
+	ember_light.position = Vector3(0.0, 0.0, 0.05)
+	cig_node.add_child(ember_light)
+
+	# Face towards streetlamp pole / park corner, looking cool & shady
+	ped_node.look_at(lamp_pos, Vector3.UP)
+	ped_node.rotate_object_local(Vector3.UP, PI) # Back against lamp pole, looking outward into park
+
+	add_child(ped_node)
+	active_park_dancers.append(ped_node)

@@ -87,6 +87,10 @@ func generate_city_from_seed(target_seed: int) -> void:
 	_spawn_exit_points()
 	_spawn_food_trucks()
 	_eject_entities_from_water()
+	
+	var ped_system = get_parent().get_node_or_null("PedestrianSystem")
+	if is_instance_valid(ped_system) and ped_system.has_method("_spawn_park_dance_groups"):
+		ped_system.call_deferred("_spawn_park_dance_groups")
 
 # Spawns glowing highway exit gates at the 4 city edge boundaries (North, South, East, West)
 func _spawn_exit_points() -> void:
