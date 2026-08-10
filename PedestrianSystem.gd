@@ -15,6 +15,7 @@ class_name PedestrianSystem
 # Pedestrian instances pool
 var active_pedestrians: Array[Node3D] = []
 var active_park_dancers: Array[Node3D] = []
+var active_dodgy_characters: Array[Node3D] = []
 
 # Mesh templates
 var body_mesh_template: CapsuleMesh
@@ -572,11 +573,16 @@ func _spawn_park_dance_groups() -> void:
 	if park_boxes.is_empty():
 		return
 
-	# Clear existing dancers if any
+	# Clear existing dancers and dodgy characters if any
 	for dancer in active_park_dancers:
 		if is_instance_valid(dancer):
 			dancer.queue_free()
 	active_park_dancers.clear()
+
+	for dodgy in active_dodgy_characters:
+		if is_instance_valid(dodgy):
+			dodgy.queue_free()
+	active_dodgy_characters.clear()
 
 	var dance_styles: Array[String] = ["CIRCLE", "PARTNERS", "LINE"]
 	var style_idx: int = 0
@@ -870,25 +876,25 @@ func _spawn_dodgy_park_character(park: Rect2) -> void:
 	# Glowing Ember Tip (High Orange Emission Light)
 	var ember_inst = MeshInstance3D.new()
 	var ember_mesh = SphereMesh.new()
-	ember_mesh.radius = 0.016
-	ember_mesh.height = 0.032
+	ember_mesh.radius = 0.04
+	ember_mesh.height = 0.08
 	ember_inst.mesh = ember_mesh
-	ember_inst.position = Vector3(0.0, 0.0, 0.045)
+	ember_inst.position = Vector3(0.0, 0.0, 0.06)
 	var ember_mat = StandardMaterial3D.new()
-	var ember_color: Color = Color(1.0, 0.35, 0.0)
+	var ember_color: Color = Color(1.0, 0.3, 0.0) # Bright Neon Orange Ember
 	ember_mat.albedo_color = ember_color
 	ember_mat.emission_enabled = true
 	ember_mat.emission = ember_color
-	ember_mat.emission_energy_multiplier = 8.0
+	ember_mat.emission_energy_multiplier = 12.0
 	ember_inst.material_override = ember_mat
 	cig_node.add_child(ember_inst)
 
 	# Small Ember Light source
 	var ember_light = OmniLight3D.new()
 	ember_light.light_color = ember_color
-	ember_light.light_energy = 1.5
-	ember_light.omni_range = 1.2
-	ember_light.position = Vector3(0.0, 0.0, 0.05)
+	ember_light.light_energy = 5.0
+	ember_light.omni_range = 3.0
+	ember_light.position = Vector3(0.0, 0.0, 0.06)
 	cig_node.add_child(ember_light)
 
 	# Face towards streetlamp pole / park corner, looking cool & shady
@@ -896,4 +902,5 @@ func _spawn_dodgy_park_character(park: Rect2) -> void:
 	ped_node.rotate_object_local(Vector3.UP, PI) # Back against lamp pole, looking outward into park
 
 	add_child(ped_node)
-	active_park_dancers.append(ped_node)
+	active_dodgy_characters.append(ped_node)
+	print("[PARK DANCERS] Spawned DodgyParkCharacter at ", char_pos, " near streetlamp ", lamp_pos)
