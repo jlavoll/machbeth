@@ -607,6 +607,7 @@ func _manage_food_truck_queues(delta: float) -> void:
 	_update_park_dancers(delta)
 	_update_parking_lot_gangs(delta)
 	_update_narrow_street_residents(delta)
+	_update_archetype_behaviors(delta)
 
 # ==============================================================================
 # UNIQUE PARK DANCE GROUPS (Circle / Line / Partner Couples)
@@ -1652,9 +1653,6 @@ func _spawn_cyber_joggers(city_gen) -> void:
 # ==============================================================================
 # ARCHETYPE UPDATE AI LOOPS
 # ==============================================================================
-
-func _update_narrow_street_residents(delta: float) -> void:
-	_update_archetype_behaviors(delta)
 
 func _update_archetype_behaviors(delta: float) -> void:
 	var player_pos: Vector3 = _get_player_world_position()
