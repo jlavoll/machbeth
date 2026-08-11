@@ -111,9 +111,9 @@ func _input(event: InputEvent) -> void:
 	if not _is_dialogue_active:
 		return
 
-	# Space: always skips typewriter / advances
+	# Space or Enter: skips typewriter / advances dialogue / triggers choice
 	if event is InputEventKey and event.pressed and not event.echo:
-		if event.keycode == KEY_SPACE:
+		if event.keycode == KEY_SPACE or event.keycode == KEY_ENTER or event.keycode == KEY_KP_ENTER:
 			_handle_advance_or_skip()
 			get_viewport().set_input_as_handled()
 
@@ -218,7 +218,7 @@ func _display_node(node_id: String) -> void:
 
 	# --- Hide choices until typewriter completes ---
 	_clear_choice_buttons()
-	_continue_hint_label.text    = "[SPACE] — Skip"
+	_continue_hint_label.text    = "[SPACE / ENTER] — Skip"
 	_continue_hint_label.visible = true
 
 func _handle_advance_or_skip() -> void:
@@ -228,7 +228,21 @@ func _handle_advance_or_skip() -> void:
 		_typewriter_char_index     = float(_typewriter_full_text.length())
 		_dialogue_rich_label.text  = _typewriter_full_text
 		_spawn_choice_buttons()
-	# If already complete, do nothing — player must click a choice button
+	else:
+		# If text typing is complete:
+		# If there are no choices (or only 1 automatic choice/exit node), pressing Enter/Space ends or advances dialogue
+		var buttons := _choices_v_container.get_children()
+		if buttons.is_empty():
+			end_dialogue()
+		elif buttons.size() == 1 and buttons[0] is Button:
+			(buttons[0] as Button).pressed.emit()
+		else:
+			# If multiple choices, press the currently focused choice button if any
+			var focused := _choices_v_container.get_viewport().gui_get_focus_owner()
+			if focused in buttons and focused is Button:
+				(focused as Button).pressed.emit()
+			elif buttons[0] is Button:
+				(buttons[0] as Button).pressed.emit()
 
 func _spawn_choice_buttons() -> void:
 	_clear_choice_buttons()
@@ -245,6 +259,12 @@ func _spawn_choice_buttons() -> void:
 
 		var cyber_button := _build_cyber_choice_button(choice_text, choice_index, target_id)
 		_choices_v_container.add_child(cyber_button)
+
+	# Focus first button so arrow keys and Enter work immediately
+	if _choices_v_container.get_child_count() > 0:
+		var first_btn = _choices_v_container.get_child(0) as Control
+		if first_btn:
+			first_btn.grab_focus()
 
 func _clear_choice_buttons() -> void:
 	for existing_child in _choices_v_container.get_children():
@@ -569,7 +589,7 @@ func _build_cyber_choice_button(button_text: String, choice_index: int, target_i
 	cyber_btn.name      = "ChoiceButton_%d" % choice_index
 	cyber_btn.text      = "▸  " + button_text
 	cyber_btn.flat      = false
-	cyber_btn.focus_mode = Control.FOCUS_NONE  # Visual highlight only on hover
+	cyber_btn.focus_mode = Control.FOCUS_ALL  # Allow keyboard navigation via Up/Down arrow keys
 
 	var ubuntu_font: FontFile = _load_ubuntu_font()
 	if ubuntu_font:
@@ -591,7 +611,7 @@ func _build_cyber_choice_button(button_text: String, choice_index: int, target_i
 	cyber_btn.add_theme_stylebox_override("normal", normal_style)
 	cyber_btn.add_theme_color_override("font_color", Color(0.78, 0.95, 0.92, 1.0))
 
-	# --- Hover state style ---
+	# --- Hover / Focus state style ---
 	var hover_style             := StyleBoxFlat.new()
 	hover_style.bg_color         = Color(0.0, 0.18, 0.16, 0.95)
 	hover_style.border_width_left = 3
@@ -604,7 +624,9 @@ func _build_cyber_choice_button(button_text: String, choice_index: int, target_i
 	hover_style.content_margin_top    = 5.0
 	hover_style.content_margin_bottom = 5.0
 	cyber_btn.add_theme_stylebox_override("hover", hover_style)
+	cyber_btn.add_theme_stylebox_override("focus", hover_style)
 	cyber_btn.add_theme_color_override("font_hover_color", choice_hover_color)
+	cyber_btn.add_theme_color_override("font_focus_color", choice_hover_color)
 
 	# --- Pressed state style ---
 	var pressed_style             := StyleBoxFlat.new()

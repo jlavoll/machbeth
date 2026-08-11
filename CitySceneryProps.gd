@@ -248,3 +248,98 @@ func create_food_truck(spawn_pos: Vector3, facing_dir: Vector3, neon_color: Colo
 	truck_root.add_child(static_body)
 
 	return truck_root
+
+# ==============================================================================
+# PARKED VEHICLE PROP FACTORY
+# ==============================================================================
+# Creates a parked vehicle prop precisely aligned within a parking bay stall
+func create_parked_vehicle(spawn_pos: Vector3, facing_dir: Vector3, car_color: Color) -> Node3D:
+	var car_root = Node3D.new()
+	car_root.name = "ParkedVehicleProp"
+	car_root.position = spawn_pos
+
+	# Align rotation to parking stall direction
+	if facing_dir != Vector3.ZERO:
+		car_root.look_at_from_position(spawn_pos, spawn_pos + facing_dir, Vector3.UP)
+
+	# 1. Main Car Chassis Body Mesh
+	var body_inst = MeshInstance3D.new()
+	body_inst.name = "CarBody"
+	var body_box = BoxMesh.new()
+	body_box.size = Vector3(1.8, 0.8, 4.0) # Standard 1.8m x 4.0m vehicle footprint
+	body_inst.mesh = body_box
+	body_inst.position = Vector3(0.0, 0.5, 0.0)
+
+	var b_mat = StandardMaterial3D.new()
+	b_mat.albedo_color = car_color
+	b_mat.metallic = 0.8
+	b_mat.roughness = 0.25
+	body_inst.material_override = b_mat
+	car_root.add_child(body_inst)
+
+	# 2. Roof Cabin Box Mesh
+	var cabin_inst = MeshInstance3D.new()
+	cabin_inst.name = "CarCabin"
+	var cabin_box = BoxMesh.new()
+	cabin_box.size = Vector3(1.5, 0.6, 2.0)
+	cabin_inst.mesh = cabin_box
+	cabin_inst.position = Vector3(0.0, 1.1, -0.2)
+
+	var c_mat = StandardMaterial3D.new()
+	c_mat.albedo_color = Color(0.05, 0.07, 0.1) # Tinted dark cyber glass
+	c_mat.metallic = 0.9
+	c_mat.roughness = 0.1
+	cabin_inst.material_override = c_mat
+	car_root.add_child(cabin_inst)
+
+	# 3. Headlights & Tail Lights
+	var head_light_mat = StandardMaterial3D.new()
+	var head_cyan = Color(0.0, 0.9, 1.0)
+	head_light_mat.albedo_color = head_cyan
+	head_light_mat.emission_enabled = true
+	head_light_mat.emission = head_cyan
+	head_light_mat.emission_energy_multiplier = 4.0
+
+	var hl_left = MeshInstance3D.new()
+	var hl_box = BoxMesh.new()
+	hl_box.size = Vector3(0.4, 0.12, 0.1)
+	hl_left.mesh = hl_box
+	hl_left.position = Vector3(-0.6, 0.55, -2.0)
+	hl_left.material_override = head_light_mat
+	car_root.add_child(hl_left)
+
+	var hl_right = MeshInstance3D.new()
+	hl_right.mesh = hl_box
+	hl_right.position = Vector3(0.6, 0.55, -2.0)
+	hl_right.material_override = head_light_mat
+	car_root.add_child(hl_right)
+
+	# Tail light bar
+	var tail_light_mat = StandardMaterial3D.new()
+	var tail_red = Color(1.0, 0.05, 0.2)
+	tail_light_mat.albedo_color = tail_red
+	tail_light_mat.emission_enabled = true
+	tail_light_mat.emission = tail_red
+	tail_light_mat.emission_energy_multiplier = 4.0
+
+	var tl_bar = MeshInstance3D.new()
+	var tl_box = BoxMesh.new()
+	tl_box.size = Vector3(1.6, 0.12, 0.1)
+	tl_bar.mesh = tl_box
+	tl_bar.position = Vector3(0.0, 0.55, 2.0)
+	tl_bar.material_override = tail_light_mat
+	car_root.add_child(tl_bar)
+
+	# 4. Solid Physics Body Collider (Blocks player car & on-foot player)
+	var static_body = StaticBody3D.new()
+	static_body.name = "ParkedCarCollider"
+
+	var col_shape = CollisionShape3D.new()
+	var box_shape = BoxShape3D.new()
+	box_shape.size = Vector3(1.8, 1.2, 4.0)
+	col_shape.shape = box_shape
+	col_shape.position = Vector3(0.0, 0.6, 0.0)
+	static_body.add_child(col_shape)
+	car_root.add_child(static_body)
+
+	return car_root

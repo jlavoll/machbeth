@@ -22,6 +22,9 @@ var map_hud_layer: CanvasLayer
 var map_overlay_panel: Control
 var map_title_label: Label
 var player_blip_marker: ColorRect
+var delivery_blip_marker: ColorRect
+var delivery_target_pos: Vector3 = Vector3.ZERO
+var has_active_delivery: bool = false
 
 # --- PICTURE-IN-PICTURE (PIP) LIVE FEED COMPONENTS ---
 var pip_viewport_container: SubViewportContainer
@@ -91,6 +94,14 @@ func _setup_map_hud_overlay() -> void:
 	player_blip_marker.color = Color(1.0, 0.0, 0.8) # Neon Magenta Blip
 	map_overlay_panel.add_child(player_blip_marker)
 
+	# Delivery Destination Building Blip Marker (Square Yellow/Green)
+	delivery_blip_marker = ColorRect.new()
+	delivery_blip_marker.name = "DeliveryBlipMarker"
+	delivery_blip_marker.size = Vector2(20, 20)
+	delivery_blip_marker.color = Color(1.0, 0.85, 0.0, 0.95) # Radiant Gold / Yellow Square
+	delivery_blip_marker.visible = false
+	map_overlay_panel.add_child(delivery_blip_marker)
+
 	# --------------------------------------------------------------------------
 	# TOP RIGHT PIP LIVE FEED BOX (COMPACT DIMENSIONS: 220x140)
 	# --------------------------------------------------------------------------
@@ -148,6 +159,15 @@ func _process(_delta: float) -> void:
 		# Project player's 3D world position to 2D screen coordinates on satellite camera
 		var screen_pos: Vector2 = map_camera.unproject_position(tracked_pos)
 		player_blip_marker.position = screen_pos - (player_blip_marker.size / 2.0)
+
+		# Delivery blip update
+		if is_instance_valid(delivery_blip_marker):
+			if has_active_delivery:
+				delivery_blip_marker.visible = true
+				var deliv_screen_pos: Vector2 = map_camera.unproject_position(delivery_target_pos)
+				delivery_blip_marker.position = deliv_screen_pos - (delivery_blip_marker.size / 2.0)
+			else:
+				delivery_blip_marker.visible = false
 
 		# Keep PIP camera synced to the active player position & orientation
 		if is_instance_valid(pip_live_camera):

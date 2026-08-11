@@ -81,6 +81,26 @@ The city is an all-encompassing, high-density megastructure grid governed by **D
 * **Macduff**: Elite driver of the Fife Security Patrol. Operating an un-networked synth-cyborg chassis ("born of a lab-vat, not of woman"), Macduff lead the anti-Mack resistance.
 * **Porter**: A cynical, glitch-modded grease-monkey operating **"The Pit"**—a subterranean, off-grid garage beneath the central highway. Porter handles vehicle tuning, black-market cyberware, and provides dark, rhythmic street commentary as Mack’s sanity unravels.
 
+### 🦅 Street Gangs & Turf Syndicate Archetypes
+* **The Red Crows (Crimson Red)**: The standard baseline street gang controlling central parking lot territories. Balanced in speed and strength, fiercely territorial.
+* **The Blue Seagulls (Cobalt Blue)**: Heavyweight armored street syndicate. Slower pacing, high physical resilience, and brutal close-quarters defense.
+* **The Yellow Hawks (Amber Gold)**: Lightning-fast, nimble cyber-runners. High speed and agile flank tactics along highway overpasses.
+* **The Toxic Vipers (Acid Green)**: Bio-modded street alchemists specializing in neural toxins and illegal cyberware modifications.
+
+### 🚨 Police Cordon & District Blockade System (Crime Scene Quarantine)
+* **Dynamic City Blockades**: Certain city blocks or street corridors can be locked down by Fife Security Patrol / Police barricades following high-profile murders, corporate assassinations, or gang turf wars.
+* **Access & Bypass Mechanics**:
+  1. **Police Faction Standing**: If your reputation with the Police / Fife Security Patrol is high enough (e.g. Faction Standing Level 2+), patrol officers at the checkpoint wave you right through the barrier.
+  2. **Bribe & Cyber-Credits**: Pay off the guard officer with cash / cyber-credits via dialogue to temporarily disable security scanners ("Look the other way for 300 Credits").
+  3. **Stealth & Vehicle Infiltration**: Slip past patrol scanner cones on foot using shadow alleyways, or hack checkpoint barrier gates remotely using Lady M's ICE-Breaker modules.
+
+### 📐 Indoor Tactical Top-Down View (Cyber Blueprint / Heist Mode)
+* **Seamless Transition**: Entering a building interior seamlessly switches the viewport to a stylized, high-contrast **Tactical Blueprint Top-Down View**.
+* **Iconographic Symbols**:
+  - **Characters / Guard Patrols**: Glowing red/cyan direction cones & movement paths.
+  - **Environment Objects**: High-contrast icons for heavy furniture/desks (half-cover), concrete pillars (full-cover), security doors, terminal hacking nodes, and elevator shafts.
+* **Tactical & Stealth Gameplay**: Perfect for stealth infiltration, planning heist routes, avoiding guard vision cones, and hacking doors/elevators via Lady M's neural link before bursting into corporate offices.
+
 ---
 
 ## 3. THE THEATRICAL 5-ACT CAMPAIGN (SCENES & PLAYABLE CHUNKS)

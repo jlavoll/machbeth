@@ -1,0 +1,42 @@
+{
+	"speaker_display_name": "BANQUO'S CONTACT",
+	"speaker_subtitle": "NEURAL DATA RECEIVER",
+	"speaker_color": "#00FFD5",
+	"nodes": {
+		"blinded": {
+			"text": "Hey! Turn off your high beams, pal! Are you trying to blind me before the handover?",
+			"choices": [
+				{
+					"text": "\"Sorry about that. Here's the encrypted data-chip.\"",
+					"target": "deliver_package"
+				},
+				{
+					"text": "\"Hold your horses. I'm still holding the chip.\"",
+					"target": "exit"
+				}
+			]
+		},
+		"start": {
+			"text": "You got the encrypted data-chip from the Syndicate boss?",
+			"choices": [
+				{
+					"text": "\"Here's the data-chip. Hand over the payment.\"",
+					"target": "deliver_package"
+				},
+				{
+					"text": "\"Not yet. Still carrying it.\"",
+					"target": "exit"
+				}
+			]
+		},
+		"deliver_package": {
+			"text": "Data verifies clean. 500 Credits transferred directly to your neural wallet. Good doing business with you.",
+			"choices": [
+				{
+					"text": "\"[Complete Delivery]\"",
+					"target": "exit"
+				}
+			]
+		}
+	}
+}

@@ -16,7 +16,7 @@ class_name PlayerOnFoot
 const WALK_SPEED:       float   = 3.5
 const RUN_SPEED:        float   = 7.5
 const RE_ENTER_RADIUS:  float   = 5.0
-const TURN_SPEED:       float   = 3.2   # rad/s — matches car steer_speed
+const TURN_SPEED:       float   = 1.8   # Slower, smoother on-foot turning speed (rad/s)
 const CAM_LERP_SPEED:   float   = 4.0   # how fast offset lerps to target
 const CAM_RETURN_SPEED: float   = 3.5   # how fast orbit yaw snaps back when walking
 const ZOOM_STEP:        float   = 0.08  # zoom per scroll notch
@@ -28,7 +28,7 @@ const ORBIT_SENS:       float   = 0.004 # radians per pixel of mouse drag
 # Zoom 2.0: Skyline Look-Up (stays at over-shoulder position, tilts look target upwards to skyline)
 const FOOT_ZOOM_MAX:    float   = 2.0
 const CAM_FAR_OFFSET:  Vector3 = Vector3(0.0, 11.5, 7.5)  # High overview (pitched down looking at character + street ahead)
-const CAM_NEAR_OFFSET: Vector3 = Vector3(0.45, 1.9, 4.8)  # Over-The-Shoulder pulled back ~3m further behind character
+const CAM_NEAR_OFFSET: Vector3 = Vector3(0.35, 1.6, 1.8)  # Tighter, closer Over-The-Shoulder view (3.2m behind character)
 
 # World Y height look target rises to during Stage 3 (Skyline Look-Up)
 const CAM_SCENERY_LOOK_HEIGHT: float = 16.0
@@ -83,6 +83,7 @@ func setup(car: PlayerCar, cam: Camera3D, spawn_pos: Vector3) -> void:
 
 	_foot_zoom          = 0.0
 	_cam_offset_current = CAM_FAR_OFFSET   # start at the far (top-down) position
+	rotation.y          = car.rotation.y   # Align character directly with the car's forward heading
 	_facing_angle       = rotation.y
 	_cam_yaw            = 0.0
 	_cam_pitch          = 0.0
@@ -347,3 +348,6 @@ func _update_camera(delta: float) -> void:
 	var look_world: Vector3 = global_position + Vector3(0.0, look_y, 0.0)
 	if camera.global_position.distance_to(look_world) > 0.05:
 		camera.look_at(look_world, Vector3.UP)
+
+	# --- 95° WIDE-ANGLE ON-FOOT FOV ---
+	camera.fov = 95.0

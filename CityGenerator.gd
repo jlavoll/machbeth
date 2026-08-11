@@ -249,6 +249,12 @@ func _eject_entities_from_water() -> void:
 			if is_instance_valid(ped) and _is_position_in_water(ped.global_position):
 				ped.global_position = _find_safe_land_position(ped.global_position)
 
+	# 4. Eject Food Trucks & Street Noodle Carts
+	for truck in active_food_trucks:
+		if is_instance_valid(truck) and _is_position_in_water(truck.global_position):
+			print("[SAFETY] Relocating Food Truck / Noodle Shop from water to safe land...")
+			truck.global_position = _find_safe_land_position(truck.global_position)
+
 # Geometric AABB check against active river boxes
 func _is_position_in_water(pos: Vector3) -> bool:
 	var point_2d = Vector2(pos.x, pos.z)
@@ -773,6 +779,84 @@ func _spawn_cyber_river_canal(center: Vector3, b_size: Vector2) -> void:
 
 	add_child(river_body)
 
+	# --- NEON SAFETY GUARDRAIL PERIMETER ---
+	_build_river_guardrails(center, b_size)
+
+# Constructs 1.1m tall metallic guardrails with glowing cyan neon top-bars along canal perimeters
+func _build_river_guardrails(center: Vector3, b_size: Vector2) -> void:
+	var half_w: float = b_size.x / 2.0
+	var half_h: float = b_size.y / 2.0
+
+	var railing_node = Node3D.new()
+	railing_node.name = "RiverGuardrails"
+	railing_node.position = center
+	add_child(railing_node)
+
+	# Metallic Post & Rail Materials
+	var metal_mat = StandardMaterial3D.new()
+	metal_mat.albedo_color = Color(0.1, 0.12, 0.15)
+	metal_mat.metallic = 0.8
+	metal_mat.roughness = 0.3
+
+	var neon_rail_mat = StandardMaterial3D.new()
+	var cyan_neon = Color(0.0, 0.85, 1.0)
+	neon_rail_mat.albedo_color = cyan_neon
+	neon_rail_mat.emission_enabled = true
+	neon_rail_mat.emission = cyan_neon
+	neon_rail_mat.emission_energy_multiplier = 3.5
+
+	# Construct 4 perimeter sides: North, South, East, West
+	var sides: Array[Dictionary] = [
+		{"pos": Vector3(0.0, 0.55, -half_h), "size": Vector3(b_size.x, 0.1, 0.15)}, # North
+		{"pos": Vector3(0.0, 0.55, half_h),  "size": Vector3(b_size.x, 0.1, 0.15)}, # South
+		{"pos": Vector3(-half_w, 0.55, 0.0), "size": Vector3(0.15, 0.1, b_size.y)}, # West
+		{"pos": Vector3(half_w, 0.55, 0.0),  "size": Vector3(0.15, 0.1, b_size.y)}  # East
+	]
+
+	for side in sides:
+		# Glowing Top Handrail
+		var top_rail = MeshInstance3D.new()
+		var r_box = BoxMesh.new()
+		r_box.size = side["size"]
+		top_rail.mesh = r_box
+		top_rail.position = side["pos"] + Vector3(0.0, 0.5, 0.0) # 1.05m elevation
+		top_rail.material_override = neon_rail_mat
+		railing_node.add_child(top_rail)
+
+		# Lower Support Rail
+		var bot_rail = MeshInstance3D.new()
+		bot_rail.mesh = r_box
+		bot_rail.position = side["pos"] + Vector3(0.0, 0.1, 0.0) # 0.65m elevation
+		bot_rail.material_override = metal_mat
+		railing_node.add_child(bot_rail)
+
+	# Vertical Guard Posts spaced every 12 meters
+	var post_spacing: float = 12.0
+	var post_mesh = BoxMesh.new()
+	post_mesh.size = Vector3(0.18, 1.1, 0.18)
+
+	# North & South post runs
+	var num_x_posts: int = int(b_size.x / post_spacing)
+	for i in range(num_x_posts + 1):
+		var px: float = -half_w + (float(i) * post_spacing)
+		for pz in [-half_h, half_h]:
+			var post = MeshInstance3D.new()
+			post.mesh = post_mesh
+			post.position = Vector3(px, 0.55, pz)
+			post.material_override = metal_mat
+			railing_node.add_child(post)
+
+	# East & West post runs
+	var num_z_posts: int = int(b_size.y / post_spacing)
+	for j in range(num_z_posts + 1):
+		var pz: float = -half_h + (float(j) * post_spacing)
+		for px in [-half_w, half_w]:
+			var post = MeshInstance3D.new()
+			post.mesh = post_mesh
+			post.position = Vector3(px, 0.55, pz)
+			post.material_override = metal_mat
+			railing_node.add_child(post)
+
 # Spawns a Cyber Park with green grass ground & glowing holographic trees/foliage
 func _spawn_cyber_park(center: Vector3, b_size: Vector2, neon_colors: Array) -> void:
 	# Track park bounding box rectangle
@@ -940,3 +1024,30 @@ func _spawn_parking_lot(center: Vector3, b_size: Vector2, neon_colors: Array) ->
 	for pos in corner_positions:
 		var streetlight_node = scenery_props.create_parking_lot_streetlight(center, pos, b_size)
 		add_child(streetlight_node)
+
+	# 4. Spawn 1 to 2 Parked Vehicles cleanly aligned within stall lines
+	var num_parked_cars: int = rng.randi_range(1, 2)
+	var available_stalls: Array[float] = []
+	for px in range(int(-stall_boundary_half_width), int(stall_boundary_half_width), 6):
+		available_stalls.append(float(px) + 3.0) # Stall center X
+
+	available_stalls.shuffle()
+	var vehicle_colors: Array[Color] = [
+		Color(0.85, 0.1, 0.1),  # Crimson Red
+		Color(0.1, 0.45, 0.9),  # Cobalt Blue
+		Color(0.1, 0.12, 0.15), # Obsidian Black
+		Color(0.85, 0.85, 0.9), # Silver Metal
+		Color(0.9, 0.7, 0.0)    # Amber Gold
+	]
+
+	for i in range(min(num_parked_cars, available_stalls.size())):
+		var stall_x: float = available_stalls[i]
+		# Pick north row (Z min) or south row (Z max)
+		var is_north_row: bool = (i % 2 == 0)
+		var stall_z: float = (-stall_boundary_half_depth + 4.0) if is_north_row else (stall_boundary_half_depth - 4.0)
+		var car_pos: Vector3 = center + Vector3(stall_x, 0.0, stall_z)
+		var facing: Vector3 = Vector3.BACK if is_north_row else Vector3.FORWARD
+		var car_color: Color = vehicle_colors[rng.randi() % vehicle_colors.size()]
+
+		var parked_car_node = scenery_props.create_parked_vehicle(car_pos, facing, car_color)
+		add_child(parked_car_node)

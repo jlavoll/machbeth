@@ -3,9 +3,22 @@
 	"speaker_subtitle": "PARKING LOT SYNDICATE BOSS",
 	"speaker_color": "#FF0055",
 	"nodes": {
+		"busy_with_quest": {
+			"text": "You've already got an active contract running on your neural grid. Finish what you started before coming to me for more work.",
+			"choices": [
+				{
+					"text": "\"Right. I'll finish my current contract first.\"",
+					"target": "exit"
+				}
+			]
+		},
 		"start": {
 			"text": "You got nerve walking right into our turf on foot. What's your business here?",
 			"choices": [
+				{
+					"text": "\"Looking for work. Got anything that needs doing?\"",
+					"target": "quest_pickup"
+				},
 				{
 					"text": "\"Whose turf is this?\"",
 					"target": "turf_info"
@@ -13,10 +26,28 @@
 				{
 					"text": "\"Just passing through. No trouble.\"",
 					"target": "no_trouble"
+				}
+			]
+		},
+		"quest_pickup": {
+			"text": "As a matter of fact, I do. Need an encrypted data-chip delivered to a contact waiting next to a motorcycle outside the south quadrant block. You deliver it clean, there's 500 Credits in it for you.",
+			"choices": [
+				{
+					"text": "\"I'll take the job. Hand over the data-chip.\"",
+					"target": "quest_accepted"
 				},
 				{
-					"text": "\"Back off.\"",
-					"target": "threaten"
+					"text": "\"Not interested right now.\"",
+					"target": "exit"
+				}
+			]
+		},
+		"quest_accepted": {
+			"text": "Good. I've uploaded the delivery coordinates to your Tactical Overmap [M]. Don't keep Banquo's operative waiting.",
+			"choices": [
+				{
+					"text": "\"On it.\"",
+					"target": "exit"
 				}
 			]
 		},

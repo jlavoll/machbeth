@@ -17,6 +17,9 @@
 [ext_resource type="Script" uid="uid://3dxvow48b5wt" path="res://TrafficSystem.gd" id="15_traffic"]
 [ext_resource type="Script" uid="uid://bflf00k1lk4sc" path="res://PedestrianSystem.gd" id="16_pedestrians"]
 [ext_resource type="Script" uid="uid://rjei6geo1tin" path="res://DialogueSystem.gd" id="17_dialogue"]
+[ext_resource type="Script" path="res://NeuralNotificationSystem.gd" id="18_neuralcomms"]
+[ext_resource type="Script" path="res://QuestManager.gd" id="19_questmgr"]
+[ext_resource type="Script" path="res://FactionStatsManager.gd" id="20_statsmgr"]
 
 [sub_resource type="Environment" id="Environment_1"]
 background_mode = 1
@@ -98,6 +101,15 @@ script = ExtResource("14_audiomenu")
 
 [node name="DialogueSystem" type="CanvasLayer" parent="." unique_id=1234567890]
 script = ExtResource("17_dialogue")
+
+[node name="NeuralNotificationSystem" type="Node" parent="." unique_id=1849204918]
+script = ExtResource("18_neuralcomms")
+
+[node name="QuestManager" type="Node" parent="." unique_id=1983021983]
+script = ExtResource("19_questmgr")
+
+[node name="FactionStatsManager" type="Node" parent="." unique_id=2049182049]
+script = ExtResource("20_statsmgr")
 
 [node name="TrafficSystem" type="Node3D" parent="." unique_id=578341031]
 script = ExtResource("15_traffic")

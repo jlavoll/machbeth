@@ -46,49 +46,17 @@ var hud_tween: Tween = null
 # ==============================================================================
 
 func _ready() -> void:
-	_setup_hud_popup()
 	_create_all_particle_systems()
 	set_weather_state(current_weather, false)
 
-func _setup_hud_popup() -> void:
-	var canvas_layer = CanvasLayer.new()
-	canvas_layer.name = "WeatherHUDLayer"
-	add_child(canvas_layer)
-
-	hud_container = MarginContainer.new()
-	canvas_layer.add_child(hud_container)
-	hud_container.set_anchors_preset(Control.PRESET_TOP_WIDE)
-	hud_container.grow_horizontal = Control.GROW_DIRECTION_BOTH
-	hud_container.add_theme_constant_override("margin_top", 70)
-
-	hud_label = Label.new()
-	hud_container.add_child(hud_label)
-	hud_label.horizontal_alignment = HorizontalAlignment.HORIZONTAL_ALIGNMENT_CENTER
-	hud_label.add_theme_font_size_override("font_size", 22)
-	hud_label.add_theme_color_override("font_color", Color(0.0, 1.0, 0.8)) # Cyber Cyan
-	hud_label.add_theme_color_override("font_outline_color", Color.BLACK)
-	hud_label.add_theme_constant_override("outline_size", 8)
-	hud_label.modulate.a = 0.0 # Invisible initially
-
-# Listen for R key shortcut to cycle weather states
+# Listen for R key shortcut to cycle weather states silently
 func _unhandled_input(event: InputEvent) -> void:
 	if event is InputEventKey and event.pressed and not event.echo:
 		if event.keycode == KEY_R:
 			cycle_weather_state()
 
-func _show_weather_popup(weather_name: String) -> void:
-	if not hud_label:
-		return
-	
-	hud_label.text = "INCOMING WEATHER: " + weather_name.to_upper()
-	
-	if hud_tween and hud_tween.is_valid():
-		hud_tween.kill()
-		
-	hud_tween = create_tween()
-	hud_tween.tween_property(hud_label, "modulate:a", 1.0, 0.3)
-	hud_tween.tween_interval(2.2)
-	hud_tween.tween_property(hud_label, "modulate:a", 0.0, 0.6)
+func _show_weather_popup(_weather_name: String) -> void:
+	pass # Debug text popup removed per user request
 
 # ------------------------------------------------------------------------------
 # CREATION OF ALL 8 SHOWCASE PARTICLE SYSTEMS

@@ -23,6 +23,7 @@ var active_park_dancers: Array[Node3D] = []
 var active_dodgy_characters: Array[Node3D] = []
 var active_gang_members: Array[Node3D] = []
 var active_narrow_street_residents: Array[Node3D] = []
+var active_delivery_recipients: Array[Node3D] = []
 
 # New Archetype Tracking Arrays
 var active_street_vendors: Array[Node3D] = []
@@ -31,12 +32,19 @@ var active_buskers: Array[Node3D] = []
 var active_tech_drones: Array[Node3D] = []
 var active_joggers: Array[Node3D] = []
 
-# Gang color themes (each parking lot gang picks 1 theme: Blood Red, Deep Purple, Electric Blue, Toxic Green)
+# Gang color themes & faction names
 var gang_color_themes: Array[Color] = [
-	Color(0.9, 0.1, 0.1),  # Blood Crimson
-	Color(0.6, 0.1, 0.9),  # Cyber Purple
-	Color(0.0, 0.4, 1.0),  # Cobalt Blue
-	Color(0.2, 0.9, 0.1)   # Toxic Acid Green
+	Color(0.9, 0.1, 0.1),  # The Red Crows (Crimson Red)
+	Color(0.0, 0.4, 1.0),  # The Blue Seagulls (Cobalt Blue)
+	Color(1.0, 0.8, 0.0),  # The Yellow Hawks (Amber Gold)
+	Color(0.2, 0.9, 0.1)   # The Toxic Vipers (Acid Green)
+]
+
+var gang_faction_names: Array[String] = [
+	"RED CROWS",
+	"BLUE SEAGULLS",
+	"YELLOW HAWKS",
+	"TOXIC VIPERS"
 ]
 
 # Mesh templates
@@ -76,6 +84,136 @@ func _ready() -> void:
 	call_deferred("_spawn_parking_lot_gangs")
 	call_deferred("_spawn_narrow_street_residents")
 	call_deferred("_spawn_new_archetypes")
+
+	# Wire quest event listener to DialogueSystem
+	call_deferred("_connect_dialogue_signals")
+
+func _connect_dialogue_signals() -> void:
+	var dialogue_sys = get_parent().get_node_or_null("DialogueSystem")
+	if is_instance_valid(dialogue_sys):
+		dialogue_sys.dialogue_choice_selected.connect(_on_dialogue_choice_selected)
+		dialogue_sys.dialogue_ended.connect(_on_dialogue_ended)
+
+var _pending_quest_delivery_complete: bool = false
+
+func _on_dialogue_choice_selected(_choice_index: int, target_node_id: String) -> void:
+	if target_node_id == "quest_accepted":
+		_trigger_delivery_quest_start()
+	elif target_node_id == "deliver_package":
+		_pending_quest_delivery_complete = true
+
+func _on_dialogue_ended() -> void:
+	if _pending_quest_delivery_complete:
+		_pending_quest_delivery_complete = false
+		_trigger_delivery_quest_complete()
+
+func _trigger_delivery_quest_start() -> void:
+	var city_gen = get_parent().get_node_or_null("CityGenerator")
+	var x_cuts: Array = city_gen.active_x_streets if is_instance_valid(city_gen) and "active_x_streets" in city_gen else [-270.0, -180.0, -90.0, 0.0, 90.0, 180.0, 270.0]
+	var z_cuts: Array = city_gen.active_z_streets if is_instance_valid(city_gen) and "active_z_streets" in city_gen else [-270.0, -180.0, -90.0, 0.0, 90.0, 180.0, 270.0]
+
+	# Pick a random street intersection/corridor across the city grid
+	var random_x: float = x_cuts[rng.randi() % x_cuts.size()]
+	var random_z: float = z_cuts[rng.randi() % z_cuts.size()]
+
+	# Shift 6m onto sidewalk slate (away from street center)
+	var sidewalk_target := Vector3(random_x + 6.0, 0.0, random_z + 6.0)
+
+	# Ensure target location is clear of water bodies
+	if is_instance_valid(city_gen) and city_gen.has_method("_is_position_in_water"):
+		if city_gen._is_position_in_water(sidewalk_target):
+			sidewalk_target = city_gen._find_safe_land_position(sidewalk_target)
+
+	spawn_delivery_recipient(sidewalk_target)
+	
+	var overmap = get_parent().get_node_or_null("TacticalOvermapManager")
+	if is_instance_valid(overmap):
+		overmap.delivery_target_pos = sidewalk_target
+		overmap.has_active_delivery = true
+	print("[QUEST] Delivery Quest Started! Delivery recipient spawned dynamically on sidewalk at: ", sidewalk_target)
+
+func _trigger_delivery_quest_complete() -> void:
+	var overmap = get_parent().get_node_or_null("TacticalOvermapManager")
+	if is_instance_valid(overmap):
+		overmap.has_active_delivery = false
+		
+	var city_gen = get_parent().get_node_or_null("CityGenerator")
+	
+	for rec in active_delivery_recipients:
+		if is_instance_valid(rec):
+			# Set linger timer: wait 2.5 seconds AFTER dialogue closes before driving off
+			rec.set_meta("linger_timer", 2.5)
+			rec.set_meta("is_preparing_exit", true)
+			
+			# Dynamically calculate custom multi-segment exit route from recipient's random position
+			var waypoints: Array[Vector3] = []
+			var current_p: Vector3 = rec.global_position
+
+			var x_cuts: Array = city_gen.active_x_streets if is_instance_valid(city_gen) and "active_x_streets" in city_gen else [-270.0, -180.0, -90.0, 0.0, 90.0, 180.0, 270.0]
+			var z_cuts: Array = city_gen.active_z_streets if is_instance_valid(city_gen) and "active_z_streets" in city_gen else [-270.0, -180.0, -90.0, 0.0, 90.0, 180.0, 270.0]
+
+			# Step A: Find nearest street corridor to step out off sidewalk onto road
+			var nearest_x: float = x_cuts[0]
+			var min_dx: float = 999.0
+			for xc in x_cuts:
+				var dx: float = abs(current_p.x - xc)
+				if dx < min_dx:
+					min_dx = dx
+					nearest_x = xc
+
+			var nearest_z: float = z_cuts[0]
+			var min_dz: float = 999.0
+			for zc in z_cuts:
+				var dz: float = abs(current_p.z - zc)
+				if dz < min_dz:
+					min_dz = dz
+					nearest_z = zc
+
+			# Determine nearest city edge boundary (North, South, East, West) to exit cleanly
+			var exit_target := Vector3.ZERO
+			var dist_east: float = abs(285.0 - current_p.x)
+			var dist_west: float = abs(-285.0 - current_p.x)
+			var dist_north: float = abs(-285.0 - current_p.z)
+			var dist_south: float = abs(285.0 - current_p.z)
+			var min_edge_dist: float = minf(minf(dist_east, dist_west), minf(dist_north, dist_south))
+
+			# Waypoint 1: Move from sidewalk to street center line
+			waypoints.append(Vector3(nearest_x, 0.0, current_p.z))
+
+			# Waypoint 2 & 3: Navigate along grid corridor to nearest city exit boundary
+			if min_edge_dist == dist_east:
+				waypoints.append(Vector3(nearest_x, 0.0, nearest_z))
+				waypoints.append(Vector3(285.0, 0.0, nearest_z))
+			elif min_edge_dist == dist_west:
+				waypoints.append(Vector3(nearest_x, 0.0, nearest_z))
+				waypoints.append(Vector3(-285.0, 0.0, nearest_z))
+			elif min_edge_dist == dist_north:
+				waypoints.append(Vector3(nearest_x, 0.0, nearest_z))
+				waypoints.append(Vector3(nearest_x, 0.0, -285.0))
+			else:
+				waypoints.append(Vector3(nearest_x, 0.0, nearest_z))
+				waypoints.append(Vector3(nearest_x, 0.0, 285.0))
+
+			# Water check: verify no waypoint step lands in water, detour if needed
+			if is_instance_valid(city_gen) and city_gen.has_method("_is_position_in_water"):
+				for i in range(waypoints.size()):
+					if city_gen._is_position_in_water(waypoints[i]):
+						waypoints[i] = city_gen._find_safe_land_position(waypoints[i])
+
+			rec.set_meta("exit_waypoints", waypoints)
+			rec.set_meta("current_waypoint_index", 0)
+
+			# Mount guy onto the motorcycle mesh visually
+			var bike = rec.get_node_or_null("ParkedMotorcycle")
+			if bike:
+				bike.position = Vector3.ZERO # Align motorcycle directly beneath character
+
+	# Trigger Lady M incoming neural text confirmation!
+	var neural_comms = get_parent().get_node_or_null("NeuralNotificationSystem")
+	if is_instance_valid(neural_comms) and neural_comms.has_method("trigger_mission_complete_text"):
+		neural_comms.trigger_mission_complete_text()
+
+	print("[QUEST] Delivery Quest Completed! Recipient will linger for 2.5s and ride custom exit route...")
 
 func _create_pedestrian_templates() -> void:
 	# Slim Cylinder/Capsule Body (0.3m diameter, 1.2m tall)
@@ -607,7 +745,80 @@ func _manage_food_truck_queues(delta: float) -> void:
 	_update_park_dancers(delta)
 	_update_parking_lot_gangs(delta)
 	_update_narrow_street_residents(delta)
+	_update_delivery_recipients(delta)
 	_update_archetype_behaviors(delta)
+
+func _update_delivery_recipients(delta: float) -> void:
+	var to_remove: Array[Node3D] = []
+	for rec in active_delivery_recipients:
+		if not is_instance_valid(rec):
+			continue
+
+		# Handle 2.5 second linger delay AFTER closing dialogue before driving off
+		if rec.get_meta("is_preparing_exit", false):
+			var timer: float = rec.get_meta("linger_timer", 2.5)
+			timer -= delta
+			rec.set_meta("linger_timer", timer)
+			if timer <= 0.0:
+				rec.set_meta("is_preparing_exit", false)
+				rec.set_meta("is_driving_away", true)
+			continue
+
+		if rec.get_meta("is_driving_away", false):
+			var waypoints: Array = rec.get_meta("exit_waypoints", [])
+			var wp_index: int = rec.get_meta("current_waypoint_index", 0)
+
+			if waypoints.is_empty():
+				# Fallback direct destination
+				var exit_pos: Vector3 = Vector3(285.0, 0.0, rec.global_position.z)
+				waypoints = [exit_pos]
+				rec.set_meta("exit_waypoints", waypoints)
+
+			if wp_index < waypoints.size():
+				var target_wp: Vector3 = waypoints[wp_index]
+				var drive_dir: Vector3 = (target_wp - rec.global_position).normalized()
+				drive_dir.y = 0.0
+				
+				# Drive away at motorcycle speed (16 m/s)
+				var drive_speed: float = 16.0
+				
+				# Raycast obstacle check to steer around building corners if needed
+				var space_state = rec.get_world_3d().direct_space_state
+				var ray_query = PhysicsRayQueryParameters3D.create(rec.global_position + Vector3(0, 0.5, 0), rec.global_position + Vector3(0, 0.5, 0) + drive_dir * 4.0)
+				ray_query.exclude = [rec.get_rid()]
+				var ray_result = space_state.intersect_ray(ray_query)
+				if not ray_result.is_empty():
+					# Obstacle detected ahead: deflect steering 45 degrees sideways to skirt building edge
+					var normal = ray_result.normal
+					drive_dir = (drive_dir + Vector3(normal.z, 0.0, -normal.x)).normalized()
+
+				rec.velocity = drive_dir * drive_speed
+				rec.move_and_slide()
+
+				# Smoothly align orientation towards active waypoint direction
+				if drive_dir.length_squared() > 0.01:
+					var look_target: Vector3 = rec.global_position + drive_dir
+					rec.look_at(look_target, Vector3.UP)
+
+				# Wheel spinning animation
+				var bike = rec.get_node_or_null("ParkedMotorcycle")
+				if bike:
+					for child in bike.get_children():
+						if child is MeshInstance3D and child.mesh is CylinderMesh:
+							child.rotate_x(delta * 25.0)
+
+				# Advance to next waypoint upon reaching current target
+				if rec.global_position.distance_to(target_wp) < 5.0:
+					wp_index += 1
+					rec.set_meta("current_waypoint_index", wp_index)
+
+			# Despawn cleanly once final waypoint is reached or past city boundary
+			if wp_index >= waypoints.size() or abs(rec.global_position.x) > 275.0 or abs(rec.global_position.z) > 275.0:
+				to_remove.append(rec)
+				rec.queue_free()
+
+	for rem in to_remove:
+		active_delivery_recipients.erase(rem)
 
 # ==============================================================================
 # UNIQUE PARK DANCE GROUPS (Circle / Line / Partner Couples)
@@ -767,8 +978,9 @@ func _update_park_dancers(delta: float) -> void:
 		# ----------------------------------------------------------------------
 		# CAR THREAT REACTION (Scare / Dodge when vehicle gets within 14m)
 		# ----------------------------------------------------------------------
+		var is_on_foot: bool = is_instance_valid(player_car) and player_car.is_on_foot
 		var dist_to_car: float = dancer.global_position.distance_to(player_pos)
-		var is_threatened: bool = dist_to_car < 14.0 and (player_speed > 2.0 or dist_to_car < 6.0)
+		var is_threatened: bool = (not is_on_foot) and dist_to_car < 14.0 and (player_speed > 2.0 or dist_to_car < 6.0)
 
 		var panic_timer: float = dancer.get_meta("panic_timer", 0.0)
 		if is_threatened:
@@ -852,6 +1064,31 @@ func _update_park_dancers(delta: float) -> void:
 					dancer.position.y = abs(sin(beat_fast + phase)) * 0.18
 					var turn_phase: int = int(time * 0.8) % 4
 					dancer.rotation_degrees = Vector3(0, turn_phase * 90.0, 0)
+
+	# --- Update Dodgy Park Characters (Smoke exhales & cigarette ember pulse) ---
+	for dodgy in active_dodgy_characters:
+		if not is_instance_valid(dodgy):
+			continue
+		var smoke_node = dodgy.get_node_or_null("Cigarette/SmokePuff")
+		var ember_light = dodgy.get_node_or_null("Cigarette/OmniLight3D")
+		if smoke_node and smoke_node.material_override is StandardMaterial3D:
+			# Exhale cycle every ~4.5 seconds
+			var cycle: float = fmod(time + 1.2, 4.5)
+			if cycle < 1.2:
+				# Exhaling puff drifting upward and scaling
+				var t: float = cycle / 1.2
+				var alpha: float = sin(t * PI) * 0.45
+				smoke_node.material_override.albedo_color.a = alpha
+				smoke_node.position = Vector3(0.0, 0.04 + t * 0.35, 0.10 + t * 0.15)
+				smoke_node.scale = Vector3.ONE * (1.0 + t * 2.2)
+				if ember_light:
+					ember_light.light_energy = 5.0 + sin(t * PI) * 8.0 # Bright glow drag when taking a puff
+			else:
+				smoke_node.material_override.albedo_color.a = 0.0
+				smoke_node.position = Vector3(0.0, 0.04, 0.10)
+				smoke_node.scale = Vector3.ONE
+				if ember_light:
+					ember_light.light_energy = 4.0
 
 # Spawns a "dodgy character" leaning against / hanging under a park streetlamp with a glowing cigarette & smoke puff particle effects
 func _spawn_dodgy_park_character(park: Rect2) -> void:
@@ -956,6 +1193,21 @@ func _spawn_dodgy_park_character(park: Rect2) -> void:
 	ember_light.position = Vector3(0.0, 0.0, 0.06)
 	cig_node.add_child(ember_light)
 
+	# --- SMOKE PUFF MESH (Low-spec periodic exhales) ---
+	var smoke_inst = MeshInstance3D.new()
+	smoke_inst.name = "SmokePuff"
+	var smoke_mesh = SphereMesh.new()
+	smoke_mesh.radius = 0.06
+	smoke_mesh.height = 0.12
+	smoke_inst.mesh = smoke_mesh
+	smoke_inst.position = Vector3(0.0, 0.04, 0.10)
+	var smoke_mat = StandardMaterial3D.new()
+	smoke_mat.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
+	smoke_mat.albedo_color = Color(0.85, 0.9, 0.95, 0.0) # Starts invisible
+	smoke_mat.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+	smoke_inst.material_override = smoke_mat
+	cig_node.add_child(smoke_inst)
+
 	# Face towards streetlamp pole / park corner, looking cool & shady
 	ped_node.look_at(lamp_pos, Vector3.UP)
 	ped_node.rotate_object_local(Vector3.UP, PI) # Back against lamp pole, looking outward into park
@@ -1048,8 +1300,10 @@ func _spawn_parking_lot_gangs() -> void:
 			ped_node.add_child(col_shape)
 
 			# Gang AI metadata
+			var faction_name: String = gang_faction_names[color_idx % gang_faction_names.size()]
 			ped_node.set_meta("is_gang_member", true)
 			ped_node.set_meta("is_leader", is_leader)
+			ped_node.set_meta("gang_faction_name", faction_name)
 			ped_node.set_meta("lot_rect", lot)
 			ped_node.set_meta("lot_center", lot_center)
 			ped_node.set_meta("home_pos", member_pos)
@@ -1071,6 +1325,97 @@ func _spawn_parking_lot_gangs() -> void:
 
 			add_child(ped_node)
 			active_gang_members.append(ped_node)
+
+# Spawns a delivery recipient character waiting by a parked motorcycle outside a specified building location
+func spawn_delivery_recipient(target_pos: Vector3) -> CharacterBody3D:
+	# Clear previous recipient if any
+	for old_rec in active_delivery_recipients:
+		if is_instance_valid(old_rec):
+			old_rec.queue_free()
+	active_delivery_recipients.clear()
+
+	var recipient := CharacterBody3D.new()
+	recipient.name = "DeliveryRecipient"
+	recipient.global_position = target_pos
+	recipient.set_meta("is_delivery_recipient", true)
+
+	# Radiant Cyan Head & Sleek Leather Jacket
+	var body_mat = StandardMaterial3D.new()
+	body_mat.albedo_color = Color(0.05, 0.08, 0.12)
+	var head_mat = StandardMaterial3D.new()
+	var cyan_color := Color(0.0, 1.0, 0.85)
+	head_mat.albedo_color = cyan_color
+	head_mat.emission_enabled = true
+	head_mat.emission = cyan_color
+	head_mat.emission_energy_multiplier = 3.0
+
+	var body_inst = MeshInstance3D.new()
+	body_inst.mesh = body_mesh_template
+	body_inst.material_override = body_mat
+	body_inst.position = Vector3(0.0, 0.6, 0.0)
+	recipient.add_child(body_inst)
+
+	var head_inst = MeshInstance3D.new()
+	head_inst.mesh = head_mesh_template
+	head_inst.material_override = head_mat
+	head_inst.position = Vector3(0.0, 1.35, 0.0)
+	recipient.add_child(head_inst)
+
+	var col_shape = CollisionShape3D.new()
+	var cap_shape = CapsuleShape3D.new()
+	cap_shape.radius = 0.3
+	cap_shape.height = 1.5
+	col_shape.shape = cap_shape
+	col_shape.position = Vector3(0.0, 0.75, 0.0)
+	recipient.add_child(col_shape)
+
+	# --- PARKED MOTORCYCLE PROP ---
+	var bike_node := Node3D.new()
+	bike_node.name = "ParkedMotorcycle"
+	bike_node.position = Vector3(1.2, 0.0, 0.0) # Parked right beside recipient
+	
+	# Main chassis mesh
+	var bike_body = MeshInstance3D.new()
+	var box_mesh = BoxMesh.new()
+	box_mesh.size = Vector3(0.6, 0.8, 1.8)
+	bike_body.mesh = box_mesh
+	bike_body.position = Vector3(0.0, 0.5, 0.0)
+	var bike_mat = StandardMaterial3D.new()
+	bike_mat.albedo_color = Color(0.02, 0.02, 0.03)
+	bike_body.material_override = bike_mat
+	bike_node.add_child(bike_body)
+
+	# Neon accent stripe on bike
+	var stripe = MeshInstance3D.new()
+	var stripe_mesh = BoxMesh.new()
+	stripe_mesh.size = Vector3(0.62, 0.1, 1.6)
+	stripe.mesh = stripe_mesh
+	stripe.position = Vector3(0.0, 0.7, 0.0)
+	var stripe_mat = StandardMaterial3D.new()
+	stripe_mat.albedo_color = Color(1.0, 0.85, 0.0)
+	stripe_mat.emission_enabled = true
+	stripe_mat.emission = Color(1.0, 0.85, 0.0)
+	stripe_mat.emission_energy_multiplier = 4.0
+	stripe.material_override = stripe_mat
+	bike_node.add_child(stripe)
+
+	# Front & rear wheels
+	for z_off in [-0.6, 0.6]:
+		var wheel = MeshInstance3D.new()
+		var cyl = CylinderMesh.new()
+		cyl.top_radius = 0.3
+		cyl.bottom_radius = 0.3
+		cyl.height = 0.15
+		wheel.mesh = cyl
+		wheel.rotation_degrees = Vector3(0, 0, 90)
+		wheel.position = Vector3(0.0, 0.3, z_off)
+		bike_node.add_child(wheel)
+
+	recipient.add_child(bike_node)
+
+	add_child(recipient)
+	active_delivery_recipients.append(recipient)
+	return recipient
 
 func _update_parking_lot_gangs(delta: float) -> void:
 	var player_pos: Vector3 = _get_player_world_position()
@@ -1428,6 +1773,11 @@ func _spawn_street_vendors(city_gen) -> void:
 		var center_2d: Vector2 = box.get_center()
 		var pos: Vector3 = Vector3(center_2d.x + 8.0, 0.0, center_2d.y - 8.0)
 
+		# Water safety check for street vendor cart!
+		if is_instance_valid(city_gen) and city_gen.has_method("_is_position_in_water"):
+			if city_gen._is_position_in_water(pos):
+				pos = city_gen._find_safe_land_position(pos)
+
 		var vendor_node = CharacterBody3D.new()
 		vendor_node.name = "StreetVendor"
 		vendor_node.global_position = pos
@@ -1739,6 +2089,7 @@ func _try_trigger_character_dialogue(player_pos: Vector3, dialogue_sys: Dialogue
 	all_nodes.append_array(active_dodgy_characters)
 	all_nodes.append_array(active_gang_members)
 	all_nodes.append_array(active_narrow_street_residents)
+	all_nodes.append_array(active_delivery_recipients)
 	all_nodes.append_array(active_street_vendors)
 	all_nodes.append_array(active_fixers)
 	all_nodes.append_array(active_buskers)
@@ -1764,9 +2115,12 @@ func _try_trigger_character_dialogue(player_pos: Vector3, dialogue_sys: Dialogue
 	var is_gang_meta: bool = closest_node.get_meta("is_gang_member", false) or "Gang" in char_name
 	var is_leader: bool = closest_node.get_meta("is_leader", false)
 	
+	var is_delivery_recipient: bool = closest_node.get_meta("is_delivery_recipient", false)
 	var json_path: String = ""
 
-	if "Dodgy" in char_name or is_dodgy_meta:
+	if is_delivery_recipient or "Delivery" in char_name:
+		json_path = "res://scripts/delivery_contact.json"
+	elif "Dodgy" in char_name or is_dodgy_meta:
 		json_path = "res://scripts/mr_dodgy.json"
 	elif is_gang_meta:
 		json_path = "res://scripts/gang_leader.json" if is_leader else "res://scripts/gang_member.json"
@@ -1787,7 +2141,35 @@ func _try_trigger_character_dialogue(player_pos: Vector3, dialogue_sys: Dialogue
 
 	if json_path != "" and FileAccess.file_exists(json_path):
 		print("[DIALOGUE INTERACT] Launching dialogue JSON: ", json_path)
-		dialogue_sys.start_dialogue(json_path)
+		var start_node: String = "start"
+		
+		# Check if player is already running an active quest in QuestManager
+		var quest_mgr = get_parent().get_node_or_null("QuestManager")
+		var has_active_quest: bool = is_instance_valid(quest_mgr) and quest_mgr.active_quest_id != ""
+
+		if is_gang_meta and is_leader and has_active_quest:
+			# Snarky refusal: gang leader refuses new job request while player is already on a mission!
+			start_node = "busy_with_quest"
+		elif is_delivery_recipient:
+			# Check proximity & headlight orientation of player car relative to recipient
+			if is_instance_valid(player_car) and not player_car.is_on_foot:
+				var dist_to_contact: float = player_car.global_position.distance_to(closest_node.global_position)
+				if dist_to_contact < 14.0:
+					var car_facing: Vector3 = -player_car.global_transform.basis.z
+					var dir_to_contact: Vector3 = (closest_node.global_position - player_car.global_position).normalized()
+					if car_facing.dot(dir_to_contact) > 0.6:
+						start_node = "blinded"
+		
+		# Set dynamic gang leader speaker display name based on faction (Red Crows, Blue Seagulls, etc.)
+		if is_gang_meta and closest_node.has_meta("gang_faction_name"):
+			var f_name: String = closest_node.get_meta("gang_faction_name", "RED CROWS")
+			var leader_tag: String = " LEADER" if is_leader else " MEMBER"
+			dialogue_sys.start_dialogue(json_path, start_node)
+			if is_instance_valid(dialogue_sys._speaker_name_label):
+				dialogue_sys._speaker_name_label.text = f_name + leader_tag
+			return true
+
+		dialogue_sys.start_dialogue(json_path, start_node)
 		return true
 
 	# Fallback generic citizen dialogue dictionary if no specific JSON file exists
