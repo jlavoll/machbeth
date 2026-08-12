@@ -20,6 +20,7 @@
 [ext_resource type="Script" path="res://NeuralNotificationSystem.gd" id="18_neuralcomms"]
 [ext_resource type="Script" path="res://QuestManager.gd" id="19_questmgr"]
 [ext_resource type="Script" path="res://FactionStatsManager.gd" id="20_statsmgr"]
+[ext_resource type="Script" path="res://IndoorSystemManager.gd" id="21_indoormgr"]
 
 [sub_resource type="Environment" id="Environment_1"]
 background_mode = 1
@@ -110,6 +111,9 @@ script = ExtResource("19_questmgr")
 
 [node name="FactionStatsManager" type="Node" parent="." unique_id=2049182049]
 script = ExtResource("20_statsmgr")
+
+[node name="IndoorSystemManager" type="Node3D" parent="." unique_id=3058192051]
+script = ExtResource("21_indoormgr")
 
 [node name="TrafficSystem" type="Node3D" parent="." unique_id=578341031]
 script = ExtResource("15_traffic")

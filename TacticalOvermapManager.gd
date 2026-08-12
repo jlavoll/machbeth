@@ -23,6 +23,17 @@ var map_overlay_panel: Control
 var map_title_label: Label
 var player_blip_marker: ColorRect
 var delivery_blip_marker: ColorRect
+var hq_blip_marker: ColorRect
+var hideout_blip_marker: ColorRect
+var lady_m_blip_marker: ColorRect
+var chop_shop_blip_marker: ColorRect
+var pit_blip_marker: ColorRect
+var norns_blip_marker: ColorRect
+var fife_blip_marker: ColorRect
+var bankes_blip_marker: ColorRect
+var substation_blip_marker: ColorRect
+var parked_car_blip_marker: ColorRect
+var poi_legend_container: Control = null
 var delivery_target_pos: Vector3 = Vector3.ZERO
 var has_active_delivery: bool = false
 
@@ -88,19 +99,85 @@ func _setup_map_hud_overlay() -> void:
 	map_title_label.add_theme_color_override("font_color", Color(0.0, 0.85, 1.0))
 	map_overlay_panel.add_child(map_title_label)
 
-	# Glowing Cyan Blip marking player position on screen
+	# --------------------------------------------------------------------------
+	# MAP BLIP MARKERS (Discrete, compact dimensions: 10-12px)
+	# --------------------------------------------------------------------------
+	# Player Position Blip (Magenta)
 	player_blip_marker = ColorRect.new()
-	player_blip_marker.size = Vector2(16, 16)
+	player_blip_marker.size = Vector2(10, 10)
 	player_blip_marker.color = Color(1.0, 0.0, 0.8) # Neon Magenta Blip
 	map_overlay_panel.add_child(player_blip_marker)
 
-	# Delivery Destination Building Blip Marker (Square Yellow/Green)
+	# Delivery Destination Blip (Gold / Yellow)
 	delivery_blip_marker = ColorRect.new()
 	delivery_blip_marker.name = "DeliveryBlipMarker"
-	delivery_blip_marker.size = Vector2(20, 20)
-	delivery_blip_marker.color = Color(1.0, 0.85, 0.0, 0.95) # Radiant Gold / Yellow Square
+	delivery_blip_marker.size = Vector2(12, 12)
+	delivery_blip_marker.color = Color(1.0, 0.85, 0.0, 0.95) # Radiant Gold
 	delivery_blip_marker.visible = false
 	map_overlay_panel.add_child(delivery_blip_marker)
+
+	# Duncan Dynamics HQ Building Blip (Cyan)
+	hq_blip_marker = ColorRect.new()
+	hq_blip_marker.name = "HQBlipMarker"
+	hq_blip_marker.size = Vector2(12, 12)
+	hq_blip_marker.color = Color(0.0, 1.0, 0.85, 0.95) # Cyan
+	map_overlay_panel.add_child(hq_blip_marker)
+
+	# Mack's Hideout Blip (Amber)
+	hideout_blip_marker = ColorRect.new()
+	hideout_blip_marker.size = Vector2(12, 12)
+	hideout_blip_marker.color = Color(1.0, 0.5, 0.0) # Amber
+	map_overlay_panel.add_child(hideout_blip_marker)
+
+	# Lady M Lair Blip (Magenta)
+	lady_m_blip_marker = ColorRect.new()
+	lady_m_blip_marker.size = Vector2(12, 12)
+	lady_m_blip_marker.color = Color(1.0, 0.0, 0.8) # Magenta
+	map_overlay_panel.add_child(lady_m_blip_marker)
+
+	# Chop Shop Blip (Green)
+	chop_shop_blip_marker = ColorRect.new()
+	chop_shop_blip_marker.size = Vector2(12, 12)
+	chop_shop_blip_marker.color = Color(0.2, 1.0, 0.3) # Green
+	map_overlay_panel.add_child(chop_shop_blip_marker)
+
+	# Porter's Pit Blip (Dark Rust Orange)
+	pit_blip_marker = ColorRect.new()
+	pit_blip_marker.size = Vector2(12, 12)
+	pit_blip_marker.color = Color(1.0, 0.3, 0.0) # Dark Rust Orange
+	map_overlay_panel.add_child(pit_blip_marker)
+
+	# Norns AI Blip (Violet)
+	norns_blip_marker = ColorRect.new()
+	norns_blip_marker.size = Vector2(12, 12)
+	norns_blip_marker.color = Color(0.7, 0.1, 1.0) # Deep Violet
+	map_overlay_panel.add_child(norns_blip_marker)
+
+	# Fife HQ Blip (Steel Blue)
+	fife_blip_marker = ColorRect.new()
+	fife_blip_marker.size = Vector2(12, 12)
+	fife_blip_marker.color = Color(0.1, 0.5, 1.0) # Steel Blue
+	map_overlay_panel.add_child(fife_blip_marker)
+
+	# Bankes Logistics Blip (Industrial Yellow)
+	bankes_blip_marker = ColorRect.new()
+	bankes_blip_marker.size = Vector2(12, 12)
+	bankes_blip_marker.color = Color(0.9, 0.7, 0.1) # Industrial Yellow
+	map_overlay_panel.add_child(bankes_blip_marker)
+
+	# Substation 09 Blip (High Voltage Yellow)
+	substation_blip_marker = ColorRect.new()
+	substation_blip_marker.size = Vector2(12, 12)
+	substation_blip_marker.color = Color(1.0, 0.9, 0.0) # High Voltage Yellow
+	map_overlay_panel.add_child(substation_blip_marker)
+
+	# Parked Car Blip Marker (Amber Orange)
+	parked_car_blip_marker = ColorRect.new()
+	parked_car_blip_marker.name = "ParkedCarBlipMarker"
+	parked_car_blip_marker.size = Vector2(10, 10)
+	parked_car_blip_marker.color = Color(1.0, 0.5, 0.0, 0.95) # Radiant Amber Orange
+	parked_car_blip_marker.visible = false
+	map_overlay_panel.add_child(parked_car_blip_marker)
 
 	# --------------------------------------------------------------------------
 	# TOP RIGHT PIP LIVE FEED BOX (COMPACT DIMENSIONS: 220x140)
@@ -122,19 +199,115 @@ func _setup_map_hud_overlay() -> void:
 
 	# Border Frame for PIP Box
 	pip_border_frame = ReferenceRect.new()
-	pip_border_frame.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
-	pip_border_frame.border_color = Color(1.0, 0.0, 0.8, 0.9) # Neon Pink Border
-	pip_border_frame.border_width = 2.0
+	pip_border_frame.size = Vector2(220, 140)
+	pip_border_frame.border_color = Color(0.0, 0.85, 1.0, 0.8) # Glowing cyan border frame
+	pip_border_frame.border_width = 1.5
+	pip_border_frame.editor_only = false
 	pip_viewport_container.add_child(pip_border_frame)
 
-	# PIP Label Header
+	# Header label over PIP live feed
 	pip_header_label = Label.new()
-	pip_header_label.position = Vector2(10, 8)
+	pip_header_label.position = Vector2(8, 6)
 	pip_header_label.text = "LIVE FEED // CLOSE-UP"
 	pip_header_label.add_theme_font_override("font", orbitron_font)
 	pip_header_label.add_theme_font_size_override("font_size", 9)
 	pip_header_label.add_theme_color_override("font_color", Color(1.0, 0.0, 0.8))
 	pip_viewport_container.add_child(pip_header_label)
+
+	# --------------------------------------------------------------------------
+	# DYNAMIC POINTS OF INTEREST (POI) LEGEND PANEL (Positioned under PIP feed)
+	# --------------------------------------------------------------------------
+	_setup_poi_legend_panel(orbitron_font)
+
+func _setup_poi_legend_panel(font: Font) -> void:
+	poi_legend_container = PanelContainer.new()
+	poi_legend_container.name = "POILegendPanel"
+	poi_legend_container.set_anchors_preset(Control.PRESET_TOP_RIGHT)
+	poi_legend_container.anchor_left = 1.0
+	poi_legend_container.anchor_right = 1.0
+	poi_legend_container.offset_left = -240
+	poi_legend_container.offset_top = 172
+	poi_legend_container.offset_right = -20
+	poi_legend_container.offset_bottom = 310
+
+	var panel_style = StyleBoxFlat.new()
+	panel_style.bg_color = Color(0.01, 0.02, 0.05, 0.85)
+	panel_style.border_width_left = 1
+	panel_style.border_width_top = 1
+	panel_style.border_width_right = 1
+	panel_style.border_width_bottom = 1
+	panel_style.border_color = Color(0.0, 0.85, 1.0, 0.6)
+	panel_style.set_content_margin_all(8)
+	poi_legend_container.add_theme_stylebox_override("panel", panel_style)
+	map_overlay_panel.add_child(poi_legend_container)
+
+	var vbox = VBoxContainer.new()
+	vbox.name = "LegendVBox"
+	poi_legend_container.add_child(vbox)
+
+	var title_lbl = Label.new()
+	title_lbl.text = "MAP LEGEND // POI"
+	if font:
+		title_lbl.add_theme_font_override("font", font)
+	title_lbl.add_theme_font_size_override("font_size", 10)
+	title_lbl.add_theme_color_override("font_color", Color(0.0, 0.85, 1.0))
+	vbox.add_child(title_lbl)
+
+func _update_poi_legend() -> void:
+	if not is_instance_valid(poi_legend_container):
+		return
+
+	var vbox = poi_legend_container.get_node_or_null("LegendVBox")
+	if not is_instance_valid(vbox):
+		return
+
+	# Remove existing dynamic legend rows (keep title)
+	for child in vbox.get_children():
+		if child != vbox.get_child(0):
+			child.queue_free()
+
+	# Define active POI entries dynamically based on player state (On Foot vs In Car)
+	var entries: Array[Dictionary] = []
+	
+	entries.append({"name": "PLAYER LOCATION", "color": Color(1.0, 0.0, 0.8)})
+	entries.append({"name": "DUNCAN HQ", "color": Color(0.0, 1.0, 0.85)})
+	entries.append({"name": "MACK'S HIDEOUT", "color": Color(1.0, 0.5, 0.0)})
+	entries.append({"name": "LADY M'S LAIR", "color": Color(1.0, 0.0, 0.8)})
+	entries.append({"name": "CHOP SHOP GARAGE", "color": Color(0.2, 1.0, 0.3)})
+	entries.append({"name": "PORTER'S PIT", "color": Color(1.0, 0.3, 0.0)})
+	entries.append({"name": "NORNS AI TERMINAL", "color": Color(0.7, 0.1, 1.0)})
+	entries.append({"name": "FIFE PATROL HQ", "color": Color(0.1, 0.5, 1.0)})
+	entries.append({"name": "CAWDOR LOGISTICS", "color": Color(0.9, 0.7, 0.1)})
+	entries.append({"name": "SUBSTATION 09", "color": Color(1.0, 0.9, 0.0)})
+	
+	if has_active_delivery:
+		entries.append({"name": "DELIVERY TARGET", "color": Color(1.0, 0.85, 0.0)})
+		
+	if is_instance_valid(player_car) and player_car.is_on_foot:
+		entries.append({"name": "PARKED CAR", "color": Color(1.0, 0.5, 0.0)})
+
+	var font = map_title_label.get_theme_font("font") if is_instance_valid(map_title_label) else null
+
+	for item in entries:
+		var row = HBoxContainer.new()
+		row.add_theme_constant_override("separation", 8)
+		
+		# Color Blip Icon Preview
+		var icon = ColorRect.new()
+		icon.custom_minimum_size = Vector2(8, 8)
+		icon.color = item["color"]
+		row.add_child(icon)
+		
+		# Label Text
+		var lbl = Label.new()
+		lbl.text = item["name"]
+		if font:
+			lbl.add_theme_font_override("font", font)
+		lbl.add_theme_font_size_override("font_size", 9)
+		lbl.add_theme_color_override("font_color", Color(0.85, 0.9, 1.0))
+		row.add_child(lbl)
+		
+		vbox.add_child(row)
 
 # ==============================================================================
 # INPUT LISTENER & MAP TOGGLE LOOP
@@ -169,6 +342,26 @@ func _process(_delta: float) -> void:
 			else:
 				delivery_blip_marker.visible = false
 
+		# Duncan Dynamics HQ blip update
+		_update_single_blip(hq_blip_marker, city_gen.hq_door_pos if is_instance_valid(city_gen) else Vector3.ZERO)
+		_update_single_blip(hideout_blip_marker, city_gen.mack_hideout_door_pos if is_instance_valid(city_gen) else Vector3.ZERO)
+		_update_single_blip(lady_m_blip_marker, city_gen.lady_m_lair_door_pos if is_instance_valid(city_gen) else Vector3.ZERO)
+		_update_single_blip(chop_shop_blip_marker, city_gen.chop_shop_door_pos if is_instance_valid(city_gen) else Vector3.ZERO)
+		_update_single_blip(pit_blip_marker, city_gen.porter_pit_door_pos if is_instance_valid(city_gen) else Vector3.ZERO)
+		_update_single_blip(norns_blip_marker, city_gen.norns_ai_door_pos if is_instance_valid(city_gen) else Vector3.ZERO)
+		_update_single_blip(fife_blip_marker, city_gen.fife_hq_door_pos if is_instance_valid(city_gen) else Vector3.ZERO)
+		_update_single_blip(bankes_blip_marker, city_gen.bankes_logistics_door_pos if is_instance_valid(city_gen) else Vector3.ZERO)
+		_update_single_blip(substation_blip_marker, city_gen.power_substation_door_pos if is_instance_valid(city_gen) else Vector3.ZERO)
+
+		# Parked car blip update (visible when walking on foot)
+		if is_instance_valid(parked_car_blip_marker):
+			if player_car.is_on_foot:
+				parked_car_blip_marker.visible = true
+				var car_screen_pos: Vector2 = map_camera.unproject_position(player_car.global_position)
+				parked_car_blip_marker.position = car_screen_pos - (parked_car_blip_marker.size / 2.0)
+			else:
+				parked_car_blip_marker.visible = false
+
 		# Keep PIP camera synced to the active player position & orientation
 		if is_instance_valid(pip_live_camera):
 			var pip_yaw: float = player_car.rotation_degrees.y
@@ -183,6 +376,16 @@ func _get_active_player_position() -> Vector3:
 	if player_car.is_on_foot and is_instance_valid(player_car.on_foot_node):
 		return player_car.on_foot_node.global_position
 	return player_car.global_position
+
+func _update_single_blip(blip: ColorRect, target_pos: Vector3) -> void:
+	if not is_instance_valid(blip):
+		return
+	if target_pos != Vector3.ZERO and is_instance_valid(map_camera):
+		blip.visible = true
+		var screen_pos: Vector2 = map_camera.unproject_position(target_pos)
+		blip.position = screen_pos - (blip.size / 2.0)
+	else:
+		blip.visible = false
 
 # Returns the active game camera — foot node's camera when on foot, main car camera otherwise
 func _get_active_camera() -> Camera3D:
@@ -202,6 +405,7 @@ func _toggle_tactical_overmap() -> void:
 
 	if is_map_active:
 		print("[OVERMAP] Opening tactical overmap. Clearing high-altitude fog & dust for satellite feed...")
+		_update_poi_legend()
 
 		# SAVE player's exact camera settings before switching views
 		var active_cam: Camera3D = _get_active_camera()

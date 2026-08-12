@@ -42,6 +42,22 @@ var active_broadway_x: float = 0.0
 var active_broadway_z: float = 0.0
 var active_alley_corridors: Array[Dictionary] = []
 
+# Duncan Dynamics HQ & Special Playable Interior Building Tracking
+var hq_building_pos: Vector3 = Vector3.ZERO
+var hq_door_pos: Vector3 = Vector3.ZERO
+var hq_door_node: Node3D = null
+
+var mack_hideout_door_pos: Vector3 = Vector3.ZERO
+var lady_m_lair_door_pos: Vector3 = Vector3.ZERO
+var chop_shop_door_pos: Vector3 = Vector3.ZERO
+
+# Playable Lore Locations Tracking
+var porter_pit_door_pos: Vector3 = Vector3.ZERO
+var norns_ai_door_pos: Vector3 = Vector3.ZERO
+var fife_hq_door_pos: Vector3 = Vector3.ZERO
+var bankes_logistics_door_pos: Vector3 = Vector3.ZERO
+var power_substation_door_pos: Vector3 = Vector3.ZERO
+
 # ==============================================================================
 # INITIALIZATION LOOPS
 # ==============================================================================
@@ -79,6 +95,12 @@ func generate_city_from_seed(target_seed: int) -> void:
 	active_x_streets.clear()
 	active_z_streets.clear()
 	active_alley_corridors.clear()
+	hq_building_pos = Vector3.ZERO
+	hq_door_pos = Vector3.ZERO
+	hq_door_node = null
+	mack_hideout_door_pos = Vector3.ZERO
+	lady_m_lair_door_pos = Vector3.ZERO
+	chop_shop_door_pos = Vector3.ZERO
 	if target_seed != 0:
 		rng.seed = target_seed
 	else:
@@ -448,13 +470,24 @@ func _generate_city_grid() -> void:
 	# --------------------------------------------------------------------------
 	# 1. GRID-ALIGNED STREET CUTS (10m GRID UNITS, 2-LANE 20m STREETS)
 	# --------------------------------------------------------------------------
-	# Pick random street cut indices for the main wide avenues (Broadway)
-	var broadway_x_idx: int = rng.randi_range(1, 3) # Pick index 1, 2, or 3
-	var broadway_z_idx: int = rng.randi_range(1, 3)
+	var half_x_dim: float = city_size_x / 2.0
+	var half_z_dim: float = city_size_z / 2.0
 
-	# Expand street cuts to cover full city grid (-270m to +270m across 600m map)
-	var base_x_cuts: Array[float] = [-270.0, -180.0, -90.0, 0.0, 90.0, 180.0, 270.0]
-	var base_z_cuts: Array[float] = [-270.0, -180.0, -90.0, 0.0, 90.0, 180.0, 270.0]
+	# Dynamically calculate street cuts across the full city map dimensions (90m spacing)
+	var base_x_cuts: Array[float] = []
+	var cur_x: float = -half_x_dim + 30.0
+	while cur_x <= half_x_dim - 30.0:
+		base_x_cuts.append(cur_x)
+		cur_x += 90.0
+
+	var base_z_cuts: Array[float] = []
+	var cur_z: float = -half_z_dim + 30.0
+	while cur_z <= half_z_dim - 30.0:
+		base_z_cuts.append(cur_z)
+		cur_z += 90.0
+
+	var broadway_x_idx: int = rng.randi_range(1, base_x_cuts.size() - 2)
+	var broadway_z_idx: int = rng.randi_range(1, base_z_cuts.size() - 2)
 
 	# Strictly grid-aligned street corridors (aligned to 10m grid lines)
 	var x_streets: Array[float] = base_x_cuts.duplicate()
@@ -644,19 +677,64 @@ func _create_block_cluster(center: Vector3, size: Vector2, neon_colors: Array) -
 			var bx: float = start_x + ix * (plot_w + alley_width)
 			var bz: float = start_z + iz * (plot_d + alley_width)
 
-			# Position Y is at b_height / 2.0 because BoxMesh origin is centered at geometric middle
-			_spawn_building(Vector3(bx, b_height / 2.0 + 0.1, bz), Vector3(b_width, b_height, b_depth), neon_colors)
+			# Determine special interior building designation across distinct map quadrants (600m scale)
+			var b_type: String = "NORMAL"
+			
+			if hq_building_pos == Vector3.ZERO and bx > 100.0 and bz > 100.0:
+				b_type = "HQ" # North-East Quadrant
+			elif lady_m_lair_door_pos == Vector3.ZERO and bx < -100.0 and bz > 100.0:
+				b_type = "LADY_M" # North-West Quadrant
+			elif chop_shop_door_pos == Vector3.ZERO and bx > 100.0 and bz < -100.0:
+				b_type = "CHOP_SHOP" # South-East Quadrant
+			elif porter_pit_door_pos == Vector3.ZERO and bx < -100.0 and bz < -100.0:
+				b_type = "PORTER_PIT" # South-West Quadrant
+			elif norns_ai_door_pos == Vector3.ZERO and abs(bx) < 100.0 and bz > 150.0:
+				b_type = "NORNS_AI" # Far North Sector
+			elif power_substation_door_pos == Vector3.ZERO and abs(bx) < 100.0 and bz < -150.0:
+				b_type = "SUBSTATION" # Far South Sector
+			elif fife_hq_door_pos == Vector3.ZERO and bx > 150.0 and abs(bz) < 100.0:
+				b_type = "FIFE_HQ" # Far East Sector
+			elif bankes_logistics_door_pos == Vector3.ZERO and bx < -150.0 and abs(bz) < 100.0:
+				b_type = "BANKES_LOGISTICS" # Far West Sector
+			elif mack_hideout_door_pos == Vector3.ZERO and abs(bx) < 120.0 and abs(bz) < 120.0:
+				b_type = "HIDEOUT" # Central Sector
+
+			# Fallback: assign remaining special buildings to available plots across the map
+			if b_type == "NORMAL":
+				if hq_building_pos == Vector3.ZERO:
+					b_type = "HQ"
+				elif mack_hideout_door_pos == Vector3.ZERO:
+					b_type = "HIDEOUT"
+				elif lady_m_lair_door_pos == Vector3.ZERO:
+					b_type = "LADY_M"
+				elif chop_shop_door_pos == Vector3.ZERO:
+					b_type = "CHOP_SHOP"
+				elif porter_pit_door_pos == Vector3.ZERO:
+					b_type = "PORTER_PIT"
+				elif norns_ai_door_pos == Vector3.ZERO:
+					b_type = "NORNS_AI"
+				elif fife_hq_door_pos == Vector3.ZERO:
+					b_type = "FIFE_HQ"
+				elif bankes_logistics_door_pos == Vector3.ZERO:
+					b_type = "BANKES_LOGISTICS"
+				elif power_substation_door_pos == Vector3.ZERO:
+					b_type = "SUBSTATION"
+
+			_spawn_building(Vector3(bx, b_height / 2.0 + 0.1, bz), Vector3(b_width, b_height, b_depth), neon_colors, b_type)
 
 # ==============================================================================
 # 5. BUILDING SPINNER & 3D MESH/PHYSICS CREATION
 # ==============================================================================
 
 # Spawns a 3D skyscraper mesh, collision box, window materials, and rooftop neon wireframe
-func _spawn_building(pos: Vector3, b_size: Vector3, neon_colors: Array) -> void:
+func _spawn_building(pos: Vector3, b_size: Vector3, neon_colors: Array, b_type: String = "NORMAL") -> void:
 
 	# Create physical rigid block for collisions so player vehicle bounces off
 	var static_body: StaticBody3D = StaticBody3D.new()
 	static_body.position = pos
+	if b_type == "HQ":
+		static_body.name = "DuncanHQBuilding"
+		hq_building_pos = pos
 
 	# 3D Collision Box matching building size (X width, Y height, Z depth)
 	var col_shape: CollisionShape3D = CollisionShape3D.new()
@@ -673,17 +751,33 @@ func _spawn_building(pos: Vector3, b_size: Vector3, neon_colors: Array) -> void:
 
 	# Pick random neon color for building highlights
 	var accent_color: Color = neon_colors[rng.randi() % neon_colors.size()]
+	if b_type == "HQ":
+		accent_color = Color(0.0, 1.0, 0.85) # Cyan HQ
+	elif b_type == "HIDEOUT":
+		accent_color = Color(1.0, 0.5, 0.0) # Amber Hideout
+	elif b_type == "LADY_M":
+		accent_color = Color(1.0, 0.0, 0.8) # Magenta Lair
+	elif b_type == "CHOP_SHOP":
+		accent_color = Color(0.2, 1.0, 0.3) # Green Garage
+	elif b_type == "PORTER_PIT":
+		accent_color = Color(1.0, 0.3, 0.0) # Dark Rust Orange
+	elif b_type == "NORNS_AI":
+		accent_color = Color(0.7, 0.1, 1.0) # Phosphor Deep Violet
+	elif b_type == "FIFE_HQ":
+		accent_color = Color(0.1, 0.5, 1.0) # Cobalt Steel Blue
+	elif b_type == "BANKES_LOGISTICS":
+		accent_color = Color(0.9, 0.7, 0.1) # Industrial Yellow
+	elif b_type == "SUBSTATION":
+		accent_color = Color(1.0, 0.9, 0.0) # High-Voltage Yellow Flag
+
 	var win_tex: Texture2D = _generate_window_texture(accent_color)
 
 	# Building Exterior Surface Material
 	var b_mat: StandardMaterial3D = StandardMaterial3D.new()
-	# Dark concrete building wall base color Color(R=0.02, G=0.02, B=0.05)
 	b_mat.albedo_color = Color(0.02, 0.02, 0.05)
 	b_mat.emission_enabled = true
 	b_mat.emission_texture = win_tex
-	# Boosted glow multiplier so windows punch dramatically through dense atmospheric fog
 	b_mat.emission_energy_multiplier = 5.0
-	# Repeat window texture vertically according to building height (Vector3(Scale X=1, Scale Y=height/8, Scale Z=1))
 	b_mat.uv1_scale = Vector3(1.0, b_size.y / 8.0, 1.0)
 
 	building_mesh.material_override = b_mat
@@ -695,12 +789,10 @@ func _spawn_building(pos: Vector3, b_size: Vector3, neon_colors: Array) -> void:
 	var building_light: OmniLight3D = OmniLight3D.new()
 	building_light.light_color = accent_color
 	building_light.light_energy = 3.0
-	building_light.light_volumetric_fog_energy = 1.7 # Moderate volumetric light halo in fog
+	building_light.light_volumetric_fog_energy = 1.7
 	building_light.omni_range = max(b_size.x, b_size.z) * 1.75
 	building_light.omni_attenuation = 0.9
 	static_body.add_child(building_light)
-
-
 
 	# --------------------------------------------------------------------------
 	# ROOFTOP NEON BORDER LIGHT LINES
@@ -708,7 +800,6 @@ func _spawn_building(pos: Vector3, b_size: Vector3, neon_colors: Array) -> void:
 	var border_mat: StandardMaterial3D = StandardMaterial3D.new()
 	border_mat.emission_enabled = true
 	border_mat.emission = accent_color
-	# High glow brightness multiplier (4.5x) for crisp roof lines
 	border_mat.emission_energy_multiplier = 4.5
 
 	var border_mesh: ImmediateMesh = ImmediateMesh.new()
@@ -720,16 +811,10 @@ func _spawn_building(pos: Vector3, b_size: Vector3, neon_colors: Array) -> void:
 	border_mesh.clear_surfaces()
 	border_mesh.surface_begin(Mesh.PRIMITIVE_LINES)
 	
-	# Half dimensions from center of building box
-	var hw: float = b_size.x / 2.0  # Half width
-	var hh: float = b_size.y / 2.0  # Half height
-	var hd: float = b_size.z / 2.0  # Half depth
+	var hw: float = b_size.x / 2.0
+	var hh: float = b_size.y / 2.0
+	var hd: float = b_size.z / 2.0
 
-	# Define 4 top rooftop edge corners in local coordinates around building center
-	# Vector3(-hw, hh, -hd) -> (-X, +Y top roof, -Z)
-	# Vector3( hw, hh, -hd) -> (+X, +Y top roof, -Z)
-	# Vector3( hw, hh,  hd) -> (+X, +Y top roof, +Z)
-	# Vector3(-hw, hh,  hd) -> (-X, +Y top roof, +Z)
 	var corners: Array[Vector3] = [
 		Vector3(-hw, hh, -hd), Vector3(hw, hh, -hd),
 		Vector3(hw, hh, -hd), Vector3(hw, hh, hd),
@@ -739,19 +824,84 @@ func _spawn_building(pos: Vector3, b_size: Vector3, neon_colors: Array) -> void:
 	for c in corners:
 		border_mesh.surface_add_vertex(c)
 
-	# Draw vertical corner pillar accent lines connecting top roof corners down to bottom ground
-	# Top corner Vector3(-hw, hh, -hd) down to bottom corner Vector3(-hw, -hh, -hd)
 	border_mesh.surface_add_vertex(Vector3(-hw, hh, -hd))
 	border_mesh.surface_add_vertex(Vector3(-hw, -hh, -hd))
-	
 	border_mesh.surface_add_vertex(Vector3(hw, hh, -hd))
 	border_mesh.surface_add_vertex(Vector3(hw, -hh, -hd))
-	
 	border_mesh.surface_add_vertex(Vector3(hw, hh, hd))
 	border_mesh.surface_add_vertex(Vector3(hw, -hh, hd))
-	
 	border_mesh.surface_add_vertex(Vector3(-hw, hh, hd))
 	border_mesh.surface_add_vertex(Vector3(-hw, -hh, hd))
+
+	border_mesh.surface_end()
+
+	# --------------------------------------------------------------------------
+	# PLAYABLE BUILDING ENTRANCE DOOR & AREA3D TRIGGER
+	# --------------------------------------------------------------------------
+	if b_type != "NORMAL":
+		var door_container = Node3D.new()
+		door_container.name = b_type + "_EntranceDoor"
+		door_container.position = Vector3(0.0, -hh + 1.8, hd + 0.1)
+
+		# Glowing Frame
+		var frame_inst = MeshInstance3D.new()
+		var frame_box = BoxMesh.new()
+		frame_box.size = Vector3(3.6, 3.6, 0.4)
+		frame_inst.mesh = frame_box
+		var frame_mat = StandardMaterial3D.new()
+		frame_mat.albedo_color = Color(0.02, 0.05, 0.08)
+		frame_mat.emission_enabled = true
+		frame_mat.emission = accent_color
+		frame_mat.emission_energy_multiplier = 6.0
+		frame_inst.material_override = frame_mat
+		door_container.add_child(frame_inst)
+
+		# Inner Dark Glass Portal
+		var portal_inst = MeshInstance3D.new()
+		var portal_box = BoxMesh.new()
+		portal_box.size = Vector3(2.8, 3.0, 0.2)
+		portal_inst.mesh = portal_box
+		portal_inst.position = Vector3(0.0, -0.1, 0.1)
+		var portal_mat = StandardMaterial3D.new()
+		portal_mat.albedo_color = Color(0.0, 0.1, 0.2)
+		portal_mat.emission_enabled = true
+		portal_mat.emission = accent_color
+		portal_mat.emission_energy_multiplier = 2.0
+		portal_inst.material_override = portal_mat
+		door_container.add_child(portal_inst)
+
+		# Door Beacon Spotlight
+		var door_spot = SpotLight3D.new()
+		door_spot.light_color = accent_color
+		door_spot.light_energy = 8.0
+		door_spot.spot_range = 10.0
+		door_spot.spot_angle = 45.0
+		door_spot.rotation_degrees = Vector3(30, 0, 0)
+		door_spot.position = Vector3(0.0, 2.0, 0.5)
+		door_container.add_child(door_spot)
+
+		static_body.add_child(door_container)
+		var door_world_pos: Vector3 = Vector3(pos.x, 0.0, pos.z + hd + 1.2)
+
+		if b_type == "HQ":
+			hq_door_pos = door_world_pos
+			hq_door_node = door_container
+		elif b_type == "HIDEOUT":
+			mack_hideout_door_pos = door_world_pos
+		elif b_type == "LADY_M":
+			lady_m_lair_door_pos = door_world_pos
+		elif b_type == "CHOP_SHOP":
+			chop_shop_door_pos = door_world_pos
+		elif b_type == "PORTER_PIT":
+			porter_pit_door_pos = door_world_pos
+		elif b_type == "NORNS_AI":
+			norns_ai_door_pos = door_world_pos
+		elif b_type == "FIFE_HQ":
+			fife_hq_door_pos = door_world_pos
+		elif b_type == "BANKES_LOGISTICS":
+			bankes_logistics_door_pos = door_world_pos
+		elif b_type == "SUBSTATION":
+			power_substation_door_pos = door_world_pos
 
 	# Add complete skyscraper object to the main city node
 	add_child(static_body)

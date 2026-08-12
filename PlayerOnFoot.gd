@@ -133,6 +133,24 @@ func _build_figure() -> void:
 	_head_inst.position    = Vector3(0.0, BOB_BASE_Y_HEAD, 0.0)
 	add_child(_head_inst)
 
+	# --- Forward Visor / Nose Direction Pointer ---
+	# Attached directly to head, points along local -Z (forward direction)
+	var nose_mat                        := StandardMaterial3D.new()
+	nose_mat.albedo_color                = Color(1.0, 0.5, 0.0) # Bright Amber Nose/Visor Tip
+	nose_mat.emission_enabled            = true
+	nose_mat.emission                    = Color(1.0, 0.6, 0.0)
+	nose_mat.emission_energy_multiplier  = 4.0
+	var nose_mesh := PrismMesh.new()
+	nose_mesh.size = Vector3(0.12, 0.12, 0.22)
+	var nose_inst                       := MeshInstance3D.new()
+	nose_inst.name                       = "PlayerNose"
+	nose_inst.mesh                       = nose_mesh
+	nose_inst.material_override          = nose_mat
+	# Position on front of head facing -Z (forward)
+	nose_inst.position                   = Vector3(0.0, 0.0, -0.2)
+	nose_inst.rotation_degrees           = Vector3(-90.0, 0.0, 0.0)
+	_head_inst.add_child(nose_inst)
+
 	# --- Collision capsule ---
 	var col_shape    := CapsuleShape3D.new()
 	col_shape.radius  = 0.2
@@ -215,6 +233,46 @@ func _handle_movement(delta: float) -> void:
 			_body_inst.position.y = lerpf(_body_inst.position.y, BOB_BASE_Y_BODY, delta * 10.0)
 			_head_inst.position.y = lerpf(_head_inst.position.y, BOB_BASE_Y_HEAD, delta * 10.0)
 
+	# --------------------------------------------------------------------------
+	# DUNCAN DYNAMICS HQ ENTRANCE PROMPT HUD LABEL
+	# --------------------------------------------------------------------------
+	var city_gen = get_parent().get_node_or_null("CityGenerator")
+	if is_instance_valid(city_gen) and city_gen.hq_door_pos != Vector3.ZERO:
+		if global_position.distance_to(city_gen.hq_door_pos) <= 5.0:
+			_show_hq_door_hint("[E] ENTER DUNCAN DYNAMICS HQ")
+		else:
+			_hide_hq_door_hint()
+	else:
+		_hide_hq_door_hint()
+
+var _hq_door_hint_label: Label = null
+
+func _show_hq_door_hint(text_msg: String) -> void:
+	if not is_instance_valid(_hq_door_hint_label):
+		_hq_door_hint_label = Label.new()
+		_hq_door_hint_label.set_anchors_preset(Control.PRESET_CENTER_BOTTOM)
+		_hq_door_hint_label.anchor_top = 0.82
+		_hq_door_hint_label.anchor_bottom = 0.82
+		_hq_door_hint_label.grow_horizontal = Control.GROW_DIRECTION_BOTH
+		var font_res = load("res://fonts/Orbitron/Orbitron-VariableFont_wght.ttf")
+		if font_res:
+			_hq_door_hint_label.add_theme_font_override("font", font_res)
+		_hq_door_hint_label.add_theme_font_size_override("font_size", 22)
+		_hq_door_hint_label.add_theme_color_override("font_color", Color(0.0, 1.0, 0.85))
+		
+		# CanvasLayer overlay
+		var hud_canvas = CanvasLayer.new()
+		hud_canvas.name = "HQDoorHUDCanvas"
+		hud_canvas.add_child(_hq_door_hint_label)
+		add_child(hud_canvas)
+
+	_hq_door_hint_label.text = text_msg
+	_hq_door_hint_label.visible = true
+
+func _hide_hq_door_hint() -> void:
+	if is_instance_valid(_hq_door_hint_label):
+		_hq_door_hint_label.visible = false
+
 # ------------------------------------------------------------------------------
 # FOOTSTEP AUDIO
 # Resolves wet/dry variant from weather, then delegates to WeatherAmbienceManager.
@@ -284,9 +342,51 @@ func _unhandled_input(event: InputEvent) -> void:
 			_foot_zoom = clamp(_foot_zoom - step, 0.0, FOOT_ZOOM_MAX)
 
 	if event is InputEventKey and event.pressed and not event.echo:
-		# E key: Talk to nearby character or re-enter parked car when close enough
+		# E key: Talk to nearby character, enter HQ building, or re-enter parked car when close enough
 		if event.keycode == KEY_E and not dialogue_blocking_input:
-			# First check if standing near an NPC / character to talk!
+			# 1. Check if standing near any playable interior entrance door!
+			var city_gen = get_parent().get_node_or_null("CityGenerator")
+			var indoor_mgr = get_parent().get_node_or_null("IndoorSystemManager")
+
+			if is_instance_valid(city_gen) and is_instance_valid(indoor_mgr):
+				if city_gen.hq_door_pos != Vector3.ZERO and global_position.distance_to(city_gen.hq_door_pos) <= 7.0:
+					indoor_mgr.enter_location(indoor_mgr.HQFloor.LOBBY)
+					get_viewport().set_input_as_handled()
+					return
+				elif city_gen.mack_hideout_door_pos != Vector3.ZERO and global_position.distance_to(city_gen.mack_hideout_door_pos) <= 7.0:
+					indoor_mgr.enter_location(indoor_mgr.HQFloor.MACK_HIDEOUT)
+					get_viewport().set_input_as_handled()
+					return
+				elif city_gen.lady_m_lair_door_pos != Vector3.ZERO and global_position.distance_to(city_gen.lady_m_lair_door_pos) <= 7.0:
+					indoor_mgr.enter_location(indoor_mgr.HQFloor.LADY_M_LAIR)
+					get_viewport().set_input_as_handled()
+					return
+				elif city_gen.chop_shop_door_pos != Vector3.ZERO and global_position.distance_to(city_gen.chop_shop_door_pos) <= 7.0:
+					indoor_mgr.enter_location(indoor_mgr.HQFloor.CHOP_SHOP)
+					get_viewport().set_input_as_handled()
+					return
+				elif city_gen.porter_pit_door_pos != Vector3.ZERO and global_position.distance_to(city_gen.porter_pit_door_pos) <= 7.0:
+					indoor_mgr.enter_location(indoor_mgr.HQFloor.PORTER_PIT)
+					get_viewport().set_input_as_handled()
+					return
+				elif city_gen.norns_ai_door_pos != Vector3.ZERO and global_position.distance_to(city_gen.norns_ai_door_pos) <= 7.0:
+					indoor_mgr.enter_location(indoor_mgr.HQFloor.NORNS_AI)
+					get_viewport().set_input_as_handled()
+					return
+				elif city_gen.fife_hq_door_pos != Vector3.ZERO and global_position.distance_to(city_gen.fife_hq_door_pos) <= 7.0:
+					indoor_mgr.enter_location(indoor_mgr.HQFloor.FIFE_HQ)
+					get_viewport().set_input_as_handled()
+					return
+				elif city_gen.bankes_logistics_door_pos != Vector3.ZERO and global_position.distance_to(city_gen.bankes_logistics_door_pos) <= 7.0:
+					indoor_mgr.enter_location(indoor_mgr.HQFloor.BANKES_LOGISTICS)
+					get_viewport().set_input_as_handled()
+					return
+				elif city_gen.power_substation_door_pos != Vector3.ZERO and global_position.distance_to(city_gen.power_substation_door_pos) <= 7.0:
+					indoor_mgr.enter_location(indoor_mgr.HQFloor.SUBSTATION)
+					get_viewport().set_input_as_handled()
+					return
+
+			# 2. Check if standing near an NPC / character to talk!
 			var ped_system = get_parent().get_node_or_null("PedestrianSystem")
 			var talk_triggered: bool = false
 			if is_instance_valid(ped_system) and ped_system.has_method("_try_trigger_character_dialogue"):

@@ -1743,6 +1743,8 @@ func _update_narrow_street_residents(delta: float) -> void:
 # NEW ARCHETYPES: VENDORS, FIXERS, BUSKERS, TECH DRONES, JOGGERS
 # ==============================================================================
 
+var active_hq_guards: Array[CharacterBody3D] = []
+
 func _spawn_new_archetypes() -> void:
 	var city_gen = $"../CityGenerator"
 	if not is_instance_valid(city_gen):
@@ -1762,6 +1764,9 @@ func _spawn_new_archetypes() -> void:
 
 	# 5. JOGGERS / CYBER-RUNNERS (Park perimeter loops & sidewalks at 2.2x speed)
 	_spawn_cyber_joggers(city_gen)
+
+	# 6. DUNCAN DYNAMICS HQ SECURITY GUARDS (Posted outside building entrance)
+	_spawn_hq_security_guards(city_gen)
 
 func _spawn_street_vendors(city_gen) -> void:
 	var target_boxes: Array[Rect2] = []
@@ -2014,6 +2019,85 @@ func _spawn_cyber_joggers(city_gen) -> void:
 			jogger_node.global_position = center_pos + Vector3(float(j * 4), 0.0, 0.0)
 			active_joggers.append(jogger_node)
 
+func _spawn_hq_security_guards(city_gen) -> void:
+	if city_gen.get("hq_door_pos") == null or city_gen.hq_door_pos == Vector3.ZERO:
+		return
+
+	var door_pos: Vector3 = city_gen.hq_door_pos
+
+	# Clear previous guards if any
+	for g in active_hq_guards:
+		if is_instance_valid(g):
+			g.queue_free()
+	active_hq_guards.clear()
+
+	# Spawn 2 Fife Security Guards flanking the HQ entrance portal
+	for i in range(2):
+		var side_offset: Vector3 = Vector3(-2.4 if i == 0 else 2.4, 0.0, 0.5)
+		var guard_pos: Vector3 = door_pos + side_offset
+
+		var guard_node = CharacterBody3D.new()
+		guard_node.name = "HQSecurityGuard"
+
+		# Dark Tactical Armor with Radiant Red Shielding & Visor
+		var body_mat = StandardMaterial3D.new()
+		body_mat.albedo_color = Color(0.04, 0.04, 0.07) # Dark Obsidian Tactical Armor
+
+		var visor_red: Color = Color(1.0, 0.1, 0.1)
+		var head_mat = StandardMaterial3D.new()
+		head_mat.albedo_color = visor_red
+		head_mat.emission_enabled = true
+		head_mat.emission = visor_red
+		head_mat.emission_energy_multiplier = 5.0 # High intensity security visor glow
+
+		# Body Mesh Instance
+		var body_inst = MeshInstance3D.new()
+		body_inst.mesh = body_mesh_template
+		body_inst.material_override = body_mat
+		body_inst.position = Vector3(0.0, 0.6, 0.0)
+		guard_node.add_child(body_inst)
+
+		# Head / Helmet Mesh Instance
+		var head_inst = MeshInstance3D.new()
+		head_inst.mesh = head_mesh_template
+		head_inst.material_override = head_mat
+		head_inst.position = Vector3(0.0, 1.35, 0.0)
+		guard_node.add_child(head_inst)
+
+		# Tactical Shoulder Armor Pads
+		for side in [-0.28, 0.28]:
+			var pad_inst = MeshInstance3D.new()
+			var pad_box = BoxMesh.new()
+			pad_box.size = Vector3(0.22, 0.22, 0.22)
+			pad_inst.mesh = pad_box
+			pad_inst.position = Vector3(side, 1.05, 0.0)
+			pad_inst.material_override = body_mat
+			guard_node.add_child(pad_inst)
+
+		# Security Scanner Light Beam
+		var scanner_spot = SpotLight3D.new()
+		scanner_spot.name = "GuardScanner"
+		scanner_spot.light_color = visor_red
+		scanner_spot.light_energy = 6.0
+		scanner_spot.spot_range = 8.0
+		scanner_spot.spot_angle = 30.0
+		scanner_spot.position = Vector3(0.0, 1.35, 0.2)
+		scanner_spot.rotation_degrees = Vector3(-15, 0, 0)
+		guard_node.add_child(scanner_spot)
+
+		guard_node.set_meta("is_security_guard", true)
+		guard_node.set_meta("home_pos", guard_pos)
+		guard_node.set_meta("scan_timer", rng.randf_range(0.0, 4.0))
+
+		add_child(guard_node)
+		guard_node.global_position = guard_pos
+
+		# Face outward towards the street (-Z or +Z direction away from doorway)
+		guard_node.look_at(guard_pos + Vector3(0.0, 0.0, 5.0), Vector3.UP)
+		active_hq_guards.append(guard_node)
+
+	print("[HQ GUARDS] Posted 2 Fife Security Guards outside Duncan Dynamics HQ.")
+
 # ==============================================================================
 # ARCHETYPE UPDATE AI LOOPS
 # ==============================================================================
@@ -2021,6 +2105,24 @@ func _spawn_cyber_joggers(city_gen) -> void:
 func _update_archetype_behaviors(delta: float) -> void:
 	var player_pos: Vector3 = _get_player_world_position()
 	var time: float = Time.get_ticks_msec() / 1000.0
+
+	# 0. HQ SECURITY GUARDS: Scan sweeping & player tracking
+	for guard in active_hq_guards:
+		if is_instance_valid(guard):
+			var home_pos: Vector3 = guard.get_meta("home_pos", guard.global_position)
+			var dist_to_player: float = guard.global_position.distance_to(player_pos)
+
+			if dist_to_player <= 10.0:
+				# Track player with security visor scanner when near entrance
+				var look_target: Vector3 = Vector3(player_pos.x, guard.global_position.y, player_pos.z)
+				if guard.global_position.distance_to(look_target) > 0.1:
+					guard.look_at(look_target, Vector3.UP)
+			else:
+				# Idle scanning sweep back and forth
+				var scan_t: float = guard.get_meta("scan_timer", 0.0) + delta
+				guard.set_meta("scan_timer", scan_t)
+				var sweep_yaw: float = sin(scan_t * 1.2) * 45.0
+				guard.rotation_degrees.y = sweep_yaw
 
 	# 1. STREET VENDORS: Periodic head-tilt shout animation
 	for vendor in active_street_vendors:
