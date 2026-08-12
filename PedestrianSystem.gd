@@ -867,7 +867,6 @@ func _spawn_park_dance_groups() -> void:
 func _create_single_dancer(pos: Vector3, neon_color: Color, dance_style: String, group_center: Vector3, index: int, total_count: int) -> CharacterBody3D:
 	var ped_node = CharacterBody3D.new()
 	ped_node.name = "ParkDancer"
-	ped_node.global_position = pos
 
 	# Distinct glowing material with holographic halo/crown
 	var body_mat = StandardMaterial3D.new()
@@ -918,6 +917,7 @@ func _create_single_dancer(pos: Vector3, neon_color: Color, dance_style: String,
 	ped_node.set_meta("dance_phase", rng.randf_range(0.0, TAU))
 
 	add_child(ped_node)
+	ped_node.global_position = pos
 	active_park_dancers.append(ped_node)
 	return ped_node
 
@@ -1113,7 +1113,6 @@ func _spawn_dodgy_park_character(park: Rect2) -> void:
 
 	var ped_node = CharacterBody3D.new()
 	ped_node.name = "DodgyParkCharacter"
-	ped_node.global_position = char_pos
 	ped_node.set_meta("is_dodgy", true)
 
 	# Dark shady coat material with dim crimson / deep amber accents
@@ -1208,11 +1207,13 @@ func _spawn_dodgy_park_character(park: Rect2) -> void:
 	smoke_inst.material_override = smoke_mat
 	cig_node.add_child(smoke_inst)
 
+	add_child(ped_node)
+	ped_node.global_position = char_pos
+
 	# Face towards streetlamp pole / park corner, looking cool & shady
 	ped_node.look_at(lamp_pos, Vector3.UP)
 	ped_node.rotate_object_local(Vector3.UP, PI) # Back against lamp pole, looking outward into park
 
-	add_child(ped_node)
 	active_dodgy_characters.append(ped_node)
 	print("[PARK DANCERS] Spawned DodgyParkCharacter at ", char_pos, " near streetlamp ", lamp_pos)
 
@@ -1256,7 +1257,6 @@ func _spawn_parking_lot_gangs() -> void:
 
 			var ped_node = CharacterBody3D.new()
 			ped_node.name = "GangLeader" if is_leader else "GangMember"
-			ped_node.global_position = member_pos
 
 			# Body Material: Dark tactical jacket
 			var body_mat = StandardMaterial3D.new()
@@ -1320,10 +1320,12 @@ func _spawn_parking_lot_gangs() -> void:
 			ped_node.set_meta("lurk_stop_distance", 2.2 if is_leader else rng.randf_range(5.0, 11.0))
 			ped_node.set_meta("walk_phase", rng.randf_range(0.0, TAU))
 
+			add_child(ped_node)
+			ped_node.global_position = member_pos
+
 			# Face towards lot center initially
 			ped_node.look_at(lot_center, Vector3.UP)
 
-			add_child(ped_node)
 			active_gang_members.append(ped_node)
 
 # Spawns a delivery recipient character waiting by a parked motorcycle outside a specified building location
@@ -1336,8 +1338,6 @@ func spawn_delivery_recipient(target_pos: Vector3) -> CharacterBody3D:
 
 	var recipient := CharacterBody3D.new()
 	recipient.name = "DeliveryRecipient"
-	recipient.global_position = target_pos
-	recipient.set_meta("is_delivery_recipient", true)
 
 	# Radiant Cyan Head & Sleek Leather Jacket
 	var body_mat = StandardMaterial3D.new()
@@ -1414,6 +1414,8 @@ func spawn_delivery_recipient(target_pos: Vector3) -> CharacterBody3D:
 	recipient.add_child(bike_node)
 
 	add_child(recipient)
+	recipient.global_position = target_pos
+	recipient.set_meta("is_delivery_recipient", true)
 	active_delivery_recipients.append(recipient)
 	return recipient
 
@@ -1522,7 +1524,6 @@ func _spawn_narrow_street_residents() -> void:
 
 		var ped_node = CharacterBody3D.new()
 		ped_node.name = "NarrowStreetResident"
-		ped_node.global_position = spawn_pos
 
 		# Body Material: Weathered dark slate coat
 		var body_mat = StandardMaterial3D.new()
@@ -1571,11 +1572,13 @@ func _spawn_narrow_street_residents() -> void:
 		ped_node.set_meta("is_tipsy_stumbler", rng.randf() < 0.35)
 		ped_node.set_meta("fall_timer", 0.0)
 
+		add_child(ped_node)
+		ped_node.global_position = spawn_pos
+
 		# Facing direction facing slightly out into alley from building wall
 		var facing_dir: Vector3 = Vector3(0.0, 0.0, -wall_side).normalized() if axis == "Z" else Vector3(-wall_side, 0.0, 0.0).normalized()
 		ped_node.look_at(spawn_pos + facing_dir, Vector3.UP)
 
-		add_child(ped_node)
 		active_narrow_street_residents.append(ped_node)
 	
 	print("[STREET RESIDENTS] Spawned ", active_narrow_street_residents.size(), " solitary narrow street residents in alleys.")
@@ -1780,7 +1783,6 @@ func _spawn_street_vendors(city_gen) -> void:
 
 		var vendor_node = CharacterBody3D.new()
 		vendor_node.name = "StreetVendor"
-		vendor_node.global_position = pos
 
 		var color: Color = Color(1.0, 0.5, 0.0) # Radiant Amber Orange
 		var body_mat = StandardMaterial3D.new()
@@ -1816,6 +1818,7 @@ func _spawn_street_vendors(city_gen) -> void:
 
 		vendor_node.set_meta("shout_timer", rng.randf_range(3.0, 8.0))
 		add_child(vendor_node)
+		vendor_node.global_position = pos
 		active_street_vendors.append(vendor_node)
 
 func _spawn_fixers_and_informants(city_gen) -> void:
@@ -1834,7 +1837,6 @@ func _spawn_fixers_and_informants(city_gen) -> void:
 			var fixer_node = CharacterBody3D.new()
 			fixer_node.name = "FixerInformant"
 			var offset: Vector3 = Vector3(-0.6 if p == 0 else 0.6, 0.0, 0.0)
-			fixer_node.global_position = base_pos + offset
 
 			var glitch_red: Color = Color(0.8, 0.0, 0.2)
 			var body_mat = StandardMaterial3D.new()
@@ -1862,11 +1864,13 @@ func _spawn_fixers_and_informants(city_gen) -> void:
 			fixer_node.set_meta("glitch_timer", 0.0)
 			fixer_node.set_meta("partner_index", p)
 
+			add_child(fixer_node)
+			fixer_node.global_position = base_pos + offset
+
 			# Face each other
 			var partner_pos: Vector3 = base_pos + Vector3(0.6 if p == 0 else -0.6, 0.0, 0.0)
 			fixer_node.look_at(partner_pos, Vector3.UP)
 
-			add_child(fixer_node)
 			active_fixers.append(fixer_node)
 
 func _spawn_street_buskers(city_gen) -> void:
@@ -1879,7 +1883,6 @@ func _spawn_street_buskers(city_gen) -> void:
 
 		var busker_node = CharacterBody3D.new()
 		busker_node.name = "StreetBusker"
-		busker_node.global_position = busker_pos
 
 		var magenta: Color = Color(1.0, 0.0, 0.6)
 		var body_mat = StandardMaterial3D.new()
@@ -1918,6 +1921,7 @@ func _spawn_street_buskers(city_gen) -> void:
 		busker_node.add_child(synth_inst)
 
 		add_child(busker_node)
+		busker_node.global_position = busker_pos
 		active_buskers.append(busker_node)
 
 func _spawn_tech_drones(city_gen) -> void:
@@ -1930,7 +1934,6 @@ func _spawn_tech_drones(city_gen) -> void:
 
 		var tech_node = CharacterBody3D.new()
 		tech_node.name = "TechDrone"
-		tech_node.global_position = pos
 
 		var yellow: Color = Color(1.0, 0.8, 0.0)
 		var body_mat = StandardMaterial3D.new()
@@ -1967,6 +1970,7 @@ func _spawn_tech_drones(city_gen) -> void:
 
 		tech_node.set_meta("spark_timer", 0.0)
 		add_child(tech_node)
+		tech_node.global_position = pos
 		active_tech_drones.append(tech_node)
 
 func _spawn_cyber_joggers(city_gen) -> void:
@@ -1981,7 +1985,6 @@ func _spawn_cyber_joggers(city_gen) -> void:
 		for j in range(2):
 			var jogger_node = CharacterBody3D.new()
 			jogger_node.name = "CyberJogger"
-			jogger_node.global_position = center_pos + Vector3(float(j * 4), 0.0, 0.0)
 
 			var cyan: Color = Color(0.0, 1.0, 0.9) if j == 0 else Color(0.2, 1.0, 0.3)
 			var body_mat = StandardMaterial3D.new()
@@ -2008,6 +2011,7 @@ func _spawn_cyber_joggers(city_gen) -> void:
 			jogger_node.set_meta("park_center", center_pos)
 			jogger_node.set_meta("jog_angle", float(j) * PI)
 			add_child(jogger_node)
+			jogger_node.global_position = center_pos + Vector3(float(j * 4), 0.0, 0.0)
 			active_joggers.append(jogger_node)
 
 # ==============================================================================

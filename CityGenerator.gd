@@ -287,6 +287,20 @@ func _find_safe_land_position(start_pos: Vector3) -> Vector3:
 
 
 # ==============================================================================
+# Reference to wireframe grid material & instance for overmap visual boost
+var grid_mat: StandardMaterial3D = null
+var grid_instance: MeshInstance3D = null
+
+# Enables/disables high-contrast glow for tactical overmap satellite view
+func set_overmap_boost(active: bool) -> void:
+	if is_instance_valid(grid_mat):
+		if active:
+			grid_mat.emission = Color(0.0, 1.0, 0.85) # High brightness cyan/turquoise
+			grid_mat.emission_energy_multiplier = 12.0 # Boosted emission energy for overmap visibility
+		else:
+			grid_mat.emission = Color(0.0, 0.85, 1.0) # Normal neon cyan
+			grid_mat.emission_energy_multiplier = 3.0
+
 # 1. GROUND PLANE & WIREFRAME GRID SYSTEM
 # ==============================================================================
 
@@ -329,7 +343,7 @@ func _build_ground_and_grid() -> void:
 	# --------------------------------------------------------------------------
 	# WIREFRAME GRID LINES SETUP
 	# --------------------------------------------------------------------------
-	var grid_mat = StandardMaterial3D.new()
+	grid_mat = StandardMaterial3D.new()
 	# Base surface color is pure black Color(R=0.0, G=0.0, B=0.0)
 	grid_mat.albedo_color = Color(0, 0, 0)
 	# Enable self-illumination (glowing bloom effect)
@@ -341,7 +355,7 @@ func _build_ground_and_grid() -> void:
 
 	# Dynamic line mesh drawer
 	var grid_lines = ImmediateMesh.new()
-	var grid_instance = MeshInstance3D.new()
+	grid_instance = MeshInstance3D.new()
 	grid_instance.mesh = grid_lines
 	grid_instance.material_override = grid_mat
 	add_child(grid_instance)

@@ -240,11 +240,31 @@ func _toggle_tactical_overmap() -> void:
 				pip_viewport.add_child(pip_live_camera)
 			pip_live_camera.current = true
 
+		# Boost wireframe ground grid contrast/glow for high altitude satellite view
+		var city_gen = $"../CityGenerator"
+		if is_instance_valid(city_gen) and city_gen.has_method("set_overmap_boost"):
+			city_gen.set_overmap_boost(true)
+
+		# Override L key dimming for wireframe grid in overmap mode
+		var city_vfx = $"../CityVisualEffects"
+		if is_instance_valid(city_vfx) and city_vfx.has_method("set_overmap_mode"):
+			city_vfx.set_overmap_mode(true)
+
 		map_camera.current = true
 		map_hud_layer.visible = true
 
 	else:
 		print("[OVERMAP] Closing overmap. Restoring volumetric fog and driving camera...")
+
+		# Restore wireframe ground grid to normal intensity
+		var city_gen = $"../CityGenerator"
+		if is_instance_valid(city_gen) and city_gen.has_method("set_overmap_boost"):
+			city_gen.set_overmap_boost(false)
+
+		# Restore L key lighting control
+		var city_vfx = $"../CityVisualEffects"
+		if is_instance_valid(city_vfx) and city_vfx.has_method("set_overmap_mode"):
+			city_vfx.set_overmap_mode(false)
 
 		# Restore volumetric fog for gameplay
 		if is_instance_valid(world_env) and world_env.environment:

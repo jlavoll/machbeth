@@ -118,10 +118,20 @@ func _process(delta: float) -> void:
 			is_wave_ripple_active = false
 			wave_ripple_progress = 0.0
 
+# Overmap override state (bypasses L key dimming/blackout for map view)
+var is_overmap_active: bool = false
+
+# Enables/disables tactical overmap visual override for ground wireframe grid
+func set_overmap_mode(active: bool) -> void:
+	is_overmap_active = active
+
 	# --------------------------------------------------------------------------
 	# 4. APPLY GLITCH & WAVE RIPPLE MATERIAL UPDATE (WITH CITY LIGHT STAGE MULTIPLIER)
 	# --------------------------------------------------------------------------
 	var dark_mult: float = _get_current_light_multiplier()
+	if is_overmap_active:
+		# Guarantee at least 100% full brightness multiplier for overmap wireframe grid
+		dark_mult = maxf(dark_mult, 1.0)
 
 	if is_instance_valid(grid_material_ref):
 		if dark_mult <= 0.0:
