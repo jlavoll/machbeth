@@ -41,6 +41,7 @@ var active_z_streets: Array[float] = []
 var active_broadway_x: float = 0.0
 var active_broadway_z: float = 0.0
 var active_alley_corridors: Array[Dictionary] = []
+var active_normal_buildings: Array = []
 
 # Duncan Dynamics HQ & Special Playable Interior Building Tracking
 var hq_building_pos: Vector3 = Vector3.ZERO
@@ -95,12 +96,18 @@ func generate_city_from_seed(target_seed: int) -> void:
 	active_x_streets.clear()
 	active_z_streets.clear()
 	active_alley_corridors.clear()
+	active_normal_buildings.clear()
 	hq_building_pos = Vector3.ZERO
 	hq_door_pos = Vector3.ZERO
 	hq_door_node = null
 	mack_hideout_door_pos = Vector3.ZERO
 	lady_m_lair_door_pos = Vector3.ZERO
 	chop_shop_door_pos = Vector3.ZERO
+	porter_pit_door_pos = Vector3.ZERO
+	norns_ai_door_pos = Vector3.ZERO
+	fife_hq_door_pos = Vector3.ZERO
+	bankes_logistics_door_pos = Vector3.ZERO
+	power_substation_door_pos = Vector3.ZERO
 	if target_seed != 0:
 		rng.seed = target_seed
 	else:
@@ -570,6 +577,8 @@ func _generate_city_grid() -> void:
 
 			current_cell_idx += 1
 
+	_ensure_all_special_buildings_placed(neon_colors)
+
 # ==============================================================================
 # 4. BLOCK SUBDIVISION & ALLEY LAYOUT
 # ==============================================================================
@@ -677,48 +686,36 @@ func _create_block_cluster(center: Vector3, size: Vector2, neon_colors: Array) -
 			var bx: float = start_x + ix * (plot_w + alley_width)
 			var bz: float = start_z + iz * (plot_d + alley_width)
 
-			# Determine special interior building designation across distinct map quadrants (600m scale)
+			# Determine special interior building designation across 9 distinct map sectors (600m scale)
 			var b_type: String = "NORMAL"
 			
-			if hq_building_pos == Vector3.ZERO and bx > 100.0 and bz > 100.0:
-				b_type = "HQ" # North-East Quadrant
-			elif lady_m_lair_door_pos == Vector3.ZERO and bx < -100.0 and bz > 100.0:
-				b_type = "LADY_M" # North-West Quadrant
-			elif chop_shop_door_pos == Vector3.ZERO and bx > 100.0 and bz < -100.0:
-				b_type = "CHOP_SHOP" # South-East Quadrant
-			elif porter_pit_door_pos == Vector3.ZERO and bx < -100.0 and bz < -100.0:
-				b_type = "PORTER_PIT" # South-West Quadrant
-			elif norns_ai_door_pos == Vector3.ZERO and abs(bx) < 100.0 and bz > 150.0:
-				b_type = "NORNS_AI" # Far North Sector
-			elif power_substation_door_pos == Vector3.ZERO and abs(bx) < 100.0 and bz < -150.0:
-				b_type = "SUBSTATION" # Far South Sector
-			elif fife_hq_door_pos == Vector3.ZERO and bx > 150.0 and abs(bz) < 100.0:
-				b_type = "FIFE_HQ" # Far East Sector
-			elif bankes_logistics_door_pos == Vector3.ZERO and bx < -150.0 and abs(bz) < 100.0:
-				b_type = "BANKES_LOGISTICS" # Far West Sector
-			elif mack_hideout_door_pos == Vector3.ZERO and abs(bx) < 120.0 and abs(bz) < 120.0:
-				b_type = "HIDEOUT" # Central Sector
-
-			# Fallback: assign remaining special buildings to available plots across the map
-			if b_type == "NORMAL":
-				if hq_building_pos == Vector3.ZERO:
-					b_type = "HQ"
-				elif mack_hideout_door_pos == Vector3.ZERO:
-					b_type = "HIDEOUT"
-				elif lady_m_lair_door_pos == Vector3.ZERO:
-					b_type = "LADY_M"
-				elif chop_shop_door_pos == Vector3.ZERO:
-					b_type = "CHOP_SHOP"
-				elif porter_pit_door_pos == Vector3.ZERO:
-					b_type = "PORTER_PIT"
-				elif norns_ai_door_pos == Vector3.ZERO:
-					b_type = "NORNS_AI"
-				elif fife_hq_door_pos == Vector3.ZERO:
-					b_type = "FIFE_HQ"
-				elif bankes_logistics_door_pos == Vector3.ZERO:
-					b_type = "BANKES_LOGISTICS"
-				elif power_substation_door_pos == Vector3.ZERO:
-					b_type = "SUBSTATION"
+			# North-West Quadrant (Top-Left): Lady M's Lair
+			if lady_m_lair_door_pos == Vector3.ZERO and bx < -50.0 and bz < -50.0:
+				b_type = "LADY_M"
+			# North-Center Sector (Top-Center): Duncan Dynamics HQ
+			elif hq_building_pos == Vector3.ZERO and abs(bx) <= 50.0 and bz < -50.0:
+				b_type = "HQ"
+			# North-East Quadrant (Top-Right): Norns AI Server Core
+			elif norns_ai_door_pos == Vector3.ZERO and bx > 50.0 and bz < -50.0:
+				b_type = "NORNS_AI"
+			# West-Center Sector (Mid-Left): Bankes Logistics Hub
+			elif bankes_logistics_door_pos == Vector3.ZERO and bx < -50.0 and abs(bz) <= 50.0:
+				b_type = "BANKES_LOGISTICS"
+			# Central Core (Mid-Center): Mack's Hideout
+			elif mack_hideout_door_pos == Vector3.ZERO and abs(bx) <= 50.0 and abs(bz) <= 50.0:
+				b_type = "HIDEOUT"
+			# East-Center Sector (Mid-Right): Clan Fife HQ
+			elif fife_hq_door_pos == Vector3.ZERO and bx > 50.0 and abs(bz) <= 50.0:
+				b_type = "FIFE_HQ"
+			# South-West Quadrant (Bottom-Left): Porter Pit Fight Club
+			elif porter_pit_door_pos == Vector3.ZERO and bx < -50.0 and bz > 50.0:
+				b_type = "PORTER_PIT"
+			# South-Center Sector (Bottom-Center): Power Substation
+			elif power_substation_door_pos == Vector3.ZERO and abs(bx) <= 50.0 and bz > 50.0:
+				b_type = "SUBSTATION"
+			# South-East Quadrant (Bottom-Right): Chop Shop
+			elif chop_shop_door_pos == Vector3.ZERO and bx > 50.0 and bz > 50.0:
+				b_type = "CHOP_SHOP"
 
 			_spawn_building(Vector3(bx, b_height / 2.0 + 0.1, bz), Vector3(b_width, b_height, b_depth), neon_colors, b_type)
 
@@ -902,9 +899,134 @@ func _spawn_building(pos: Vector3, b_size: Vector3, neon_colors: Array, b_type: 
 			bankes_logistics_door_pos = door_world_pos
 		elif b_type == "SUBSTATION":
 			power_substation_door_pos = door_world_pos
+	else:
+		active_normal_buildings.append({"body": static_body, "pos": pos, "size": b_size})
 
 	# Add complete skyscraper object to the main city node
 	add_child(static_body)
+
+# Safety fallback pass ensuring all 9 special enterable buildings are placed across sectors
+func _ensure_all_special_buildings_placed(neon_colors: Array) -> void:
+	var special_specs: Array[Dictionary] = [
+		{"type": "LADY_M", "placed": lady_m_lair_door_pos != Vector3.ZERO, "target": Vector3(-180.0, 0.0, -180.0)},
+		{"type": "HQ", "placed": hq_building_pos != Vector3.ZERO, "target": Vector3(0.0, 0.0, -180.0)},
+		{"type": "NORNS_AI", "placed": norns_ai_door_pos != Vector3.ZERO, "target": Vector3(180.0, 0.0, -180.0)},
+		{"type": "BANKES_LOGISTICS", "placed": bankes_logistics_door_pos != Vector3.ZERO, "target": Vector3(-180.0, 0.0, 0.0)},
+		{"type": "HIDEOUT", "placed": mack_hideout_door_pos != Vector3.ZERO, "target": Vector3(0.0, 0.0, 0.0)},
+		{"type": "FIFE_HQ", "placed": fife_hq_door_pos != Vector3.ZERO, "target": Vector3(180.0, 0.0, 0.0)},
+		{"type": "PORTER_PIT", "placed": porter_pit_door_pos != Vector3.ZERO, "target": Vector3(-180.0, 0.0, 180.0)},
+		{"type": "SUBSTATION", "placed": power_substation_door_pos != Vector3.ZERO, "target": Vector3(0.0, 0.0, 180.0)},
+		{"type": "CHOP_SHOP", "placed": chop_shop_door_pos != Vector3.ZERO, "target": Vector3(180.0, 0.0, 180.0)}
+	]
+
+	for spec in special_specs:
+		if spec["placed"]:
+			continue
+		if active_normal_buildings.size() == 0:
+			break
+		
+		var best_idx: int = -1
+		var min_dist: float = 999999.0
+		for i in range(active_normal_buildings.size()):
+			var candidate = active_normal_buildings[i]
+			var d: float = candidate["pos"].distance_to(spec["target"])
+			if d < min_dist:
+				min_dist = d
+				best_idx = i
+
+		if best_idx >= 0:
+			var chosen: Dictionary = active_normal_buildings[best_idx]
+			active_normal_buildings.remove_at(best_idx)
+			_attach_door_to_building(chosen["body"], chosen["pos"], chosen["size"], spec["type"], neon_colors)
+
+func _attach_door_to_building(static_body: StaticBody3D, pos: Vector3, b_size: Vector3, b_type: String, neon_colors: Array) -> void:
+	if b_type == "HQ":
+		static_body.name = "DuncanHQBuilding"
+		hq_building_pos = pos
+
+	var accent_color: Color = Color(0.0, 1.0, 0.85)
+	if b_type == "HQ":
+		accent_color = Color(0.0, 1.0, 0.85)
+	elif b_type == "HIDEOUT":
+		accent_color = Color(1.0, 0.5, 0.0)
+	elif b_type == "LADY_M":
+		accent_color = Color(1.0, 0.0, 0.8)
+	elif b_type == "CHOP_SHOP":
+		accent_color = Color(0.2, 1.0, 0.3)
+	elif b_type == "PORTER_PIT":
+		accent_color = Color(1.0, 0.3, 0.0)
+	elif b_type == "NORNS_AI":
+		accent_color = Color(0.7, 0.1, 1.0)
+	elif b_type == "FIFE_HQ":
+		accent_color = Color(0.1, 0.5, 1.0)
+	elif b_type == "BANKES_LOGISTICS":
+		accent_color = Color(0.9, 0.7, 0.1)
+	elif b_type == "SUBSTATION":
+		accent_color = Color(1.0, 0.9, 0.0)
+
+	var hh: float = b_size.y / 2.0
+	var hd: float = b_size.z / 2.0
+
+	var door_container = Node3D.new()
+	door_container.name = b_type + "_EntranceDoor"
+	door_container.position = Vector3(0.0, -hh + 1.8, hd + 0.1)
+
+	var frame_inst = MeshInstance3D.new()
+	var frame_box = BoxMesh.new()
+	frame_box.size = Vector3(3.6, 3.6, 0.4)
+	frame_inst.mesh = frame_box
+	var frame_mat = StandardMaterial3D.new()
+	frame_mat.albedo_color = Color(0.02, 0.05, 0.08)
+	frame_mat.emission_enabled = true
+	frame_mat.emission = accent_color
+	frame_mat.emission_energy_multiplier = 6.0
+	frame_inst.material_override = frame_mat
+	door_container.add_child(frame_inst)
+
+	var portal_inst = MeshInstance3D.new()
+	var portal_box = BoxMesh.new()
+	portal_box.size = Vector3(2.8, 3.0, 0.2)
+	portal_inst.mesh = portal_box
+	portal_inst.position = Vector3(0.0, -0.1, 0.1)
+	var portal_mat = StandardMaterial3D.new()
+	portal_mat.albedo_color = Color(0.0, 0.1, 0.2)
+	portal_mat.emission_enabled = true
+	portal_mat.emission = accent_color
+	portal_mat.emission_energy_multiplier = 2.0
+	portal_inst.material_override = portal_mat
+	door_container.add_child(portal_inst)
+
+	var door_spot = SpotLight3D.new()
+	door_spot.light_color = accent_color
+	door_spot.light_energy = 8.0
+	door_spot.spot_range = 10.0
+	door_spot.spot_angle = 45.0
+	door_spot.rotation_degrees = Vector3(30, 0, 0)
+	door_spot.position = Vector3(0.0, 2.0, 0.5)
+	door_container.add_child(door_spot)
+
+	static_body.add_child(door_container)
+	var door_world_pos: Vector3 = Vector3(pos.x, 0.0, pos.z + hd + 1.2)
+
+	if b_type == "HQ":
+		hq_door_pos = door_world_pos
+		hq_door_node = door_container
+	elif b_type == "HIDEOUT":
+		mack_hideout_door_pos = door_world_pos
+	elif b_type == "LADY_M":
+		lady_m_lair_door_pos = door_world_pos
+	elif b_type == "CHOP_SHOP":
+		chop_shop_door_pos = door_world_pos
+	elif b_type == "PORTER_PIT":
+		porter_pit_door_pos = door_world_pos
+	elif b_type == "NORNS_AI":
+		norns_ai_door_pos = door_world_pos
+	elif b_type == "FIFE_HQ":
+		fife_hq_door_pos = door_world_pos
+	elif b_type == "BANKES_LOGISTICS":
+		bankes_logistics_door_pos = door_world_pos
+	elif b_type == "SUBSTATION":
+		power_substation_door_pos = door_world_pos
 
 # ==============================================================================
 # 6. SPECIAL DISTRICTS (CYBER RIVER, CYBER PARKS, PARKING LOTS)

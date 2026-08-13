@@ -41,8 +41,12 @@ var server_door_node: Node3D = null
 
 # Interior Camera3D & Viewport Setup
 var indoor_camera: Camera3D = null
+var indoor_fp_camera: Camera3D = null
+var indoor_view_mode: String = "TOPDOWN" # "TOPDOWN" or "FIRST_PERSON"
+var _fp_pitch: float = 0.0
 var indoor_hud_layer: CanvasLayer = null
 var indoor_title_label: Label = null
+var indoor_view_label: Label = null
 var _indoor_prompt_label: Label = null
 
 # References
@@ -383,9 +387,13 @@ func _build_blueprint_grid(parent: Node3D, size_x: int, size_z: int, grid_color:
 	for x in range(-hx, hx + 1, 2):
 		grid_mesh.surface_add_vertex(Vector3(x, 0.01, -hz))
 		grid_mesh.surface_add_vertex(Vector3(x, 0.01, hz))
+		grid_mesh.surface_add_vertex(Vector3(x, 4.0, -hz))
+		grid_mesh.surface_add_vertex(Vector3(x, 4.0, hz))
 	for z in range(-hz, hz + 1, 2):
 		grid_mesh.surface_add_vertex(Vector3(-hx, 0.01, z))
 		grid_mesh.surface_add_vertex(Vector3(hx, 0.01, z))
+		grid_mesh.surface_add_vertex(Vector3(-hx, 4.0, z))
+		grid_mesh.surface_add_vertex(Vector3(hx, 4.0, z))
 	grid_mesh.surface_end()
 
 func _build_interior_wall(parent: Node3D, pos: Vector3, size: Vector3, accent_color: Color) -> void:
@@ -607,6 +615,12 @@ func _setup_indoor_camera() -> void:
 	indoor_camera.current = false
 	add_child(indoor_camera)
 
+	indoor_fp_camera = Camera3D.new()
+	indoor_fp_camera.name = "IndoorFirstPersonCamera"
+	indoor_fp_camera.fov = 85.0
+	indoor_fp_camera.current = false
+	add_child(indoor_fp_camera)
+
 func _setup_indoor_hud() -> void:
 	indoor_hud_layer = CanvasLayer.new()
 	indoor_hud_layer.name = "IndoorHUDLayer"
@@ -617,12 +631,22 @@ func _setup_indoor_hud() -> void:
 	var font_res = load("res://fonts/Orbitron/Orbitron-VariableFont_wght.ttf")
 	indoor_title_label = Label.new()
 	indoor_title_label.position = Vector2(30, 30)
-	indoor_title_label.text = "DUNCAN DYNAMICS HQ\n // FLOOR 01: GROUND LOBBY\n TACTICAL TOP-DOWN MODE"
+	indoor_title_label.text = "DUNCAN DYNAMICS HQ\n // FLOOR 01: GROUND LOBBY\n TACTICAL TOP-DOWN MODE [V]"
 	if font_res:
 		indoor_title_label.add_theme_font_override("font", font_res)
 	indoor_title_label.add_theme_font_size_override("font_size", 18)
 	indoor_title_label.add_theme_color_override("font_color", Color(0.0, 1.0, 0.85))
 	indoor_hud_layer.add_child(indoor_title_label)
+
+	# Camera View Mode Key Hint
+	indoor_view_label = Label.new()
+	indoor_view_label.position = Vector2(30, 105)
+	indoor_view_label.text = "[V] TOGGLE VIEW: PRESS 'V' FOR FIRST-PERSON VIEW"
+	if font_res:
+		indoor_view_label.add_theme_font_override("font", font_res)
+	indoor_view_label.add_theme_font_size_override("font_size", 13)
+	indoor_view_label.add_theme_color_override("font_color", Color(1.0, 0.85, 0.0))
+	indoor_hud_layer.add_child(indoor_view_label)
 
 	# Interaction Prompt Label
 	_indoor_prompt_label = Label.new()
@@ -668,8 +692,26 @@ func enter_location(target_floor: HQFloor) -> void:
 		if player_car.on_foot_node.get("_facing_angle") != null:
 			player_car.on_foot_node.set("_facing_angle", 0.0)
 
-	indoor_camera.current = true
+	if indoor_view_mode == "FIRST_PERSON" and is_instance_valid(indoor_fp_camera):
+		indoor_fp_camera.current = true
+	else:
+		indoor_camera.current = true
 	indoor_hud_layer.visible = true
+	_update_hud_floor_label()
+
+func toggle_indoor_view_mode() -> void:
+	if not is_inside_building:
+		return
+
+	if indoor_view_mode == "TOPDOWN":
+		indoor_view_mode = "FIRST_PERSON"
+		_fp_pitch = 0.0
+		if is_instance_valid(indoor_fp_camera):
+			indoor_fp_camera.current = true
+	else:
+		indoor_view_mode = "TOPDOWN"
+		if is_instance_valid(indoor_camera):
+			indoor_camera.current = true
 	_update_hud_floor_label()
 
 func exit_building_interior() -> void:
@@ -677,6 +719,8 @@ func exit_building_interior() -> void:
 		return
 
 	is_inside_building = false
+	indoor_view_mode = "TOPDOWN"
+	_fp_pitch = 0.0
 	print("[INDOOR SYSTEM] Exiting interior, returning to city street...")
 
 	if is_instance_valid(player_car) and player_car.is_on_foot and is_instance_valid(player_car.on_foot_node):
@@ -762,37 +806,44 @@ func _get_origin_for_floor(fl: HQFloor) -> Vector3:
 	return lobby_floor_origin
 
 func _update_hud_floor_label() -> void:
+	if is_instance_valid(indoor_view_label):
+		if indoor_view_mode == "FIRST_PERSON":
+			indoor_view_label.text = "[V] TOGGLE VIEW: PRESS 'V' FOR TOP-DOWN VIEW"
+		else:
+			indoor_view_label.text = "[V] TOGGLE VIEW: PRESS 'V' FOR FIRST-PERSON VIEW"
+
 	if is_instance_valid(indoor_title_label):
+		var mode_suffix: String = "FIRST-PERSON MODE [V]" if indoor_view_mode == "FIRST_PERSON" else "TACTICAL TOP-DOWN MODE [V]"
 		match current_floor:
 			HQFloor.LOBBY:
-				indoor_title_label.text = "DUNCAN DYNAMICS HQ\n // FLOOR 01: GROUND LOBBY\n TACTICAL TOP-DOWN MODE"
+				indoor_title_label.text = "DUNCAN DYNAMICS HQ\n // FLOOR 01: GROUND LOBBY\n " + mode_suffix
 				indoor_title_label.add_theme_color_override("font_color", Color(0.0, 1.0, 0.85))
 			HQFloor.PENTHOUSE:
-				indoor_title_label.text = "DUNCAN DYNAMICS HQ\n // FLOOR 99: EXECUTIVE PENTHOUSE & SERVER VAULT\n TACTICAL TOP-DOWN MODE"
+				indoor_title_label.text = "DUNCAN DYNAMICS HQ\n // FLOOR 99: EXECUTIVE PENTHOUSE & SERVER VAULT\n " + mode_suffix
 				indoor_title_label.add_theme_color_override("font_color", Color(1.0, 0.0, 0.6))
 			HQFloor.MACK_HIDEOUT:
-				indoor_title_label.text = "MACK'S SAFEHOUSE\n // APARTMENT & WORKSHOP\n TACTICAL TOP-DOWN MODE"
+				indoor_title_label.text = "MACK'S SAFEHOUSE\n // APARTMENT & WORKSHOP\n " + mode_suffix
 				indoor_title_label.add_theme_color_override("font_color", Color(1.0, 0.5, 0.0))
 			HQFloor.LADY_M_LAIR:
-				indoor_title_label.text = "LADY M'S NETRUNNER VAULT\n // UNDERGROUND LAIR\n TACTICAL TOP-DOWN MODE"
+				indoor_title_label.text = "LADY M'S NETRUNNER VAULT\n // UNDERGROUND LAIR\n " + mode_suffix
 				indoor_title_label.add_theme_color_override("font_color", Color(1.0, 0.0, 0.8))
 			HQFloor.CHOP_SHOP:
-				indoor_title_label.text = "REDLINE CHOP SHOP\n // CUSTOM GARAGE & TUNE-UP BAY\n TACTICAL TOP-DOWN MODE"
+				indoor_title_label.text = "REDLINE CHOP SHOP\n // CUSTOM GARAGE & TUNE-UP BAY\n " + mode_suffix
 				indoor_title_label.add_theme_color_override("font_color", Color(0.2, 1.0, 0.3))
 			HQFloor.PORTER_PIT:
-				indoor_title_label.text = "THE PIT SUBTERRANEAN GARAGE\n // PORTER'S BLACK-MARKET HUB\n TACTICAL TOP-DOWN MODE"
+				indoor_title_label.text = "THE PIT SUBTERRANEAN GARAGE\n // PORTER'S BLACK-MARKET HUB\n " + mode_suffix
 				indoor_title_label.add_theme_color_override("font_color", Color(1.0, 0.3, 0.0))
 			HQFloor.NORNS_AI:
-				indoor_title_label.text = "DEEP-WEB SUBSTATION #03-NORNS\n // THE 3 AI NORNS TERMINAL\n TACTICAL TOP-DOWN MODE"
+				indoor_title_label.text = "DEEP-WEB SUBSTATION #03-NORNS\n // THE 3 AI NORNS TERMINAL\n " + mode_suffix
 				indoor_title_label.add_theme_color_override("font_color", Color(0.7, 0.1, 1.0))
 			HQFloor.FIFE_HQ:
-				indoor_title_label.text = "FIFE PATROL HEADQUARTERS\n // MACDUFF'S CITADEL\n TACTICAL TOP-DOWN MODE"
+				indoor_title_label.text = "FIFE PATROL HEADQUARTERS\n // MACDUFF'S CITADEL\n " + mode_suffix
 				indoor_title_label.add_theme_color_override("font_color", Color(0.1, 0.5, 1.0))
 			HQFloor.BANKES_LOGISTICS:
-				indoor_title_label.text = "CAWDOR LOGISTICS DEPOT\n // BANKES' PATROL HUB\n TACTICAL TOP-DOWN MODE"
+				indoor_title_label.text = "CAWDOR LOGISTICS DEPOT\n // BANKES' PATROL HUB\n " + mode_suffix
 				indoor_title_label.add_theme_color_override("font_color", Color(0.9, 0.7, 0.1))
 			HQFloor.SUBSTATION:
-				indoor_title_label.text = "SUB-GRID POWER SUBSTATION 09\n // GRID BLACKOUT TARGET\n TACTICAL TOP-DOWN MODE"
+				indoor_title_label.text = "SUB-GRID POWER SUBSTATION 09\n // GRID BLACKOUT TARGET\n " + mode_suffix
 				indoor_title_label.add_theme_color_override("font_color", Color(1.0, 0.9, 0.0))
 
 # ==============================================================================
@@ -807,8 +858,16 @@ func _process(_delta: float) -> void:
 		return
 
 	var current_origin: Vector3 = _get_origin_for_floor(current_floor)
-	if is_instance_valid(indoor_camera):
-		indoor_camera.global_position = Vector3(player_node.global_position.x, current_origin.y + 24.0, player_node.global_position.z + 0.1)
+	if indoor_view_mode == "TOPDOWN":
+		if is_instance_valid(indoor_camera):
+			indoor_camera.global_position = Vector3(player_node.global_position.x, current_origin.y + 24.0, player_node.global_position.z + 0.1)
+			indoor_camera.rotation_degrees = Vector3(-90.0, 0.0, 0.0)
+			indoor_camera.current = true
+	else:
+		if is_instance_valid(indoor_fp_camera):
+			indoor_fp_camera.global_position = player_node.global_position + Vector3(0.0, 1.65, 0.0)
+			indoor_fp_camera.rotation = Vector3(_fp_pitch, player_node.rotation.y, 0.0)
+			indoor_fp_camera.current = true
 
 	# --- INTERACTION PROMPT DETECTION ---
 	var pos: Vector3 = player_node.global_position
@@ -852,9 +911,26 @@ func _process(_delta: float) -> void:
 		else:
 			_indoor_prompt_label.visible = false
 
-# Listen for E key press while inside interior to trigger elevators, doors, or city exit
+func _input(event: InputEvent) -> void:
+	if not is_inside_building:
+		return
+
+	if indoor_view_mode == "FIRST_PERSON" and event is InputEventMouseMotion:
+		_fp_pitch = clamp(_fp_pitch - event.relative.y * 0.004, -1.2, 1.2)
+		if is_instance_valid(player_car) and is_instance_valid(player_car.on_foot_node):
+			var foot_node = player_car.on_foot_node
+			foot_node.rotation.y -= event.relative.x * 0.004
+			if foot_node.get("_facing_angle") != null:
+				foot_node.set("_facing_angle", foot_node.rotation.y)
+
+# Listen for key presses while inside interior
 func _unhandled_input(event: InputEvent) -> void:
 	if not is_inside_building or not (event is InputEventKey and event.pressed and not event.echo):
+		return
+
+	if event.keycode == KEY_V:
+		toggle_indoor_view_mode()
+		get_viewport().set_input_as_handled()
 		return
 
 	if event.keycode == KEY_E:
