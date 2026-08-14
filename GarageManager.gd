@@ -31,7 +31,8 @@ var fleet: Dictionary = {
 		"upgrades": {
 			"engine": {"level": 1, "max_level": 3, "base_cost": 250, "cost_mult": 1.8},
 			"armor":  {"level": 1, "max_level": 3, "base_cost": 200, "cost_mult": 1.5},
-			"ordnance": {"level": 1, "max_level": 3, "base_cost": 300, "cost_mult": 2.0}
+			"ordnance": {"level": 1, "max_level": 3, "base_cost": 300, "cost_mult": 2.0},
+			"telemetry": {"level": 0, "max_level": 3, "base_cost": 400, "cost_mult": 1.875} # L1: Vitals, L2: Math Matrix, L3: Drone Uplink
 		}
 	},
 	"MACK_RIG": {
@@ -211,10 +212,12 @@ var _btn_mack: Button
 var _btn_engine_upg: Button
 var _btn_armor_upg: Button
 var _btn_ordnance_upg: Button
+var _btn_telemetry_upg: Button
 
 var _lbl_engine_info: Label
 var _lbl_armor_info: Label
 var _lbl_ordnance_info: Label
+var _lbl_telemetry_info: Label
 
 func _build_garage_ui() -> void:
 	garage_hud_layer = CanvasLayer.new()
@@ -383,15 +386,15 @@ func _build_garage_ui() -> void:
 	_btn_engine_upg = Button.new()
 	_build_upgrade_card(right_vbox, "⚡ ENGINE TUNING", "Boosts Top Speed, Acceleration, and Combat ATB Charge Rate", _lbl_engine_info, _btn_engine_upg, func(): _on_upgrade_click("engine"))
 
-	# Slot 2: Reinforced Armor
-	_lbl_armor_info = Label.new()
-	_btn_armor_upg = Button.new()
-	_build_upgrade_card(right_vbox, "🛡️ REINFORCED GRAPHENE ARMOR", "Increases Max Hull Integrity & Damage Absorption", _lbl_armor_info, _btn_armor_upg, func(): _on_upgrade_click("armor"))
-
 	# Slot 3: Ordnance Mounts
 	_lbl_ordnance_info = Label.new()
 	_btn_ordnance_upg = Button.new()
 	_build_upgrade_card(right_vbox, "💣 HEAVY ORDNANCE MOUNTS", "Increases Gatling Gun Damage output in Cockpit ATB Combat", _lbl_ordnance_info, _btn_ordnance_upg, func(): _on_upgrade_click("ordnance"))
+
+	# Slot 4: Telemetry & Support Computer (Banquo's Rig Only)
+	_lbl_telemetry_info = Label.new()
+	_btn_telemetry_upg = Button.new()
+	_build_upgrade_card(right_vbox, "💻 TELEMETRY & SUPPORT COMPUTER", "Unlocks Vitals Feed (L1), Combat Math Matrix (L2), & Repair Drones (L3)", _lbl_telemetry_info, _btn_telemetry_upg, func(): _on_upgrade_click("telemetry"))
 
 func _add_stat_row(parent: Control, label_text: String, default_val: String) -> Label:
 	var hbox = HBoxContainer.new()
@@ -493,6 +496,11 @@ func _update_ui_contents() -> void:
 	_update_slot_card("engine", upgs["engine"], _lbl_engine_info, _btn_engine_upg, current_credits, veh_key)
 	_update_slot_card("armor", upgs["armor"], _lbl_armor_info, _btn_armor_upg, current_credits, veh_key)
 	_update_slot_card("ordnance", upgs["ordnance"], _lbl_ordnance_info, _btn_ordnance_upg, current_credits, veh_key)
+	if upgs.has("telemetry"):
+		_lbl_telemetry_info.get_parent().get_parent().visible = true
+		_update_slot_card("telemetry", upgs["telemetry"], _lbl_telemetry_info, _btn_telemetry_upg, current_credits, veh_key)
+	else:
+		_lbl_telemetry_info.get_parent().get_parent().visible = false
 
 func _update_slot_card(slot_name: String, upg_dict: Dictionary, info_label: Label, button: Button, credits: int, veh_key: String) -> void:
 	var lvl: int = upg_dict["level"]

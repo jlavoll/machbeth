@@ -72,6 +72,11 @@ func _ready() -> void:
 	)
 
 func _process(delta: float) -> void:
+	# Pause ambient random chatter during Mack's Grand Battle deployments
+	var campaign_mgr = get_parent().get_node_or_null("CampaignManager")
+	if is_instance_valid(campaign_mgr) and campaign_mgr.is_battle_in_progress:
+		return
+
 	ambient_timer += delta
 	if ambient_timer >= random_message_interval:
 		ambient_timer = 0.0

@@ -481,19 +481,29 @@ func _broadcast_next_rumor() -> void:
 # LIVE TELEMETRY HUD BAR UI (TOP CENTER OF SCREEN)
 # ==============================================================================
 
+# Advanced Side Terminal UI Nodes
+var side_terminal_panel: PanelContainer = null
+var side_vitals_label: Label = null
+var side_math_text: RichTextLabel = null
+var side_cam_rect: TextureRect = null
+var side_drone_btn: Button = null
+
+var math_log_lines: Array[String] = []
+
 func _build_telemetry_hud() -> void:
 	telemetry_hud_layer = CanvasLayer.new()
 	telemetry_hud_layer.name = "TelemetryHUDLayer"
 	telemetry_hud_layer.layer = 15 # Below Dialogue (20), above Overmap
 	add_child(telemetry_hud_layer)
 
-	var margin = MarginContainer.new()
-	margin.set_anchors_preset(Control.PRESET_TOP_WIDE)
-	margin.offset_top = 10
-	margin.offset_left = 220
-	margin.offset_right = -260
-	margin.offset_bottom = 60
-	telemetry_hud_layer.add_child(margin)
+	# --- 1. Top Screen Compact Telemetry Bar ---
+	var top_margin = MarginContainer.new()
+	top_margin.set_anchors_preset(Control.PRESET_TOP_WIDE)
+	top_margin.offset_top = 10
+	top_margin.offset_left = 220
+	top_margin.offset_right = -380
+	top_margin.offset_bottom = 54
+	telemetry_hud_layer.add_child(top_margin)
 
 	telemetry_panel = PanelContainer.new()
 	telemetry_panel.visible = false
@@ -506,7 +516,7 @@ func _build_telemetry_hud() -> void:
 	p_style.content_margin_top = 4
 	p_style.content_margin_bottom = 4
 	telemetry_panel.add_theme_stylebox_override("panel", p_style)
-	margin.add_child(telemetry_panel)
+	top_margin.add_child(telemetry_panel)
 
 	var hbox = HBoxContainer.new()
 	hbox.add_theme_constant_override("separation", 14)
@@ -519,7 +529,7 @@ func _build_telemetry_hud() -> void:
 	hbox.add_child(mack_lbl)
 
 	mack_hp_bar = ProgressBar.new()
-	mack_hp_bar.custom_minimum_size = Vector2(140, 14)
+	mack_hp_bar.custom_minimum_size = Vector2(120, 14)
 	mack_hp_bar.max_value = 100.0
 	mack_hp_bar.value = 100.0
 	hbox.add_child(mack_hp_bar)
@@ -537,12 +547,92 @@ func _build_telemetry_hud() -> void:
 	mack_timer_label.add_theme_color_override("font_color", Color(1.0, 0.85, 0.0))
 	hbox.add_child(mack_timer_label)
 
+	# --- 2. Right-Hand Side Advanced Telemetry Terminal ---
+	var side_margin = MarginContainer.new()
+	side_margin.set_anchors_preset(Control.PRESET_RIGHT_WIDE)
+	side_margin.offset_top = 70
+	side_margin.offset_bottom = -70
+	side_margin.offset_left = -360
+	side_margin.offset_right = -10
+	telemetry_hud_layer.add_child(side_margin)
+
+	side_terminal_panel = PanelContainer.new()
+	side_terminal_panel.visible = false
+	var side_style = StyleBoxFlat.new()
+	side_style.bg_color = Color(0.01, 0.03, 0.06, 0.94)
+	side_style.border_width_left = 2
+	side_style.border_width_top = 2
+	side_style.border_width_right = 2
+	side_style.border_width_bottom = 2
+	side_style.border_color = Color(0.0, 0.85, 1.0) # Cyan Telemetry Border
+	side_style.content_margin_left = 10
+	side_style.content_margin_right = 10
+	side_style.content_margin_top = 10
+	side_style.content_margin_bottom = 10
+	side_terminal_panel.add_theme_stylebox_override("panel", side_style)
+	side_margin.add_child(side_terminal_panel)
+
+	var vbox = VBoxContainer.new()
+	vbox.add_theme_constant_override("separation", 8)
+	side_terminal_panel.add_child(vbox)
+
+	var term_hdr = Label.new()
+	term_hdr.text = "💻 BATTLE TELEMETRY TERMINAL"
+	term_hdr.add_theme_font_size_override("font_size", 12)
+	term_hdr.add_theme_color_override("font_color", Color(0.0, 0.85, 1.0))
+	vbox.add_child(term_hdr)
+
+	# Level 1: Live Vitals Feed
+	side_vitals_label = Label.new()
+	side_vitals_label.text = "CORE TEMP: 82°C | SHIELD: 100%\nRPM: 4200 | GATLING AMMO: 88%"
+	side_vitals_label.add_theme_font_size_override("font_size", 10)
+	side_vitals_label.add_theme_color_override("font_color", Color(0.9, 0.95, 1.0))
+	vbox.add_child(side_vitals_label)
+
+	# Level 2: Detailed Math Combat Calculations Log
+	side_math_text = RichTextLabel.new()
+	side_math_text.custom_minimum_size = Vector2(0, 110)
+	side_math_text.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	side_math_text.bbcode_enabled = true
+	side_math_text.scroll_following = true
+	side_math_text.add_theme_font_size_override("normal_font_size", 9)
+	vbox.add_child(side_math_text)
+
+	# Level 3: Drone Dispatch Button
+	side_drone_btn = Button.new()
+	side_drone_btn.text = " 🛸 LAUNCH REPAIR DRONE (150 C) "
+	side_drone_btn.custom_minimum_size = Vector2(0, 32)
+	side_drone_btn.pressed.connect(_on_launch_repair_drone_pressed)
+	vbox.add_child(side_drone_btn)
+
+func _on_launch_repair_drone_pressed() -> void:
+	if is_instance_valid(quest_manager) and quest_manager.player_credits >= 150:
+		quest_manager.player_credits -= 150
+		mack_current_hp = min(mack_max_hp, mack_current_hp + 40.0)
+		mack_current_action = "Repair drone deployed! (+40 HP)"
+		_log_combat_math("[color=#00FF88][DRONE REPAIR] Banquo launched nanite drone -> +40 HP Restored![/color]")
+		if is_instance_valid(neural_comms) and neural_comms.has_method("send_message"):
+			neural_comms.send_message("REPAIR DRONE DISPATCHED! War-Rig hull integrity stabilized.", "GARAGE TELEMETRY")
+	else:
+		_log_combat_math("[color=#FF3333][DRONE ERROR] Insufficient Cyber-Credits! Need 150 C.[/color]")
+
+func _log_combat_math(text: String) -> void:
+	math_log_lines.append(text)
+	if math_log_lines.size() > 20:
+		math_log_lines.remove_at(0)
+	if is_instance_valid(side_math_text):
+		side_math_text.text = "\n".join(math_log_lines)
+
+var math_tick: float = 0.0
+
 func _update_telemetry_hud() -> void:
 	if not is_instance_valid(telemetry_panel):
 		return
 	
 	if not is_battle_in_progress:
 		telemetry_panel.visible = false
+		if is_instance_valid(side_terminal_panel):
+			side_terminal_panel.visible = false
 		return
 		
 	telemetry_panel.visible = true
@@ -554,6 +644,45 @@ func _update_telemetry_hud() -> void:
 	var mins: int = secs_left / 60
 	var secs: int = secs_left % 60
 	mack_timer_label.text = "%02d:%02d" % [mins, secs]
+
+	# Check Telemetry Upgrade level from GarageManager
+	var telemetry_lvl: int = 0
+	var garage_mgr = get_parent().get_node_or_null("GarageManager")
+	if is_instance_valid(garage_mgr) and garage_mgr.fleet.has("BANQUO_CAR"):
+		telemetry_lvl = garage_mgr.fleet["BANQUO_CAR"]["upgrades"]["telemetry"].get("level", 0)
+
+	if telemetry_lvl >= 1:
+		side_terminal_panel.visible = true
+		
+		# Live Vitals
+		var core_temp: float = 75.0 + ((1.0 - (mack_current_hp / mack_max_hp)) * 35.0)
+		var rpm: int = 4000 + randi() % 800
+		side_vitals_label.text = "CORE TEMP: %.1f°C | HULL: %.0f/%.0f\nENGINE RPM: %d | GATLING AMMO: %.0f%%" % [
+			core_temp, mack_current_hp, mack_max_hp, rpm, (mack_current_hp / mack_max_hp) * 100.0
+		]
+
+		# Level 2: Dice rolls math feed generator
+		if telemetry_lvl >= 2:
+			side_math_text.visible = true
+			math_tick += 0.016
+			if math_tick >= 3.0:
+				math_tick = 0.0
+				var roll_d20: int = (randi() % 20) + 1
+				var attack_val: int = roll_d20 + 8
+				if roll_d20 >= 15:
+					_log_combat_math("[color=#FF9900][DICE 🎲 %d+8=%d] CRITICAL Gatling Hit! -> 38 DMG[/color]" % [roll_d20, attack_val])
+				else:
+					_log_combat_math("[color=#88CCFF][DICE 🎲 %d+8=%d] Standard Round -> 18 DMG[/color]" % [roll_d20, attack_val])
+		else:
+			side_math_text.visible = false
+
+		# Level 3: Repair Drone Dispatch Uplink
+		if telemetry_lvl >= 3:
+			side_drone_btn.visible = true
+		else:
+			side_drone_btn.visible = false
+	else:
+		side_terminal_panel.visible = false
 
 func launch_grand_deployment() -> void:
 	if is_battle_in_progress:
