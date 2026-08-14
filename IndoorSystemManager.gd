@@ -1050,10 +1050,17 @@ func _unhandled_input(event: InputEvent) -> void:
 			
 			if current_floor == HQFloor.MACK_HIDEOUT:
 				var mack_pos: Vector3 = mack_hideout_origin + Vector3(0.0, 0.0, -5.5)
+				var bed_pos: Vector3 = mack_hideout_origin + Vector3(8.0, 0.0, -2.0)
 				if pos.distance_to(mack_pos) <= 4.0:
 					var dialogue_sys = get_parent().get_node_or_null("DialogueSystem")
 					if is_instance_valid(dialogue_sys):
 						dialogue_sys.start_dialogue("res://scripts/mack_dialogue.json")
+						get_viewport().set_input_as_handled()
+						return
+				elif pos.distance_to(bed_pos) <= 4.5 or pos.distance_to(mack_pos) <= 7.0:
+					var campaign_mgr = get_parent().get_node_or_null("CampaignManager")
+					if is_instance_valid(campaign_mgr):
+						campaign_mgr.advance_to_next_day()
 						get_viewport().set_input_as_handled()
 						return
 			

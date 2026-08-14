@@ -10,6 +10,14 @@ class_name CampaignManager
 signal act_advanced(new_act_index: int, act_title: String)
 signal sector_control_changed(sector_id: int, new_faction: String)
 signal deployment_ui_toggled(is_open: bool)
+signal day_advanced(new_day: int)
+
+# Day Cycle & Daily Operational Activity Caps
+var current_day: int = 1
+var grand_battles_today: int = 0
+var max_grand_battles_per_day: int = 1
+var side_missions_today: int = 0
+var max_side_missions_per_day: int = 2
 
 enum CampaignAct {
 	ACT_1_DUNCAN_FALL,      # Act I: Duncan's Fall & Assassination
@@ -984,6 +992,14 @@ func launch_grand_deployment() -> void:
 		print("[CAMPAIGN MANAGER] Battle already in progress!")
 		return
 
+	if grand_battles_today >= max_grand_battles_per_day:
+		print("[CAMPAIGN MANAGER] Daily Grand Battle limit reached for Day ", current_day)
+		if is_instance_valid(neural_comms) and neural_comms.has_method("send_message"):
+			neural_comms.send_message("DAILY LIMIT REACHED! Mack's War-Rig requires overnight engine maintenance. Drive to your Safehouse to rest and advance to Day %d." % (current_day + 1), "TACTICAL DEPLOYMENT CAP")
+		close_deployment_ui()
+		return
+
+	grand_battles_today += 1
 	close_deployment_ui()
 	
 	is_battle_in_progress = true
@@ -1108,6 +1124,101 @@ func _spawn_norns_recovery_quest() -> void:
 
 	if is_instance_valid(neural_comms) and neural_comms.has_method("send_message"):
 		neural_comms.send_message("🔮 THE 3 NORNS // WEIRD SISTERS DISPATCH: 'None of woman born shall harm Macbeth!' We extracted Mack from the highway. Drive to the North Gate drop-off and tow his War-Rig to The Pit Garage for emergency overhaul!", "NORNS RECOVERY QUEST")
+
+func advance_to_next_day() -> void:
+	current_day += 1
+	grand_battles_today = 0
+	side_missions_today = 0
+	print("[CAMPAIGN MANAGER] Rested at Safehouse. Advanced to Day ", current_day)
+	day_advanced.emit(current_day)
+	_build_end_of_day_comms_hub()
+
+# ------------------------------------------------------------------------------
+# SAFEHOUSE END-OF-DAY CINEMATIC COMMS HUB MODAL
+# ------------------------------------------------------------------------------
+func _build_end_of_day_comms_hub() -> void:
+	var comms_layer = CanvasLayer.new()
+	comms_layer.name = "EndOfDayCommsHubLayer"
+	comms_layer.layer = 36
+	add_child(comms_layer)
+
+	var bg_dim = ColorRect.new()
+	bg_dim.set_anchors_preset(Control.PRESET_FULL_RECT)
+	bg_dim.color = Color(0.01, 0.02, 0.05, 0.96)
+	comms_layer.add_child(bg_dim)
+
+	var margin = MarginContainer.new()
+	margin.set_anchors_preset(Control.PRESET_FULL_RECT)
+	margin.offset_left = 160
+	margin.offset_top = 70
+	margin.offset_right = -160
+	margin.offset_bottom = -70
+	comms_layer.add_child(margin)
+
+	var panel = PanelContainer.new()
+	var p_style = StyleBoxFlat.new()
+	p_style.bg_color = Color(0.02, 0.04, 0.08, 0.98)
+	p_style.border_width_left = 2
+	p_style.border_width_top = 2
+	p_style.border_width_right = 2
+	p_style.border_width_bottom = 2
+	p_style.border_color = Color(0.0, 0.85, 1.0) # Cyan Border
+	p_style.set_content_margin_all(20)
+	panel.add_theme_stylebox_override("panel", p_style)
+	margin.add_child(panel)
+
+	var vbox = VBoxContainer.new()
+	vbox.add_theme_constant_override("separation", 14)
+	panel.add_child(vbox)
+
+	var hdr = Label.new()
+	hdr.text = "🌃 SAFEHOUSE DEBRIEFING // END OF DAY %d" % (current_day - 1)
+	hdr.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	hdr.add_theme_font_size_override("font_size", 17)
+	hdr.add_theme_color_override("font_color", Color(0.0, 0.85, 1.0))
+	vbox.add_child(hdr)
+
+	var sub_hdr = Label.new()
+	sub_hdr.text = "INCOMING ENCRYPTED SECURE COMMS DISPATCHES"
+	sub_hdr.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	sub_hdr.add_theme_font_size_override("font_size", 11)
+	sub_hdr.add_theme_color_override("font_color", Color(1.0, 0.0, 0.8))
+	vbox.add_child(sub_hdr)
+
+	var sep = HSeparator.new()
+	vbox.add_child(sep)
+
+	var txt = RichTextLabel.new()
+	txt.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	txt.bbcode_enabled = true
+	vbox.add_child(txt)
+
+	# Dynamic Story Debrief Text per Act & Day
+	var lady_m_text: String = "Lady M: 'The corporate grid is shifting in our favor, Banquo. Tomorrow we strike another Cawdor supply convoy.'"
+	var mack_text: String = "Mack: 'My neural stack is static... Banquo, did you see those shadows by Duncan Tower? They're watching us.'"
+	var norns_text: String = "The 3 Norns: 'Beware the Thane of Fife! Macduff's security legions mobilize at sunrise...'"
+
+	txt.text = """[color=#00FF88]📞 LADY M // MISSION CONTROL:[/color]
+"%s"
+
+[color=#FF5555]🧠 MACK // WAR-RIG EXECUTOR:[/color]
+"%s"
+
+[color=#AA00FF]🔮 THE 3 NORNS // WEIRD SISTERS PROPHECY:[/color]
+"%s"
+
+[color=#FFCC00]🌅 MORNING OPERATIONAL PREP FOR DAY %d:[/color]
+ • Grand Highway Battle Allowance: [color=#00FF88]1/1 Ready[/color]
+ • Gang & Street Mission Allowance: [color=#00FF88]2/2 Ready[/color]
+ • Mack War-Rig Thermal Engine: [color=#00FF88]100%% Cooled & Primed[/color]""" % [
+		lady_m_text, mack_text, norns_text, current_day
+	]
+
+	var wake_btn = Button.new()
+	wake_btn.text = " 🌅 WAKE UP & BEGIN DAY %d " % current_day
+	wake_btn.custom_minimum_size = Vector2(0, 44)
+	wake_btn.pressed.connect(func(): comms_layer.queue_free())
+	vbox.add_child(wake_btn)
 
 func _advance_campaign_act() -> void:
 	match current_act:
