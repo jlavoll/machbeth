@@ -123,20 +123,13 @@ func _process(delta: float) -> void:
 	# --------------------------------------------------------------------------
 	_update_stage_lights_and_band_animation(delta)
 
-# Overmap override state (bypasses L key dimming/blackout for map view)
-var is_overmap_active: bool = false
-
-# Enables/disables tactical overmap visual override for ground wireframe grid
-func set_overmap_mode(active: bool) -> void:
-	is_overmap_active = active
-
 	# --------------------------------------------------------------------------
-	# 4. APPLY GLITCH & WAVE RIPPLE MATERIAL UPDATE (WITH CITY LIGHT STAGE MULTIPLIER)
+	# 5. APPLY GLITCH & WAVE RIPPLE MATERIAL UPDATE (WITH OVERMAP OVERRIDE)
 	# --------------------------------------------------------------------------
 	var dark_mult: float = _get_current_light_multiplier()
 	if is_overmap_active:
-		# Guarantee at least 100% full brightness multiplier for overmap wireframe grid
-		dark_mult = maxf(dark_mult, 1.0)
+		# Guarantee at least 2.5x full brightness for satellite overmap view
+		dark_mult = maxf(dark_mult, 2.5)
 
 	if is_instance_valid(grid_material_ref):
 		if dark_mult <= 0.0:
@@ -154,6 +147,16 @@ func set_overmap_mode(active: bool) -> void:
 			else:
 				grid_material_ref.emission = current_emission_color
 				grid_material_ref.emission_energy_multiplier = (3.0 + sin(Time.get_ticks_msec() * 0.005) * (0.4 * visual_effect_potency)) * dark_mult
+
+# Overmap override state (bypasses L key dimming/blackout for map view)
+var is_overmap_active: bool = false
+
+# Enables/disables tactical overmap visual override for ground wireframe grid & satellite view
+func set_overmap_mode(active: bool) -> void:
+	is_overmap_active = active
+	if is_instance_valid(city_generator):
+		var boost_mult: float = 2.5 if active else _get_current_light_multiplier()
+		_update_node_lighting_recursively(city_generator, boost_mult)
 
 # ==============================================================================
 # GLITCH EVENT TRIGGERS
