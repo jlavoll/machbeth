@@ -423,7 +423,8 @@ func _unhandled_input(event: InputEvent) -> void:
 			# 1B. Check if standing near Banquo's Wardrobe Cupboard inside his loft!
 			if is_instance_valid(indoor_mgr) and indoor_mgr.is_inside_building and indoor_mgr.current_floor == indoor_mgr.HQFloor.BANQUO_LOFT:
 				var cupboard = get_parent().get_node_or_null("IndoorSystemManager/BanquoLoftRoot/WardrobeCupboard")
-				if is_instance_valid(cupboard) and global_position.distance_to(cupboard.global_position) <= 3.5:
+				var check_pos: Vector3 = (indoor_mgr.banquo_loft_origin + Vector3(-9.5, 1.5, -4.0)) if not is_instance_valid(cupboard) else cupboard.global_position
+				if global_position.distance_to(check_pos) <= 6.0:
 					var new_style: String = cycle_outfit_head_color()
 					var comms = get_parent().get_node_or_null("NeuralCommsManager")
 					if is_instance_valid(comms) and comms.has_method("send_message"):

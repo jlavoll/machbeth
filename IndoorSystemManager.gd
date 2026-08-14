@@ -212,10 +212,10 @@ func _build_banquo_loft_floor() -> void:
 	c_box.size = Vector3(1.4, 3.0, 2.2)
 	cupboard_mesh.mesh = c_box
 	var c_mat = StandardMaterial3D.new()
-	c_mat.albedo_color = Color(0.08, 0.02, 0.1)
+	c_mat.albedo_color = Color(0.1, 0.05, 0.12)
 	c_mat.emission_enabled = true
-	c_mat.emission = Color(1.0, 0.0, 0.8) # Neon Magenta Outline
-	c_mat.emission_energy_multiplier = 4.0
+	c_mat.emission = Color(1.0, 0.0, 0.8) # Subtle Neon Violet Outline
+	c_mat.emission_energy_multiplier = 1.2 # Toned down subtle non-bloomy glow!
 	cupboard_mesh.material_override = c_mat
 	cupboard_body.add_child(cupboard_mesh)
 
