@@ -182,7 +182,8 @@ var decision_event_pool: Array[String] = [
 	"NORNS_PHANTOMS",
 	"BANKES_SERVER_SHUTDOWN",
 	"FIFE_REINFORCEMENT_INTERCEPT",
-	"CHOP_SHOP_DROPSHIP"
+	"CHOP_SHOP_DROPSHIP",
+	"POLICE_CORDON_BLOCKADE"
 ]
 
 func _trigger_random_decision_event() -> void:
@@ -199,6 +200,44 @@ func _trigger_random_decision_event() -> void:
 		"BANKES_SERVER_SHUTDOWN": _trigger_decision_event_bankes_server()
 		"FIFE_REINFORCEMENT_INTERCEPT": _trigger_decision_event_fife_intercept()
 		"CHOP_SHOP_DROPSHIP": _trigger_decision_event_chop_shop()
+		"POLICE_CORDON_BLOCKADE": _trigger_decision_event_police_cordon()
+
+# --- Dynamic Event 6: Fife Security Police Barricade Blockade ---
+func _trigger_decision_event_police_cordon() -> void:
+	var dialogue_sys = get_parent().get_node_or_null("DialogueSystem")
+	if not is_instance_valid(dialogue_sys): return
+	var event_tree = {
+		"speaker_display_name": "Fife Security Checkpoint",
+		"speaker_subtitle": "POLICE CORDON // SECTOR 3 BARRICADE",
+		"speaker_color": "#1B82FF",
+		"nodes": {
+			"start": {
+				"text": "ALERT: Fife Security Patrol has locked down Sector 3 with heavy police barricades and laser scanner cones! Mack's War-Rig cannot advance without taking heavy fire from their automated barrier turrets. How should we bypass the blockade?",
+				"portrait_emotion": "warning",
+				"choices": [
+					{ "text": "Bribe checkpoint officer. [Pay 300 C, Bypass Barricade]", "target": "police_bribe_officer" },
+					{ "text": "Lady M: Hack barricade laser grid remotely. [Paranoia +12%]", "target": "police_lady_m_hack" },
+					{ "text": "Tell Mack to ram straight through the barricade! [Take -35 Damage]", "target": "police_ram_through" }
+				]
+			},
+			"police_bribe_officer": {
+				"text": "Cyber-credits transferred. Checkpoint officer disabled security barrier! Mack's route is clear.",
+				"portrait_emotion": "satisfied",
+				"choices": [ { "text": "[Return to Streets]", "target": "exit" } ]
+			},
+			"police_lady_m_hack": {
+				"text": "Laser grid offline! Barrier lowered, but remote frequency injected static into Mack's neural feed.",
+				"portrait_emotion": "satisfied",
+				"choices": [ { "text": "[Return to Streets]", "target": "exit" } ]
+			},
+			"police_ram_through": {
+				"text": "War-Rig smashed through concrete barricades! Route cleared, but Mack's front hull took heavy damage.",
+				"portrait_emotion": "grave",
+				"choices": [ { "text": "[Return to Streets]", "target": "exit" } ]
+			}
+		}
+	}
+	dialogue_sys.start_dialogue_dict(event_tree)
 
 # --- Dynamic Event 3: Bankes Logistics Server Shutdown ---
 func _trigger_decision_event_bankes_server() -> void:
@@ -344,6 +383,22 @@ func _on_decision_choice_selected(_choice_index: int, target_node_id: String) ->
 				quest_manager.player_credits -= 300
 				mack_current_hp = min(mack_max_hp, mack_current_hp + 50.0)
 				mack_current_action = "Nanite dropship deployed! War-Rig repaired (+50 HP)."
+		"police_bribe_officer":
+			if is_instance_valid(quest_manager) and quest_manager.player_credits >= 300:
+				quest_manager.player_credits -= 300
+				mack_current_hp = min(mack_max_hp, mack_current_hp + 30.0)
+				mack_current_action = "Police checkpoint officer bribed! Blockade lifted (+30 HP)."
+			else:
+				mack_current_hp = max(10.0, mack_current_hp - 25.0)
+		"police_lady_m_hack":
+			mack_current_hp = min(mack_max_hp, mack_current_hp + 30.0)
+			mack_current_action = "Police barrier laser grid hacked! Route cleared."
+			var glitch_sys = get_parent().get_node_or_null("NeuralGlitchSystem")
+			if is_instance_valid(glitch_sys):
+				glitch_sys.inject_neural_instability(12.0)
+		"police_ram_through":
+			mack_current_hp = max(10.0, mack_current_hp - 35.0)
+			mack_current_action = "War-Rig rammed through police barricade! Heavy hull damage (-35 HP)."
 
 	# Dispatch rumor every 55s
 	if last_rumor_tick >= 55.0:
