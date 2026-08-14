@@ -268,6 +268,11 @@ func _process(delta: float) -> void:
 		decision_3_triggered = true
 		_trigger_random_decision_event()
 
+	# Complete battle after 300 seconds (5 Minutes) and pop up Summary Sheet
+	if battle_timer >= battle_duration:
+		is_battle_in_progress = false
+		_conclude_autonomous_battle(true)
+
 func _on_side_mission_expired() -> void:
 	mack_current_hp = max(5.0, mack_current_hp - 35.0)
 	mack_current_action = "Side mission timed out! War-Rig took heavy penalty (-35 HP)."
