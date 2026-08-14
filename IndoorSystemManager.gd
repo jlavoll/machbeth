@@ -847,6 +847,8 @@ func exit_building_interior() -> void:
 		if current_floor == HQFloor.LOBBY or current_floor == HQFloor.PENTHOUSE:
 			target_exit = city_gen.hq_door_pos if is_instance_valid(city_gen) and city_gen.hq_door_pos != Vector3.ZERO else saved_player_position
 		elif current_floor == HQFloor.MACK_HIDEOUT:
+			target_exit = city_gen.mack_hideout_door_pos if is_instance_valid(city_gen) and city_gen.mack_hideout_door_pos != Vector3.ZERO else saved_player_position
+		elif current_floor == HQFloor.BANQUO_LOFT:
 			target_exit = city_gen.banquo_safehouse_door_pos if is_instance_valid(city_gen) and city_gen.banquo_safehouse_door_pos != Vector3.ZERO else saved_player_position
 		elif current_floor == HQFloor.LADY_M_LAIR:
 			target_exit = city_gen.lady_m_lair_door_pos if is_instance_valid(city_gen) and city_gen.lady_m_lair_door_pos != Vector3.ZERO else saved_player_position
@@ -1114,16 +1116,29 @@ func _unhandled_input(event: InputEvent) -> void:
 			var exit_target_z: float = 8.2 if current_floor == HQFloor.MACK_HIDEOUT else (9.2 if current_floor == HQFloor.LADY_M_LAIR else 11.2)
 			var floor_exit_pos: Vector3 = current_origin + Vector3(0.0, 0.0, exit_target_z)
 			
-			if current_floor == HQFloor.MACK_HIDEOUT:
+			if current_floor == HQFloor.MACK_HIDEOUT or current_floor == HQFloor.BANQUO_LOFT:
+				var current_loc_origin: Vector3 = banquo_loft_origin if current_floor == HQFloor.BANQUO_LOFT else mack_hideout_origin
 				var mack_pos: Vector3 = mack_hideout_origin + Vector3(0.0, 0.0, -5.5)
-				var bed_pos: Vector3 = mack_hideout_origin + Vector3(8.0, 0.0, -2.0)
-				if pos.distance_to(mack_pos) <= 4.0:
+				var bed_pos: Vector3 = current_loc_origin + Vector3(6.0, 0.0, -4.0)
+				var cupboard_pos: Vector3 = banquo_loft_origin + Vector3(-9.5, 1.5, -4.0)
+
+				if current_floor == HQFloor.BANQUO_LOFT and pos.distance_to(cupboard_pos) <= 5.5:
+					if is_instance_valid(player_car) and player_car.is_on_foot and is_instance_valid(player_car.on_foot_node):
+						var foot_node = player_car.on_foot_node
+						if foot_node.has_method("cycle_outfit_head_color"):
+							var new_style: String = foot_node.cycle_outfit_head_color()
+							var comms = get_parent().get_node_or_null("NeuralNotificationSystem")
+							if is_instance_valid(comms) and comms.has_method("send_message"):
+								comms.send_message("👔 BANQUO'S WARDROBE: Changed head color outfit to [color=#FF00CC]%s[/color]!" % new_style, "OUTFIT CUSTOMIZER")
+							get_viewport().set_input_as_handled()
+							return
+				elif current_floor == HQFloor.MACK_HIDEOUT and pos.distance_to(mack_pos) <= 4.0:
 					var dialogue_sys = get_parent().get_node_or_null("DialogueSystem")
 					if is_instance_valid(dialogue_sys):
 						dialogue_sys.start_dialogue("res://scripts/mack_dialogue.json")
 						get_viewport().set_input_as_handled()
 						return
-				elif pos.distance_to(bed_pos) <= 4.5 or pos.distance_to(mack_pos) <= 7.0:
+				elif pos.distance_to(bed_pos) <= 5.0 or (current_floor == HQFloor.MACK_HIDEOUT and pos.distance_to(mack_pos) <= 7.0):
 					var campaign_mgr = get_parent().get_node_or_null("CampaignManager")
 					if is_instance_valid(campaign_mgr):
 						campaign_mgr.advance_to_next_day()
