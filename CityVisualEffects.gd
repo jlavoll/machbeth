@@ -276,6 +276,8 @@ var _stage_anim_time: float = 0.0
 func _update_stage_lights_and_band_animation(delta: float) -> void:
 	_stage_anim_time += delta
 	var stage_node = get_parent().get_node_or_null("CityGenerator/CyberParkConcertStage")
+	if not is_instance_valid(stage_node) and is_instance_valid(city_generator):
+		stage_node = city_generator.find_child("CyberParkConcertStage", true, false)
 	if not is_instance_valid(stage_node):
 		return
 
@@ -302,9 +304,10 @@ func _update_stage_lights_and_band_animation(delta: float) -> void:
 		for member in band_node.get_children():
 			if member is Node3D:
 				var base_p: Vector3 = member.get_meta("base_pos", member.position)
-				var bounce_y: float = abs(sin(_stage_anim_time * 9.0 + member_idx * 0.8)) * 0.35 # Energetic high bounce!
-				var sway_z: float = sin(_stage_anim_time * 4.5 + member_idx * 1.2) * 0.15 # Lateral rock & roll sway
+				var bounce_y: float = abs(sin(_stage_anim_time * 12.0 + member_idx * 0.9)) * 0.45 # Fast energetic jump!
+				var sway_z: float = sin(_stage_anim_time * 6.0 + member_idx * 1.3) * 0.25 # Rock & roll lateral sway
 				member.position = Vector3(base_p.x, base_p.y + bounce_y, base_p.z + sway_z)
+				member.rotation_degrees.z = sin(_stage_anim_time * 12.0 + member_idx) * 15.0 # Rhythmic headbanging tilt!
 				member_idx += 1
 
 
