@@ -19,6 +19,43 @@ var max_grand_battles_per_day: int = 1
 var side_missions_today: int = 0
 var max_side_missions_per_day: int = 2
 
+# Daily Special City Events Tracking
+var active_daily_event: Dictionary = {}
+var special_city_events: Array[Dictionary] = [
+	{
+		"id": "PARK_CONCERT",
+		"title": "🎵 NEON SYNDICATE CYBER-PUNK CONCERT",
+		"host": "LADY M // MISSION CONTROL",
+		"text": "Lady M: 'The Neon Syndicate is hosting an underground holographic synth concert in Cyber Park today! Street crowd density is high—great spot to meet informants or listen to live tracks.'",
+		"location": "Cyber Park Plaza",
+		"effect": "+15% Extra Loot Credits on Side Pursuits today!"
+	},
+	{
+		"id": "TRAVELING_MERCHANT",
+		"title": "🛒 BLACK-MARKET TRAVELING CYBER-MERCHANT",
+		"host": "PORTER // THE PIT MECHANIC",
+		"text": "Porter: 'An illegal Black-Market Smuggler Rig just parked near the South Highway Exit. He's carrying rare Military-Grade Ordnance and prototype Cyberware for today only!'",
+		"location": "South Highway Exit Gate",
+		"effect": "20% Discount on Pit Garage Upgrades!"
+	},
+	{
+		"id": "FIFE_RALLY",
+		"title": "🛡️ CLAN FIFE SECURITY ARMORED RALLY",
+		"host": "LADY M // MISSION CONTROL",
+		"text": "Lady M: 'Clan Fife Security forces are holding an armored militarized parade along Broadway. Watch out for heavy patrol drones, but their supply trucks carry double scrap salvage!'",
+		"location": "Central Broadway Corridor",
+		"effect": "Double Scrap Salvage on Highway Battles!"
+	},
+	{
+		"id": "NORNS_RITUAL",
+		"title": "🔮 NORNS AI PHANTOM SIGNAL BROADCAST",
+		"host": "THE 3 NORNS // WEIRD SISTERS",
+		"text": "The 3 Norns: 'A strange ghost frequency echoes through Sector 4... The Weird Sisters have placed an ethereal blessing on Mack's War-Rig today. Engine thermal buildup is halved!'",
+		"location": "Sector 4 Data Network",
+		"effect": "Mack War-Rig Thermal Engine Heating Halved!"
+	}
+]
+
 enum CampaignAct {
 	ACT_1_DUNCAN_FALL,      # Act I: Duncan's Fall & Assassination
 	ACT_2_BANQUO_INTERCEPT,  # Act II: Banquo's Intercept & Highway Pursuits
@@ -1129,8 +1166,18 @@ func advance_to_next_day() -> void:
 	current_day += 1
 	grand_battles_today = 0
 	side_missions_today = 0
-	print("[CAMPAIGN MANAGER] Rested at Safehouse. Advanced to Day ", current_day)
+	
+	# Roll a new Daily Special City Event
+	var rng = RandomNumberGenerator.new()
+	rng.randomize()
+	active_daily_event = special_city_events[rng.randi() % special_city_events.size()]
+	
+	print("[CAMPAIGN MANAGER] Rested at Safehouse. Advanced to Day ", current_day, " | Today's Special Event: ", active_daily_event.get("title", ""))
 	day_advanced.emit(current_day)
+	
+	if is_instance_valid(neural_comms) and neural_comms.has_method("send_message"):
+		neural_comms.send_message("SPECIAL CITY EVENT TODAY: %s! Check your debriefing logs." % active_daily_event.get("title", ""), "CITY DISPATCH")
+
 	_build_end_of_day_comms_hub()
 
 # ------------------------------------------------------------------------------
@@ -1198,6 +1245,11 @@ func _build_end_of_day_comms_hub() -> void:
 	var mack_text: String = "Mack: 'My neural stack is static... Banquo, did you see those shadows by Duncan Tower? They're watching us.'"
 	var norns_text: String = "The 3 Norns: 'Beware the Thane of Fife! Macduff's security legions mobilize at sunrise...'"
 
+	var event_title: String = active_daily_event.get("title", "NORMAL CITY GRID PATROL")
+	var event_text: String = active_daily_event.get("text", "Lady M: 'Standard patrol routines across central grid today.'")
+	var event_location: String = active_daily_event.get("location", "City Wide")
+	var event_effect: String = active_daily_event.get("effect", "Standard combat rewards.")
+
 	txt.text = """[color=#00FF88]📞 LADY M // MISSION CONTROL:[/color]
 "%s"
 
@@ -1207,11 +1259,18 @@ func _build_end_of_day_comms_hub() -> void:
 [color=#AA00FF]🔮 THE 3 NORNS // WEIRD SISTERS PROPHECY:[/color]
 "%s"
 
+[color=#FFCC00]🌟 SPECIAL CITY EVENT ANNOUNCEMENT FOR DAY %d:[/color]
+ [color=#00FFFF]%s[/color]
+ • Intel Dispatch: [i]"%s"[/i]
+ • Target Location: [color=#FF8800]%s[/color]
+ • Active Modifier: [color=#00FF88]%s[/color]
+
 [color=#FFCC00]🌅 MORNING OPERATIONAL PREP FOR DAY %d:[/color]
  • Grand Highway Battle Allowance: [color=#00FF88]1/1 Ready[/color]
  • Gang & Street Mission Allowance: [color=#00FF88]2/2 Ready[/color]
  • Mack War-Rig Thermal Engine: [color=#00FF88]100%% Cooled & Primed[/color]""" % [
-		lady_m_text, mack_text, norns_text, current_day
+		lady_m_text, mack_text, norns_text, current_day,
+		event_title, event_text, event_location, event_effect, current_day
 	]
 
 	var wake_btn = Button.new()
