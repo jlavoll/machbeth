@@ -311,7 +311,40 @@ func _update_stage_lights_and_band_animation(delta: float) -> void:
 	if not is_instance_valid(performers_node):
 		performers_node = stage_node.get_node_or_null("StageCyberBand") # Backward compatibility fallback
 	if is_instance_valid(performers_node):
-		if active_event_id == "RELIGIOUS_RALLY":
+		if active_event_id == "SHAKESPEARE_PARK":
+			# SHAKESPEARE IN THE PARK ANIMATION ENGINE:
+			# - Holographic Macbeth in Dron armor declaims dramatically at stage front
+			# - 3 Ethereal Witches dance eerily in a floating circle behind Macbeth
+			# - Banquo lurks stealthily on the North stage wing
+			var macbeth_node = performers_node.get_node_or_null("Holographic Macbeth")
+			var banquo_node = performers_node.get_node_or_null("Lurking Banquo")
+			
+			if is_instance_valid(macbeth_node):
+				var m_base: Vector3 = macbeth_node.get_meta("base_pos", macbeth_node.position)
+				# Macbeth dramatic gestures & pacing
+				var gesture_y: float = abs(sin(_stage_anim_time * 2.5)) * 0.15
+				var gesture_tilt_x: float = sin(_stage_anim_time * 1.8) * 12.0
+				macbeth_node.position = m_base + Vector3(0.0, gesture_y, 0.0)
+				macbeth_node.rotation_degrees = Vector3(gesture_tilt_x, 0.0, 0.0)
+
+			if is_instance_valid(banquo_node):
+				var b_base: Vector3 = banquo_node.get_meta("base_pos", banquo_node.position)
+				# Banquo lurks in shadow on stage wing, leaning forward subtly
+				banquo_node.position = b_base + Vector3(0.0, sin(_stage_anim_time * 1.2) * 0.03, 0.0)
+				banquo_node.rotation_degrees = Vector3(0.0, 25.0, sin(_stage_anim_time * 1.5) * 4.0)
+
+			# Eerie floating ritual dance for the 3 Witches
+			var witch_idx: int = 0
+			for member in performers_node.get_children():
+				if "Witch" in member.name and member is Node3D:
+					var w_base: Vector3 = member.get_meta("base_pos", member.position)
+					var float_y: float = sin(_stage_anim_time * 4.0 + witch_idx * 2.0) * 0.35 # Eerie floating levitation
+					var spin_z: float = sin(_stage_anim_time * 6.0 + witch_idx * 1.5) * 18.0 # Eerie ritual sway
+					member.position = Vector3(w_base.x, w_base.y + float_y, w_base.z)
+					member.rotation_degrees = Vector3(0.0, sin(_stage_anim_time * 3.0 + witch_idx) * 20.0, spin_z)
+					witch_idx += 1
+
+		elif active_event_id == "RELIGIOUS_RALLY":
 			# CALL-AND-RESPONSE RITUAL CYCLE (5.0s Total Cycle):
 			# [0.0s - 1.8s] PREACHER ACTS (2 double jumps / prostration bow / color flare)
 			# [1.8s - 2.5s] PREACHER & CROWD PAUSE IN STILL REVERENCE

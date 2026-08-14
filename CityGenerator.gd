@@ -1501,7 +1501,19 @@ func _spawn_cyber_park(center: Vector3, b_size: Vector2, neon_colors: Array, par
 			performers_node.position = Vector3(1.0, 1.2, 0.0)
 
 			var band_members: Array[Dictionary] = []
-			if is_religious_today:
+			if is_shakespeare_today:
+				# HOLOGRAPHIC SHAKESPEARE RE-ENACTMENT CAST:
+				# 1. Holographic Macbeth (dron armor, front center)
+				# 2-4. 3 Ethereal Witches (dancing eerily in triangular formation behind Macbeth)
+				# 5. Banquo (lurking stealthily on the North stage side wing)
+				band_members = [
+					{"name": "Holographic Macbeth", "pos": Vector3(1.5, 0.0, 0.0), "color": Color(1.0, 0.2, 0.2), "mic": true, "crown": true, "armor": true}, # Crimson Dron armor
+					{"name": "Witch First", "pos": Vector3(-0.8, 0.0, -2.5), "color": Color(0.7, 0.1, 1.0), "mic": false, "crown": false, "armor": false}, # Norns Deep Violet
+					{"name": "Witch Second", "pos": Vector3(-2.2, 0.0, 0.0), "color": Color(0.7, 0.1, 1.0), "mic": false, "crown": false, "armor": false},
+					{"name": "Witch Third", "pos": Vector3(-0.8, 0.0, 2.5), "color": Color(0.7, 0.1, 1.0), "mic": false, "crown": false, "armor": false},
+					{"name": "Lurking Banquo", "pos": Vector3(0.2, 0.0, -4.8), "color": Color(0.0, 0.85, 1.0), "mic": false, "crown": false, "armor": false} # Stealth Cyan
+				]
+			elif is_religious_today:
 				# Charismatic Preacher (front center) + 3 Quiet Disciples (flanking behind)
 				band_members = [
 					{"name": "Cyber Preacher", "pos": Vector3(1.5, 0.0, 0.0), "color": Color(1.0, 0.85, 0.0), "mic": true, "robe": true},
@@ -1553,6 +1565,16 @@ func _spawn_cyber_park(center: Vector3, b_size: Vector2, neon_colors: Array, par
 				head_inst.material_override = glow_mat
 				char_body.add_child(head_inst)
 
+				if member.get("armor", false):
+					# Heavy Dron Cyber-Armor Shoulders & Chest Plate
+					var armor_mesh = MeshInstance3D.new()
+					var a_box = BoxMesh.new()
+					a_box.size = Vector3(0.65, 0.5, 0.75)
+					armor_mesh.mesh = a_box
+					armor_mesh.position = Vector3(0.0, 0.75, 0.0)
+					armor_mesh.material_override = glow_mat
+					char_body.add_child(armor_mesh)
+
 				if member["mic"]:
 					var mic_stand = MeshInstance3D.new()
 					var m_rod = CylinderMesh.new()
@@ -1563,7 +1585,7 @@ func _spawn_cyber_park(center: Vector3, b_size: Vector2, neon_colors: Array, par
 					mic_stand.position = Vector3(0.4, 0.7, 0.0)
 					mic_stand.material_override = glow_mat
 					char_body.add_child(mic_stand)
-				elif not is_religious_today:
+				elif not is_religious_today and not is_shakespeare_today:
 					var inst_mesh = MeshInstance3D.new()
 					var i_box = BoxMesh.new()
 					i_box.size = Vector3(0.18, 0.4, 1.1)

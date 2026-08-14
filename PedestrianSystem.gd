@@ -964,8 +964,8 @@ func _spawn_concert_crowd() -> void:
 	if is_instance_valid(campaign_mgr) and campaign_mgr.active_daily_event.has("id"):
 		active_event_id = campaign_mgr.active_daily_event.get("id", "RELIGIOUS_RALLY")
 
-	# Spawn crowd when PARK_CONCERT or RELIGIOUS_RALLY is active today!
-	if active_event_id != "PARK_CONCERT" and active_event_id != "RELIGIOUS_RALLY":
+	# Spawn crowd when PARK_CONCERT, RELIGIOUS_RALLY, or SHAKESPEARE_PARK is active today!
+	if active_event_id != "PARK_CONCERT" and active_event_id != "RELIGIOUS_RALLY" and active_event_id != "SHAKESPEARE_PARK":
 		return
 
 	var city_gen = get_parent().get_node_or_null("CityGenerator")
@@ -981,8 +981,8 @@ func _spawn_concert_crowd() -> void:
 			stage_pos = park_center + Vector3(-park_rect.size.x * 0.35, 0.0, 0.0)
 
 	# Crowd Audience Zone: In front of the concert stage facing West towards the performers!
-	# Stage platform is at stage_pos + Vector3(4.0, 0, 0)
-	var crowd_count: int = rng.randi_range(28, 42) # Dense hyped concert crowd!
+	# Small intimate audience (8-14 patrons) for Shakespeare in the Park vs dense crowd for concerts/rallies
+	var crowd_count: int = rng.randi_range(8, 14) if active_event_id == "SHAKESPEARE_PARK" else rng.randi_range(28, 42)
 	var crowd_colors: Array[Color] = [
 		Color(1.0, 0.0, 0.8),  # Cyber Pink
 		Color(0.0, 0.85, 1.0), # Neon Cyan
@@ -1111,10 +1111,18 @@ func _update_concert_crowd(delta: float) -> void:
 					h_mat.albedo_color = crowd_color
 					h_mat.emission = crowd_color
 		else:
-			# Hyped concert jumping, arm waving, and headbanging!
-			var jump_y: float = abs(sin(time * 10.0 + idx * 0.4)) * 0.28
-			var sway_z: float = sin(time * 5.0 + idx * 0.7) * 0.12
-			fan.position = Vector3(base_p.x, base_p.y + jump_y, base_p.z + sway_z)
+			var event_id: String = fan.get_meta("event_id", "PARK_CONCERT")
+			if event_id == "SHAKESPEARE_PARK":
+				# Cultured Theater Patrons: Subtle polite head nods & gentle swaying
+				var nod_x: float = sin(time * 2.0 + idx * 0.5) * 4.0
+				var sway_z: float = sin(time * 1.2 + idx * 0.8) * 0.04
+				fan.position = Vector3(base_p.x, base_p.y, base_p.z + sway_z)
+				fan.rotation_degrees = Vector3(nod_x, fan.rotation_degrees.y, 0.0)
+			else:
+				# Hyped concert jumping, arm waving, and headbanging!
+				var jump_y: float = abs(sin(time * 10.0 + idx * 0.4)) * 0.28
+				var sway_z: float = sin(time * 5.0 + idx * 0.7) * 0.12
+				fan.position = Vector3(base_p.x, base_p.y + jump_y, base_p.z + sway_z)
 
 # Procedural dance routine updates for all park dancers with car dodge & safe return logic
 func _update_park_dancers(delta: float) -> void:

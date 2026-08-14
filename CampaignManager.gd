@@ -292,8 +292,14 @@ func _ready() -> void:
 	call_deferred("_start_day_1")
 
 func _start_day_1() -> void:
-	# Force Day 1 event to be the Charismatic Cyber-Religious Rally for testing!
-	active_daily_event = special_city_events[0] # RELIGIOUS_RALLY
+	# Force Day 1 event to be Shakespeare in the Park for testing!
+	# Search for SHAKESPEARE_PARK event dict in special_city_events
+	for evt in special_city_events:
+		if evt.get("id", "") == "SHAKESPEARE_PARK":
+			active_daily_event = evt
+			break
+	if active_daily_event.is_empty():
+		active_daily_event = special_city_events[0]
 	
 	# Trigger sequential top-left HUD comms calls for Day 1 start!
 	_trigger_sequential_daily_calls()
