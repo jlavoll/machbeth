@@ -253,10 +253,44 @@ var rumor_dispatches: Array[String] = [
 ]
 var rumor_index: int = 0
 
+# Idle Day Waiting Timer & Mack Eager Nagging Dispatch System
+var idle_day_timer: float = 0.0
+var mack_nag_stage: int = 0
+var mack_nag_dispatches: Array[Dictionary] = [
+	{
+		"time": 60.0, # 1 minute
+		"sender": "MACK // WAR-RIG EXECUTOR",
+		"text": "Mack: 'Banquo! What are we waiting for? The corporate convoys are rolling down Glamis Highway right now! Open the War-Table at The Pit or check your sector map!'",
+		"subject": "MACK EAGER FOR BATTLE // DISPATCH #1"
+	},
+	{
+		"time": 150.0, # 2.5 minutes
+		"sender": "MACK // WAR-RIG EXECUTOR",
+		"text": "Mack: 'My neural link is burning, Banquo! Listen: drive to Porter's Pit Garage, step up to the central War-Table, and press 'E' to deploy me into battle! Or open the overmap with 'M'!'",
+		"subject": "MACK GETTING IMPATIENT // DISPATCH #2"
+	},
+	{
+		"time": 240.0, # 4 minutes
+		"sender": "MACK // WAR-RIG EXECUTOR",
+		"text": "Mack: 'THE GATED CONVOYS ARE ESCAPING! Banquo, here is the exact plan: 1. Drive to The Pit, 2. Step into the garage hub, 3. Press 'E' on the War-Table or talk to Porter! DEPLOY ME NOW!'",
+		"subject": "MACK HYPER-EAGER DEPLOYMENT INSTRUCTIONS // DISPATCH #3"
+	}
+]
+
 func _ready() -> void:
 	_build_deployment_ui()
 	_build_telemetry_hud()
 	call_deferred("_connect_dialogue_signals")
+	call_deferred("_start_day_1")
+
+func _start_day_1() -> void:
+	# Roll initial Daily Special City Event for Day 1
+	var rng = RandomNumberGenerator.new()
+	rng.randomize()
+	active_daily_event = special_city_events[rng.randi() % special_city_events.size()]
+	
+	# Open Day 1 Start Comms Hub Debriefing modal!
+	_build_end_of_day_comms_hub()
 
 func _connect_dialogue_signals() -> void:
 	var dialogue_sys = get_parent().get_node_or_null("DialogueSystem")
@@ -273,6 +307,15 @@ var side_enemy_scanner_label: RichTextLabel = null
 
 func _process(delta: float) -> void:
 	if not is_battle_in_progress:
+		# Process idle day timer when waiting for player to launch battle!
+		if grand_battles_today < max_grand_battles_per_day:
+			idle_day_timer += delta
+			if mack_nag_stage < mack_nag_dispatches.size():
+				var next_nag: Dictionary = mack_nag_dispatches[mack_nag_stage]
+				if idle_day_timer >= next_nag.get("time", 60.0):
+					mack_nag_stage += 1
+					if is_instance_valid(neural_comms) and neural_comms.has_method("send_message"):
+						neural_comms.send_message(next_nag.get("text", ""), next_nag.get("sender", "MACK"))
 		return
 
 	battle_timer += delta
@@ -1184,6 +1227,8 @@ func advance_to_next_day() -> void:
 	current_day += 1
 	grand_battles_today = 0
 	side_missions_today = 0
+	idle_day_timer = 0.0
+	mack_nag_stage = 0
 	
 	# Roll a new Daily Special City Event
 	var rng = RandomNumberGenerator.new()
