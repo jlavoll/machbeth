@@ -1138,28 +1138,38 @@ func _show_after_action_summary(reward_credits: int, bonus_scrap: int = 100, hp_
 	elif hp_ratio <= 0.70:
 		quality_desc = "HARD-FOUGHT VICTORY (High-Grade Salvage 1.5x)"
 
+	# Hide all active in-battle HUD terminals so player can focus 100% on summary sheet
+	if is_instance_valid(telemetry_panel): telemetry_panel.visible = false
+	if is_instance_valid(side_terminal_panel): side_terminal_panel.visible = false
+	if is_instance_valid(scanner_terminal_panel): scanner_terminal_panel.visible = false
+
+	# Lady M Comms Dispatch
 	if is_instance_valid(neural_comms) and neural_comms.has_method("send_message"):
 		if is_victory:
-			neural_comms.send_message("VICTORY! Mack's War-Rig completed engagement. [%s] +%d Credits & +%d Scrap salvaged!" % [quality_desc, reward_credits, bonus_scrap], "AFTER-ACTION SALVAGE REPORT")
+			neural_comms.send_message("LADY M // MISSION CONTROL: 'Mack's assault is complete! Convoy neutralized. Payout & salvage transferred to your account.'", "LADY M // MISSION COMPLETE")
 		else:
-			neural_comms.send_message("CRITICAL ENGINE OVERHEAT! War-Rig cooling threshold reached! Forced emergency retreat (-400 C repair penalty).", "EMERGENCY RETREAT REPORT")
+			neural_comms.send_message("LADY M // MISSION CONTROL: 'Mack's engine reached thermal limit! The Weird Sisters extracted him to the North Gate. Check your summary report.'", "LADY M // EMERGENCY ABORT")
 
 	_build_after_action_modal(reward_credits, bonus_scrap, quality_desc, hp_ratio, is_victory)
 
 func _build_after_action_modal(credits_earned: int, scrap_earned: int, quality_str: String, final_hp_ratio: float, is_victory: bool = true) -> void:
 	var summary_layer = CanvasLayer.new()
 	summary_layer.name = "AfterActionSummaryLayer"
-	summary_layer.layer = 30
+	summary_layer.layer = 35 # Top layer above all HUDs
 	add_child(summary_layer)
 
 	var bg_dim = ColorRect.new()
 	bg_dim.set_anchors_preset(Control.PRESET_FULL_RECT)
-	bg_dim.color = Color(0.01, 0.03, 0.06, 0.92)
+	bg_dim.color = Color(0.01, 0.03, 0.06, 0.94)
 	summary_layer.add_child(bg_dim)
 
+	# Fullscreen Centered Margin Container
 	var margin = MarginContainer.new()
-	margin.set_anchors_preset(Control.PRESET_CENTER)
-	margin.custom_minimum_size = Vector2(720, 520)
+	margin.set_anchors_preset(Control.PRESET_FULL_RECT)
+	margin.offset_left = 180
+	margin.offset_top = 80
+	margin.offset_right = -180
+	margin.offset_bottom = -80
 	summary_layer.add_child(margin)
 
 	var panel = PanelContainer.new()
