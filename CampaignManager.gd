@@ -147,10 +147,6 @@ func _input(event: InputEvent) -> void:
 			is_top_bar_user_toggled = not is_top_bar_user_toggled
 			if is_instance_valid(telemetry_panel):
 				telemetry_panel.visible = is_top_bar_user_toggled
-			var neural_comms = get_parent().get_node_or_null("NeuralNotificationSystem")
-			if is_instance_valid(neural_comms) and neural_comms.has_method("send_message"):
-				var state_str: String = "ENABLED" if is_top_bar_user_toggled else "DISABLED"
-				neural_comms.send_message("TOP TELEMETRY BAR: " + state_str + " [Press 'T' to toggle]", "HUD CONFIG")
 			get_viewport().set_input_as_handled()
 			return
 
@@ -159,10 +155,6 @@ func _input(event: InputEvent) -> void:
 			is_side_terminal_user_toggled = not is_side_terminal_user_toggled
 			if is_instance_valid(side_terminal_panel):
 				side_terminal_panel.visible = is_side_terminal_user_toggled
-			var neural_comms = get_parent().get_node_or_null("NeuralNotificationSystem")
-			if is_instance_valid(neural_comms) and neural_comms.has_method("send_message"):
-				var state_str: String = "ENABLED" if is_side_terminal_user_toggled else "DISABLED"
-				neural_comms.send_message("SIDE TELEMETRY TERMINAL: " + state_str + " [Press 'H' to toggle]", "HUD CONFIG")
 			get_viewport().set_input_as_handled()
 			return
 
@@ -171,10 +163,6 @@ func _input(event: InputEvent) -> void:
 			is_scanner_terminal_user_toggled = not is_scanner_terminal_user_toggled
 			if is_instance_valid(scanner_terminal_panel):
 				scanner_terminal_panel.visible = is_scanner_terminal_user_toggled
-			var neural_comms = get_parent().get_node_or_null("NeuralNotificationSystem")
-			if is_instance_valid(neural_comms) and neural_comms.has_method("send_message"):
-				var state_str: String = "ENABLED" if is_scanner_terminal_user_toggled else "DISABLED"
-				neural_comms.send_message("ENEMY THREAT SCANNER TERMINAL: " + state_str + " [Press 'J' to toggle]", "HUD CONFIG")
 			get_viewport().set_input_as_handled()
 			return
 
