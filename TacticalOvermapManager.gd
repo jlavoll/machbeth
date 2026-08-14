@@ -186,11 +186,11 @@ func _setup_map_hud_overlay() -> void:
 	limo_blip_marker.visible = false
 	map_overlay_panel.add_child(limo_blip_marker)
 
-	# Norns Recovery Drop-Off Blip Marker (Deep Purple / Violet Pulse)
+	# Norns Recovery Towing Quest Target Blip Marker (Pulsing Red Marker)
 	var norns_rec_blip: ColorRect = ColorRect.new()
 	norns_rec_blip.name = "NornsRecoveryBlipMarker"
-	norns_rec_blip.size = Vector2(14, 14)
-	norns_rec_blip.color = Color(0.7, 0.1, 1.0, 1.0) # Deep Purple Norns Rune
+	norns_rec_blip.size = Vector2(16, 16)
+	norns_rec_blip.color = Color(1.0, 0.05, 0.05, 1.0) # Bright Pulsing Crimson Red
 	norns_rec_blip.visible = false
 	map_overlay_panel.add_child(norns_rec_blip)
 
@@ -307,6 +307,10 @@ func _update_poi_legend() -> void:
 	entries.append({"name": "SUBSTATION 09", "color": Color(1.0, 0.9, 0.0)})
 
 	
+	var campaign_mgr = $"../CampaignManager"
+	if is_instance_valid(campaign_mgr) and campaign_mgr.is_norns_recovery_active:
+		entries.append({"name": "TOWING RECOVERY REQ", "color": Color(1.0, 0.05, 0.05)})
+
 	if has_active_delivery:
 		entries.append({"name": "DELIVERY TARGET", "color": Color(1.0, 0.85, 0.0)})
 		
@@ -398,13 +402,21 @@ func _process(_delta: float) -> void:
 			else:
 				limo_marker.visible = false
 
-		# Norns Recovery Drop-Off Target Tracking Update
+		# Norns Recovery Towing Quest Target Tracking Update (Pulsing Crimson Red Dot)
 		var norns_rec_marker = map_overlay_panel.get_node_or_null("NornsRecoveryBlipMarker")
 		if is_instance_valid(norns_rec_marker):
 			var campaign_mgr = $"../CampaignManager"
 			if is_instance_valid(campaign_mgr) and campaign_mgr.is_norns_recovery_active and is_instance_valid(map_camera):
 				norns_rec_marker.visible = true
 				var rec_screen_pos: Vector2 = map_camera.unproject_position(campaign_mgr.norns_recovery_drop_pos)
+				
+				# High-frequency pulse oscillation (scale & opacity pulse)
+				var pulse_t: float = Time.get_ticks_msec() / 1000.0
+				var pulse_alpha: float = 0.4 + (sin(pulse_t * 8.0) + 1.0) * 0.3 # Pulsing transparency (0.4 to 1.0)
+				var pulse_size: float = 14.0 + (sin(pulse_t * 8.0) + 1.0) * 3.0 # Pulsing size (14px to 20px)
+				
+				norns_rec_marker.size = Vector2(pulse_size, pulse_size)
+				norns_rec_marker.color = Color(1.0, 0.05, 0.05, pulse_alpha)
 				norns_rec_marker.position = rec_screen_pos - (norns_rec_marker.size / 2.0)
 			else:
 				norns_rec_marker.visible = false
