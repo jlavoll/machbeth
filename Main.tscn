@@ -23,6 +23,7 @@
 [ext_resource type="Script" path="res://IndoorSystemManager.gd" id="21_indoormgr"]
 [ext_resource type="Script" path="res://GarageManager.gd" id="22_garagemgr"]
 [ext_resource type="Script" path="res://CyborgModdingManager.gd" id="23_cyborgmgr"]
+[ext_resource type="Script" path="res://CampaignManager.gd" id="24_campaignmgr"]
 
 [sub_resource type="Environment" id="Environment_1"]
 background_mode = 1
@@ -122,6 +123,9 @@ script = ExtResource("22_garagemgr")
 
 [node name="CyborgModdingManager" type="Node" parent="." unique_id=5102931502]
 script = ExtResource("23_cyborgmgr")
+
+[node name="CampaignManager" type="Node" parent="." unique_id=6120391823]
+script = ExtResource("24_campaignmgr")
 
 [node name="TrafficSystem" type="Node3D" parent="." unique_id=578341031]
 script = ExtResource("15_traffic")

@@ -53,7 +53,7 @@ This document outlines the small, incremental steps forward to build out the dua
 **Focus**: Connect Banquo's preparation phase to Mack's Grand Battles.
 
 * **Key Actions**:
-  - Add a "Deploy Mack" war-table terminal in The Pit.
-  - When deployed, Mack's War-Rig launches into an automated/tactical Grand Battle encounter (Act progression).
-  - Render the outcome in the Cockpit ATB view, unlock the next chapter of story dialogue via `DialogueSystem.gd`, and update sector control.
-* **Achieved Summary**: The complete high-level campaign loop is functional — prep as Banquo $\to$ deploy Mack on grand hits $\to$ advance Shakespearean cyber-tragedy.
+  - Add a "Deploy Mack" war-table terminal in The Pit (`CampaignManager.gd`).
+  - When deployed, Mack's War-Rig launches into a multi-stage Grand Battle encounter (Act progression from Act I through Act IV).
+  - Renders the outcome in Cockpit ATB view, broadcasts neural comms via `NeuralNotificationSystem.gd`, and updates the 3x3 city sector control map.
+* **Achieved Summary**: The complete high-level campaign loop is fully functional — prep as Banquo $\to$ upgrade vehicles & cyberware $\to$ deploy Mack on grand hits $\to$ advance Shakespearean cyber-tragedy.
