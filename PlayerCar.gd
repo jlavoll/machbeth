@@ -41,6 +41,11 @@ var _reenter_guard: bool = false
 ## Reference to WeatherAmbienceManager for cabin filter transition
 var _weather_ambience: Node = null
 
+# Towing cable state for Norns War-Rig recovery quest
+var is_towing_war_rig: bool = false
+var tow_cable_mesh: ImmediateMesh = null
+var tow_cable_node: MeshInstance3D = null
+
 # ==============================================================================
 # VISUAL BODY DYNAMICS (LEANING, BANKING & PITCH)
 # ==============================================================================
@@ -338,6 +343,7 @@ func _physics_process(delta: float) -> void:
 	move_and_slide()
 
 	_check_city_edge_transition()
+	_update_towing_physics(delta)
 
 	# --------------------------------------------------------------------------
 	# 7. BRAKE LIGHT — dim while pressing forward, full brightness otherwise
@@ -357,8 +363,15 @@ func _unhandled_input(event: InputEvent) -> void:
 		if event.keycode == KEY_K and not is_on_foot:
 			_cycle_headlight_mode()
 
-		# 'E' key exits the car — guard prevents double-fire on the same press as re-entry
+		# 'E' key hitches tow cable to smoldering War-Rig or exits the car
 		if event.keycode == KEY_E and not is_on_foot and not _reenter_guard:
+			var campaign_mgr = get_parent().get_node_or_null("CampaignManager")
+			if is_instance_valid(campaign_mgr) and campaign_mgr.is_norns_recovery_active and is_instance_valid(campaign_mgr.norns_recovery_node):
+				var dist_to_wreck: float = global_position.distance_to(campaign_mgr.norns_recovery_drop_pos)
+				if dist_to_wreck <= 12.0 and not is_towing_war_rig:
+					_attach_tow_cable()
+					get_viewport().set_input_as_handled()
+					return
 			_exit_to_on_foot()
 
 		# 'T' key — DEV TEST: instantly opens Porter dialogue while on foot (no Area3D needed)
@@ -504,4 +517,92 @@ func _check_city_edge_transition() -> void:
 		if is_on_foot and is_instance_valid(on_foot_node):
 			on_foot_node.global_position = spawn_pos
 
-	print("[ON FOOT] Player re-entered car | FOV reset to ", snappedf(camera.fov, 0.1))
+# ==============================================================================
+# WAR-RIG TOWING RECOVERY SYSTEM
+# ==============================================================================
+
+func _attach_tow_cable() -> void:
+	is_towing_war_rig = true
+	print("[TOWING] Attached tow cable to smoldering War-Rig!")
+	
+	# Create visual tow cable line
+	if not is_instance_valid(tow_cable_node):
+		tow_cable_mesh = ImmediateMesh.new()
+		tow_cable_node = MeshInstance3D.new()
+		tow_cable_node.name = "TowCableMesh"
+		tow_cable_node.mesh = tow_cable_mesh
+		
+		var mat = StandardMaterial3D.new()
+		mat.albedo_color = Color(1.0, 0.5, 0.0) # Radiant Amber Steel Cable
+		mat.emission_enabled = true
+		mat.emission = Color(1.0, 0.5, 0.0)
+		mat.emission_energy_multiplier = 4.0
+		tow_cable_node.material_override = mat
+		get_parent().add_child(tow_cable_node)
+
+	var neural_comms = get_parent().get_node_or_null("NeuralNotificationSystem")
+	if is_instance_valid(neural_comms) and neural_comms.has_method("send_message"):
+		neural_comms.send_message("⚙️ TOW CABLE HITCHED! Tow Mack's War-Rig across the city grid to Porter's Pit Garage for emergency overhaul!", "TOWING RECOVERY")
+
+func _update_towing_physics(delta: float) -> void:
+	var campaign_mgr = get_parent().get_node_or_null("CampaignManager")
+	if not is_instance_valid(campaign_mgr) or not campaign_mgr.is_norns_recovery_active:
+		if is_towing_war_rig:
+			_detach_tow_cable()
+		return
+
+	# Show HUD prompt when near wreck if not yet towed
+	var wreck_pos: Vector3 = campaign_mgr.norns_recovery_drop_pos
+	var dist_to_wreck: float = global_position.distance_to(wreck_pos)
+
+	if not is_towing_war_rig:
+		if dist_to_wreck <= 12.0:
+			var neural_comms = get_parent().get_node_or_null("NeuralNotificationSystem")
+			if is_instance_valid(neural_comms) and neural_comms.has_method("send_message"):
+				neural_comms.send_message("PRESS [E] TO HITCH TOW CABLE TO WAR-RIG", "WAR-RIG RECOVERY")
+		return
+
+	# TOWING ACTIVE: Pull smoldering War-Rig mesh node behind player car at 8m distance
+	var rig_node = campaign_mgr.norns_recovery_node
+	if is_instance_valid(rig_node):
+		var target_follow_pos: Vector3 = global_position + (global_transform.basis.z * 8.5)
+		target_follow_pos.y = 0.5
+		
+		# Smooth physical tow pull lerp
+		rig_node.global_position = rig_node.global_position.lerp(target_follow_pos, clamp(delta * 6.0, 0.0, 1.0))
+		rig_node.look_at(global_position, Vector3.UP)
+		campaign_mgr.norns_recovery_drop_pos = rig_node.global_position
+
+		# Draw 3D glowing steel tow cable from rear bumper to War-Rig hitch
+		if is_instance_valid(tow_cable_mesh):
+			tow_cable_mesh.clear_surfaces()
+			tow_cable_mesh.surface_begin(Mesh.PRIMITIVE_LINES)
+			var rear_hitch_pos: Vector3 = global_position + (global_transform.basis.z * 1.5)
+			var rig_hitch_pos: Vector3 = rig_node.global_position - (rig_node.global_transform.basis.z * 3.2)
+			
+			tow_cable_mesh.surface_add_vertex(rear_hitch_pos)
+			tow_cable_mesh.surface_add_vertex(rig_hitch_pos)
+			tow_cable_mesh.surface_end()
+
+		# Check delivery drop-off at Porter's Pit Garage door
+		var city_gen = get_parent().get_node_or_null("CityGenerator")
+		if is_instance_valid(city_gen) and city_gen.porter_pit_door_pos != Vector3.ZERO:
+			var dist_to_pit: float = global_position.distance_to(city_gen.porter_pit_door_pos)
+			if dist_to_pit <= 15.0:
+				_complete_towing_delivery(campaign_mgr)
+
+func _detach_tow_cable() -> void:
+	is_towing_war_rig = false
+	if is_instance_valid(tow_cable_node):
+		tow_cable_node.queue_free()
+
+func _complete_towing_delivery(campaign_mgr: Node) -> void:
+	print("[TOWING] Successfully delivered smoldering War-Rig to Porter's Pit Garage!")
+	_detach_tow_cable()
+	campaign_mgr.is_norns_recovery_active = false
+	if is_instance_valid(campaign_mgr.norns_recovery_node):
+		campaign_mgr.norns_recovery_node.queue_free()
+
+	var neural_comms = get_parent().get_node_or_null("NeuralNotificationSystem")
+	if is_instance_valid(neural_comms) and neural_comms.has_method("send_message"):
+		neural_comms.send_message("🔧 WAR-RIG DELIVERED TO THE PIT! Porter has begun emergency overhaul. Mack is ready for deployment!", "RECOVERY COMPLETE")
