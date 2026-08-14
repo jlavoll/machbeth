@@ -419,6 +419,19 @@ func _unhandled_input(event: InputEvent) -> void:
 					indoor_mgr.enter_location(indoor_mgr.HQFloor.SUBSTATION)
 					get_viewport().set_input_as_handled()
 					return
+				elif city_gen.park_statue_pos != Vector3.ZERO and global_position.distance_to(city_gen.park_statue_pos) <= 8.0:
+					var s_info: Dictionary = city_gen.park_statue_identity
+					var s_name: String = s_info.get("name", "Unknown Monarch")
+					var s_title: String = s_info.get("title", "CITY MONUMENT")
+					var s_text: String = s_info.get("text", "A grand monument of the city's founder.")
+
+					var comms = get_parent().get_node_or_null("NeuralCommsManager")
+					if not is_instance_valid(comms):
+						comms = get_parent().get_node_or_null("NeuralNotificationSystem")
+					if is_instance_valid(comms) and comms.has_method("send_message"):
+						comms.send_message("[color=#FFCC00]🏛️ %s[/color]\n%s" % [s_name, s_text], s_title)
+					get_viewport().set_input_as_handled()
+					return
 
 			# 1B. Check if standing near Banquo's Wardrobe Cupboard inside his loft!
 			if is_instance_valid(indoor_mgr) and indoor_mgr.is_inside_building and indoor_mgr.current_floor == indoor_mgr.HQFloor.BANQUO_LOFT:
