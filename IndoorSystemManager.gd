@@ -1027,7 +1027,16 @@ func _process(_delta: float) -> void:
 			else:
 				prompt_text = "[E] CLOSE SECURITY DOOR"
 	else:
-		if current_floor == HQFloor.MACK_HIDEOUT:
+		if current_floor == HQFloor.BANQUO_LOFT:
+			var cupboard_pos: Vector3 = banquo_loft_origin + Vector3(-9.5, 1.5, -4.0)
+			var bed_pos: Vector3 = banquo_loft_origin + Vector3(6.0, 0.0, -4.0)
+			if pos.distance_to(cupboard_pos) <= 5.5:
+				prompt_text = "[E] OPEN WARDROBE CUPBOARD // CHANGE HEAD OUTFIT COLOR"
+			elif pos.distance_to(bed_pos) <= 4.5:
+				prompt_text = "[E] SLEEP & ADVANCE TO NEXT DAY"
+			elif pos.distance_to(floor_exit_pos) <= 4.5:
+				prompt_text = "[E] EXIT TO CITY STREETS"
+		elif current_floor == HQFloor.MACK_HIDEOUT:
 			var mack_pos: Vector3 = mack_hideout_origin + Vector3(0.0, 0.0, -5.5)
 			if pos.distance_to(mack_pos) <= 4.0:
 				prompt_text = "[E] TALK TO COMMANDER MACK"

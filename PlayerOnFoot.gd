@@ -264,14 +264,38 @@ func _handle_movement(delta: float) -> void:
 			_head_inst.position.y = lerpf(_head_inst.position.y, BOB_BASE_Y_HEAD, delta * 10.0)
 
 	# --------------------------------------------------------------------------
-	# DUNCAN DYNAMICS HQ ENTRANCE PROMPT HUD LABEL
+	# PLAYABLE BUILDING DOORS & PARK MONUMENT STATUE PROMPT HUD HINTS
 	# --------------------------------------------------------------------------
 	var city_gen = get_parent().get_node_or_null("CityGenerator")
-	if is_instance_valid(city_gen) and city_gen.hq_door_pos != Vector3.ZERO:
-		if global_position.distance_to(city_gen.hq_door_pos) <= 5.0:
-			_show_hq_door_hint("[E] ENTER DUNCAN DYNAMICS HQ")
-		else:
-			_hide_hq_door_hint()
+	var prompt_msg: String = ""
+
+	if is_instance_valid(city_gen):
+		if city_gen.hq_door_pos != Vector3.ZERO and global_position.distance_to(city_gen.hq_door_pos) <= 6.0:
+			prompt_msg = "[E] ENTER DUNCAN DYNAMICS HQ"
+		elif city_gen.banquo_safehouse_door_pos != Vector3.ZERO and global_position.distance_to(city_gen.banquo_safehouse_door_pos) <= 6.0:
+			prompt_msg = "[E] ENTER BANQUO'S PRIVATE LOFT APARTMENT"
+		elif city_gen.mack_hideout_door_pos != Vector3.ZERO and global_position.distance_to(city_gen.mack_hideout_door_pos) <= 6.0:
+			prompt_msg = "[E] ENTER MACK'S SAFEHOUSE & WORKSHOP"
+		elif city_gen.lady_m_lair_door_pos != Vector3.ZERO and global_position.distance_to(city_gen.lady_m_lair_door_pos) <= 6.0:
+			prompt_msg = "[E] ENTER LADY M'S NETRUNNER LAIR"
+		elif city_gen.chop_shop_door_pos != Vector3.ZERO and global_position.distance_to(city_gen.chop_shop_door_pos) <= 6.0:
+			prompt_msg = "[E] ENTER CHOP SHOP GARAGE"
+		elif city_gen.porter_pit_door_pos != Vector3.ZERO and global_position.distance_to(city_gen.porter_pit_door_pos) <= 6.0:
+			prompt_msg = "[E] ENTER THE PIT SUBTERRANEAN GARAGE"
+		elif city_gen.norns_ai_door_pos != Vector3.ZERO and global_position.distance_to(city_gen.norns_ai_door_pos) <= 6.0:
+			prompt_msg = "[E] ENTER THE 3 AI NORNS TERMINAL"
+		elif city_gen.fife_hq_door_pos != Vector3.ZERO and global_position.distance_to(city_gen.fife_hq_door_pos) <= 6.0:
+			prompt_msg = "[E] ENTER FIFE PATROL HEADQUARTERS"
+		elif city_gen.bankes_logistics_door_pos != Vector3.ZERO and global_position.distance_to(city_gen.bankes_logistics_door_pos) <= 6.0:
+			prompt_msg = "[E] ENTER BANKES LOGISTICS HUB"
+		elif city_gen.power_substation_door_pos != Vector3.ZERO and global_position.distance_to(city_gen.power_substation_door_pos) <= 6.0:
+			prompt_msg = "[E] ENTER SUBSTATION 09 POWER VAULT"
+		elif city_gen.park_statue_pos != Vector3.ZERO and global_position.distance_to(city_gen.park_statue_pos) <= 8.0:
+			var s_name: String = city_gen.park_statue_identity.get("name", "CITY MONUMENT")
+			prompt_msg = "[E] EXAMINE MONUMENT INSCRIPTION // %s" % s_name
+
+	if prompt_msg != "":
+		_show_hq_door_hint(prompt_msg)
 	else:
 		_hide_hq_door_hint()
 
