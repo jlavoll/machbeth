@@ -35,10 +35,14 @@ var lobby_elevator_pos: Vector3 = Vector3.ZERO
 var penthouse_elevator_pos: Vector3 = Vector3.ZERO
 var exit_door_pos: Vector3 = Vector3.ZERO
 
-# Interior Connected Doors (Server Room Door in Penthouse)
+# Interior Connected Doors (Server Room Door in Penthouse & Back-Room Door in The Pit)
 var penthouse_server_door_pos: Vector3 = Vector3.ZERO
 var is_server_door_open: bool = false
 var server_door_node: Node3D = null
+
+var pit_backroom_door_pos: Vector3 = Vector3.ZERO
+var is_pit_backroom_door_open: bool = false
+var pit_backroom_door_node: Node3D = null
 
 # Interior Camera3D & Viewport Setup
 var indoor_camera: Camera3D = null
@@ -298,10 +302,47 @@ func _build_porter_pit_floor() -> void:
 	_build_floor_plane(root_pit, Vector2(36.0, 24.0), Color(0.05, 0.02, 0.01))
 	_build_blueprint_grid(root_pit, 36, 24, Color(1.0, 0.3, 0.0)) # Dark Rust Orange Grid
 
+	# --- MAIN GARAGE CHAMBER (36m x 24m) ---
 	_build_interior_wall(root_pit, Vector3(0.0, 2.5, -12.0), Vector3(36.0, 5.0, 0.8), Color(1.0, 0.3, 0.0))
 	_build_interior_wall(root_pit, Vector3(0.0, 2.5, 12.0), Vector3(36.0, 5.0, 0.8), Color(1.0, 0.3, 0.0))
 	_build_interior_wall(root_pit, Vector3(-18.0, 2.5, 0.0), Vector3(0.8, 5.0, 24.0), Color(1.0, 0.3, 0.0))
-	_build_interior_wall(root_pit, Vector3(18.0, 2.5, 0.0), Vector3(0.8, 5.0, 24.0), Color(1.0, 0.3, 0.0))
+	
+	# East Partition Wall (with 4m Doorway Cutout for Back-Room Entrance)
+	_build_interior_wall(root_pit, Vector3(18.0, 2.5, -7.0), Vector3(0.8, 5.0, 10.0), Color(1.0, 0.3, 0.0))
+	_build_interior_wall(root_pit, Vector3(18.0, 2.5, 7.0), Vector3(0.8, 5.0, 10.0), Color(1.0, 0.3, 0.0))
+
+	# Interactive Side Wall Entrance Door connecting Main Garage to Back-Room
+	pit_backroom_door_pos = porter_pit_origin + Vector3(18.0, 0.0, 0.0)
+	pit_backroom_door_node = _build_interactive_door(root_pit, Vector3(18.0, 2.0, 0.0), Vector3(0.8, 4.0, 3.8), Color(1.0, 0.5, 0.0))
+	pit_backroom_door_node.name = "PitBackroomDoor"
+
+	# --- CONNECTING BACK-ROOM CHAMBER (16m x 16m East Annex) ---
+	var backroom_root = Node3D.new()
+	backroom_root.name = "PitBackRoomAnnex"
+	backroom_root.position = Vector3(26.0, 0.0, 0.0) # Centered East of main wall
+	root_pit.add_child(backroom_root)
+
+	# Back-Room Floor Plane & Grid
+	_build_floor_plane(backroom_root, Vector2(16.0, 16.0), Color(0.06, 0.03, 0.01))
+	_build_blueprint_grid(backroom_root, 16, 16, Color(1.0, 0.5, 0.0))
+
+	# Back-Room Outer Walls (North, South, East)
+	_build_interior_wall(backroom_root, Vector3(0.0, 2.5, -8.0), Vector3(16.0, 5.0, 0.8), Color(1.0, 0.5, 0.0))
+	_build_interior_wall(backroom_root, Vector3(0.0, 2.5, 8.0), Vector3(16.0, 5.0, 0.8), Color(1.0, 0.5, 0.0))
+	_build_interior_wall(backroom_root, Vector3(8.0, 2.5, 0.0), Vector3(0.8, 5.0, 16.0), Color(1.0, 0.5, 0.0))
+
+	# Back-Room Interior Props & Telemetry Storage Racks
+	_build_interior_desk(backroom_root, Vector3(4.0, 1.2, -4.0), Vector3(2.5, 2.4, 4.0), Color(0.0, 0.85, 1.0)) # Spare Cyber Parts Rack
+	_build_interior_desk(backroom_root, Vector3(4.0, 1.2, 4.0), Vector3(2.5, 2.4, 4.0), Color(1.0, 0.85, 0.0))  # Heavy Tooling Station
+	_build_interior_desk(backroom_root, Vector3(-2.0, 0.6, 0.0), Vector3(3.5, 1.2, 2.0), Color(1.0, 0.3, 0.0)) # Secondary Telemetry Desk
+
+	var backroom_lbl = Label3D.new()
+	backroom_lbl.text = "🔧 PIT BACK-ROOM ANNEX\n[SPARE RIG PARTS & BATTERY STACKS]"
+	backroom_lbl.position = Vector3(0.0, 3.2, -7.5)
+	backroom_lbl.font_size = 20
+	backroom_lbl.pixel_size = 0.004
+	backroom_lbl.modulate = Color(1.0, 0.6, 0.1)
+	backroom_root.add_child(backroom_lbl)
 
 	# Subterranean Pit Diagnostic Terminal & Porter NPC
 	_build_interior_desk(root_pit, Vector3(0.0, 0.5, -4.0), Vector3(5.0, 1.0, 2.0), Color(1.0, 0.3, 0.0))
@@ -1046,7 +1087,12 @@ func _process(_delta: float) -> void:
 			var terminal_pos: Vector3 = porter_pit_origin + Vector3(-10.0, 0.0, 0.0)
 			var cyborg_terminal_pos: Vector3 = porter_pit_origin + Vector3(10.0, 0.0, 0.0)
 			var wartable_pos: Vector3 = porter_pit_origin + Vector3(0.0, 0.0, 4.0)
-			if pos.distance_to(terminal_pos) <= 4.0:
+			if pos.distance_to(pit_backroom_door_pos) <= 4.5:
+				if not is_pit_backroom_door_open:
+					prompt_text = "[E] OPEN SIDE ENTRANCE DOOR // PIT BACK-ROOM ANNEX"
+				else:
+					prompt_text = "[E] CLOSE SIDE ENTRANCE DOOR"
+			elif pos.distance_to(terminal_pos) <= 4.0:
 				prompt_text = "[E] ACCESS PIT GARAGE & FLEET MANAGER"
 			elif pos.distance_to(cyborg_terminal_pos) <= 4.0:
 				prompt_text = "[E] ACCESS MACK'S NEURAL CYBORG MODDING SUITE"
@@ -1170,7 +1216,11 @@ func _unhandled_input(event: InputEvent) -> void:
 				var terminal_pos: Vector3 = porter_pit_origin + Vector3(-10.0, 0.0, 0.0)
 				var cyborg_terminal_pos: Vector3 = porter_pit_origin + Vector3(10.0, 0.0, 0.0)
 				var wartable_pos: Vector3 = porter_pit_origin + Vector3(0.0, 0.0, 4.0)
-				if pos.distance_to(terminal_pos) <= 4.0:
+				if pos.distance_to(pit_backroom_door_pos) <= 4.5:
+					_toggle_pit_backroom_door()
+					get_viewport().set_input_as_handled()
+					return
+				elif pos.distance_to(terminal_pos) <= 4.0:
 					var garage_mgr = get_parent().get_node_or_null("GarageManager")
 					if is_instance_valid(garage_mgr):
 						garage_mgr.open_garage_ui()
@@ -1245,3 +1295,13 @@ func _toggle_server_vault_door() -> void:
 		else:
 			server_door_node.position.x = penthouse_floor_origin.x - 8.0
 			print("[SECURITY DOOR] Server Vault Door Closed & Locked.")
+
+func _toggle_pit_backroom_door() -> void:
+	is_pit_backroom_door_open = not is_pit_backroom_door_open
+	if is_instance_valid(pit_backroom_door_node):
+		if is_pit_backroom_door_open:
+			pit_backroom_door_node.position.z = 3.2
+			print("[PIT ENTRANCE DOOR] Pit Back-Room Side Entrance Door Unlocked & Sliding Open!")
+		else:
+			pit_backroom_door_node.position.z = 0.0
+			print("[PIT ENTRANCE DOOR] Pit Back-Room Side Entrance Door Closed & Sealed.")
