@@ -692,7 +692,6 @@ func _build_telemetry_hud() -> void:
 
 	side_terminal_panel = PanelContainer.new()
 	side_terminal_panel.visible = false
-	scanner_terminal_panel = side_terminal_panel # Links scanner_terminal_panel for 'J' key toggle
 	var side_style = StyleBoxFlat.new()
 	side_style.bg_color = Color(0.01, 0.03, 0.06, 0.94)
 	side_style.border_width_left = 2
@@ -724,17 +723,47 @@ func _build_telemetry_hud() -> void:
 	side_vitals_label.add_theme_color_override("font_color", Color(0.9, 0.95, 1.0))
 	vbox.add_child(side_vitals_label)
 
+	# --- 3. Left-Hand Side Dedicated Enemy Threat Scanner Terminal ('J' Key) ---
+	var scanner_margin = MarginContainer.new()
+	scanner_margin.set_anchors_preset(Control.PRESET_LEFT_WIDE)
+	scanner_margin.offset_top = 135
+	scanner_margin.offset_bottom = -140
+	scanner_margin.offset_left = 10
+	scanner_margin.offset_right = 310
+	telemetry_hud_layer.add_child(scanner_margin)
+
+	scanner_terminal_panel = PanelContainer.new()
+	scanner_terminal_panel.visible = false
+	var scan_p_style = StyleBoxFlat.new()
+	scan_p_style.bg_color = Color(0.02, 0.05, 0.08, 0.94)
+	scan_p_style.border_width_left = 2
+	scan_p_style.border_width_top = 2
+	scan_p_style.border_width_right = 2
+	scan_p_style.border_width_bottom = 2
+	scan_p_style.border_color = Color(1.0, 0.35, 0.0) # Rust Orange Border
+	scan_p_style.content_margin_left = 10
+	scan_p_style.content_margin_right = 10
+	scan_p_style.content_margin_top = 10
+	scan_p_style.content_margin_bottom = 10
+	scanner_terminal_panel.add_theme_stylebox_override("panel", scan_p_style)
+	scanner_margin.add_child(scanner_terminal_panel)
+
+	var scan_vbox = VBoxContainer.new()
+	scan_vbox.add_theme_constant_override("separation", 6)
+	scanner_terminal_panel.add_child(scan_vbox)
+
 	var scanner_hdr = Label.new()
-	scanner_hdr.text = "📡 ACTIVE ENEMY THREAT SCANNER:"
-	scanner_hdr.add_theme_font_size_override("font_size", 10)
+	scanner_hdr.text = "📡 ACTIVE ENEMY THREAT SCANNER [J]"
+	scanner_hdr.add_theme_font_size_override("font_size", 11)
 	scanner_hdr.add_theme_color_override("font_color", Color(1.0, 0.35, 0.0))
-	vbox.add_child(scanner_hdr)
+	scan_vbox.add_child(scanner_hdr)
 
 	side_enemy_scanner_label = RichTextLabel.new()
-	side_enemy_scanner_label.custom_minimum_size = Vector2(0, 65)
+	side_enemy_scanner_label.custom_minimum_size = Vector2(0, 180)
+	side_enemy_scanner_label.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	side_enemy_scanner_label.bbcode_enabled = true
-	side_enemy_scanner_label.add_theme_font_size_override("normal_font_size", 9)
-	vbox.add_child(side_enemy_scanner_label)
+	side_enemy_scanner_label.add_theme_font_size_override("normal_font_size", 10)
+	scan_vbox.add_child(side_enemy_scanner_label)
 
 	# Level 2: Detailed Math Combat Calculations Log
 	side_math_text = RichTextLabel.new()
@@ -819,6 +848,19 @@ func _update_telemetry_hud() -> void:
 			side_vitals_label.text = "CORE TEMP: %.1f°C | HULL: %.0f/%.0f\nENGINE RPM: %d | GATLING AMMO: %.0f%%" % [
 				core_temp, mack_current_hp, mack_max_hp, rpm, (mack_current_hp / mack_max_hp) * 100.0
 			]
+
+		# Synchronize 3D Screen Matrix inside The Pit Garage
+		var pit_root = get_parent().get_node_or_null("IndoorSystemManager/PorterPitRoot")
+		if is_instance_valid(pit_root):
+			var scr1 = pit_root.get_node_or_null("PitMonitorVitalsLabel")
+			if is_instance_valid(scr1):
+				scr1.text = "💻 TELEMETRY VITALS\nMACK HP: %.0f / %.0f\nCORE TEMP: %.1f°C\nENGINE RPM: %d" % [mack_current_hp, mack_max_hp, core_temp, rpm]
+			var scr2 = pit_root.get_node_or_null("PitMonitorTacticalLabel")
+			if is_instance_valid(scr2):
+				scr2.text = "🎥 LIVE TACTICAL VIDEO FEED\n" + mack_current_action + "\n[CAM UPLINK ACTIVE]"
+			var scr3 = pit_root.get_node_or_null("PitMonitorMathLabel")
+			if is_instance_valid(scr3):
+				scr3.text = "🎲 COMBAT MATH MATRIX\n" + ("\n".join(math_log_lines.slice(-3)))
 
 		# Live Enemy Threat Scanner
 		if is_instance_valid(side_enemy_scanner_label):

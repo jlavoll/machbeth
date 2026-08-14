@@ -249,10 +249,39 @@ func _build_porter_pit_floor() -> void:
 	# --- 3D TELEMETRY MONITOR MATRIX (Back Wall - North Side) ---
 	# Screen 1 (Left): Battle Vitals & HP Meter Monitor
 	_build_interior_pillar(root_pit, Vector3(-9.0, 3.2, -11.5), Vector3(8.0, 3.0, 0.2), Color(0.0, 0.85, 1.0))
+	var scr1_label = Label3D.new()
+	scr1_label.name = "PitMonitorVitalsLabel"
+	scr1_label.position = Vector3(-9.0, 3.2, -11.35)
+	scr1_label.text = "💻 TELEMETRY VITALS\nMACK HP: 100 / 100\nCORE TEMP: 75.0°C\nENGINE RPM: 4200"
+	scr1_label.font_size = 32
+	scr1_label.pixel_size = 0.005
+	scr1_label.modulate = Color(0.0, 1.0, 1.0)
+	scr1_label.outline_render_priority = 1
+	root_pit.add_child(scr1_label)
+
 	# Screen 2 (Center): Main Telemetry Video / Tactical Feed Monitor
 	_build_interior_pillar(root_pit, Vector3(0.0, 3.4, -11.5), Vector3(10.0, 3.4, 0.2), Color(1.0, 0.35, 0.0))
+	var scr2_label = Label3D.new()
+	scr2_label.name = "PitMonitorTacticalLabel"
+	scr2_label.position = Vector3(0.0, 3.4, -11.35)
+	scr2_label.text = "🎥 LIVE TACTICAL VIDEO FEED\nPHASE I: HIGHWAY ENGAGEMENT\n[CAM UPLINK ACTIVE]"
+	scr2_label.font_size = 36
+	scr2_label.pixel_size = 0.005
+	scr2_label.modulate = Color(1.0, 0.5, 0.0)
+	scr2_label.outline_render_priority = 1
+	root_pit.add_child(scr2_label)
+
 	# Screen 3 (Right): Enemy Threat & Combat Math Monitor
 	_build_interior_pillar(root_pit, Vector3(9.0, 3.2, -11.5), Vector3(8.0, 3.0, 0.2), Color(1.0, 0.85, 0.0))
+	var scr3_label = Label3D.new()
+	scr3_label.name = "PitMonitorMathLabel"
+	scr3_label.position = Vector3(9.0, 3.2, -11.35)
+	scr3_label.text = "🎲 COMBAT MATH MATRIX\n[MACK ATK] d20(16)+8=24 -> 38 DMG\n[ENEMY ATK] d20(12) -> 24 DMG\nArmor Absorbed: -8 HP"
+	scr3_label.font_size = 28
+	scr3_label.pixel_size = 0.005
+	scr3_label.modulate = Color(1.0, 0.85, 0.0)
+	scr3_label.outline_render_priority = 1
+	root_pit.add_child(scr3_label)
 
 	# Interactive Pit Garage Fleet Terminal Console (West Bay)
 	_build_interior_desk(root_pit, Vector3(-10.0, 0.6, 0.0), Vector3(3.0, 1.2, 4.0), Color(1.0, 0.5, 0.0))
