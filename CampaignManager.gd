@@ -268,11 +268,11 @@ func _process(delta: float) -> void:
 		decision_3_triggered = true
 		_trigger_random_decision_event()
 
-	# Complete battle when Gunship Boss is destroyed OR after max 300 seconds (5 Minutes)
+	# Complete battle when Gunship Boss is destroyed OR engine thermal limit is reached
 	var boss_destroyed: bool = (current_battle_phase == BattlePhase.PHASE_4_GUNSHIP_BOSS and active_enemy_units.is_empty())
 	if boss_destroyed or battle_timer >= battle_duration:
 		is_battle_in_progress = false
-		_conclude_autonomous_battle(true)
+		_conclude_autonomous_battle(boss_destroyed)
 
 func _on_side_mission_expired() -> void:
 	mack_current_hp = max(5.0, mack_current_hp - 35.0)
@@ -1000,50 +1000,66 @@ func launch_grand_deployment() -> void:
 		"Fife Logistics Manifest Fragment (Sector " + str(randi() % 9 + 1) + ")"
 	]
 	
-	# Fetch Mack stats from GarageManager if available
+	# Fetch Mack stats and Engine Cooling Level from GarageManager
+	var mack_engine_lvl: int = 1
 	var garage_mgr = get_parent().get_node_or_null("GarageManager")
 	if is_instance_valid(garage_mgr) and garage_mgr.fleet.has("MACK_RIG"):
 		mack_max_hp = garage_mgr.fleet["MACK_RIG"]["stats"].get("hull_integrity", 250.0)
+		mack_engine_lvl = garage_mgr.fleet["MACK_RIG"]["upgrades"]["engine"].get("level", 1)
 	else:
 		mack_max_hp = 250.0
+
+	# Story Point: Engine Thermal Limit (L1 = 300s / 5 MINS, L2 = 420s / 7 MINS, L3 = 540s / 9 MINS)
+	battle_duration = 300.0 + float((mack_engine_lvl - 1) * 120)
+
 	mack_current_hp = mack_max_hp
 	mack_current_action = "Breaching highway entry vector..."
 	
 	var current_data: Dictionary = act_details.get(current_act, {})
 	var convoy_name: String = current_data.get("target_convoy", "Corporate Vanguard")
+	var mins_limit: int = int(battle_duration / 60.0)
 	
-	print("[CAMPAIGN MANAGER] Launching autonomous 5-minute Grand Battle for: ", convoy_name)
+	print("[CAMPAIGN MANAGER] Launching autonomous Grand Battle for: ", convoy_name, " (Max Thermal Limit: ", mins_limit, " mins)")
 	_update_telemetry_hud()
 	
 	if is_instance_valid(neural_comms) and neural_comms.has_method("send_message"):
-		neural_comms.send_message("WAR-RIG DISPATCHED! Mack deployed to central highway for " + convoy_name + ". Estimated engagement time: 5 MINS.", "LADY M // MISSION CONTROL")
+		neural_comms.send_message("WAR-RIG DISPATCHED! Mack deployed to central highway for %s. [ENGINE COOLER L%d: %d MIN MAX THERMAL LIMIT]" % [convoy_name, mack_engine_lvl, mins_limit], "LADY M // MISSION CONTROL")
 
 func _conclude_autonomous_battle(success: bool) -> void:
-	if not success:
-		return
-
 	var current_data: Dictionary = act_details.get(current_act, {})
 	var base_reward_c: int = current_data.get("reward_credits", 2500)
-	
-	# Inverse Salvage Mechanics:
-	# Overpowering Mack (HP near 100%) vaporizes target convoy -> 0.8x base loot.
-	# Narrow desperate win (HP near 10-25%) leaves intact corporate components -> 2.2x base loot + 350 Scrap!
 	var hp_ratio: float = clamp(mack_current_hp / mack_max_hp, 0.05, 1.0)
-	var salvage_mult: float = lerp(2.2, 0.8, hp_ratio)
-	var final_payout: int = int(base_reward_c * salvage_mult)
-	var bonus_scrap: int = int(lerp(350, 40, hp_ratio))
 	
-	# Award credits to Banquo
-	if is_instance_valid(quest_manager):
-		quest_manager.player_credits += final_payout
+	if success:
+		# --- SUCCESSFUL CONVOY PURGE (Boss Neutralized Before Engine Overheat) ---
+		var salvage_mult: float = lerp(2.2, 0.8, hp_ratio)
+		var final_payout: int = int(base_reward_c * salvage_mult)
+		var bonus_scrap: int = int(lerp(350, 40, hp_ratio))
+		
+		if is_instance_valid(quest_manager):
+			quest_manager.player_credits += final_payout
 
-	# Inject +20% Glitch/Paranoia into Mack's stack
-	var glitch_sys = get_parent().get_node_or_null("NeuralGlitchSystem")
-	if is_instance_valid(glitch_sys):
-		glitch_sys.inject_neural_instability(20.0)
+		var glitch_sys = get_parent().get_node_or_null("NeuralGlitchSystem")
+		if is_instance_valid(glitch_sys):
+			glitch_sys.inject_neural_instability(20.0)
 
-	_advance_campaign_act()
-	_show_after_action_summary(final_payout, bonus_scrap, hp_ratio)
+		_advance_campaign_act()
+		_show_after_action_summary(final_payout, bonus_scrap, hp_ratio, true)
+	else:
+		# --- ENGINE OVERHEAT FAILURE & RETREAT PENALTY ---
+		# Engine cooling limit reached before boss was destroyed -> Forced Emergency Abort!
+		var penalty_repair_cost: int = 400
+		var scrap_salvaged: int = 25 # Minimal emergency scrap
+		
+		if is_instance_valid(quest_manager):
+			quest_manager.player_credits = max(0, quest_manager.player_credits - penalty_repair_cost)
+
+		# Overheating inflicts severe neural paranoia on Mack (+35%)
+		var glitch_sys = get_parent().get_node_or_null("NeuralGlitchSystem")
+		if is_instance_valid(glitch_sys):
+			glitch_sys.inject_neural_instability(35.0)
+
+		_show_after_action_summary(-penalty_repair_cost, scrap_salvaged, hp_ratio, false)
 
 func _advance_campaign_act() -> void:
 	match current_act:
@@ -1065,19 +1081,24 @@ func _advance_campaign_act() -> void:
 	var title: String = act_info.get("title", "NEW ACT")
 	act_advanced.emit(int(current_act), title)
 
-func _show_after_action_summary(reward_credits: int, bonus_scrap: int = 100, hp_ratio: float = 0.5) -> void:
+func _show_after_action_summary(reward_credits: int, bonus_scrap: int = 100, hp_ratio: float = 0.5, is_victory: bool = true) -> void:
 	var quality_desc: String = "OVERKILL VAPORIZATION (Minimal Salvage 0.8x)"
-	if hp_ratio <= 0.35:
+	if not is_victory:
+		quality_desc = "ENGINE OVERHEAT CRITICAL FAILURE (Forced Abort & Overhaul Penalty)"
+	elif hp_ratio <= 0.35:
 		quality_desc = "DESPERATE NARROW VICTORY! (PRISTINE SALVAGE RETRIEVED 2.2x 🌟)"
 	elif hp_ratio <= 0.70:
 		quality_desc = "HARD-FOUGHT VICTORY (High-Grade Salvage 1.5x)"
 
 	if is_instance_valid(neural_comms) and neural_comms.has_method("send_message"):
-		neural_comms.send_message("VICTORY! Mack's War-Rig completed engagement. [%s] +%d Credits & +%d Scrap salvaged!" % [quality_desc, reward_credits, bonus_scrap], "AFTER-ACTION SALVAGE REPORT")
+		if is_victory:
+			neural_comms.send_message("VICTORY! Mack's War-Rig completed engagement. [%s] +%d Credits & +%d Scrap salvaged!" % [quality_desc, reward_credits, bonus_scrap], "AFTER-ACTION SALVAGE REPORT")
+		else:
+			neural_comms.send_message("CRITICAL ENGINE OVERHEAT! War-Rig cooling threshold reached! Forced emergency retreat (-400 C repair penalty).", "EMERGENCY RETREAT REPORT")
 
-	_build_after_action_modal(reward_credits, bonus_scrap, quality_desc, hp_ratio)
+	_build_after_action_modal(reward_credits, bonus_scrap, quality_desc, hp_ratio, is_victory)
 
-func _build_after_action_modal(credits_earned: int, scrap_earned: int, quality_str: String, final_hp_ratio: float) -> void:
+func _build_after_action_modal(credits_earned: int, scrap_earned: int, quality_str: String, final_hp_ratio: float, is_victory: bool = true) -> void:
 	var summary_layer = CanvasLayer.new()
 	summary_layer.name = "AfterActionSummaryLayer"
 	summary_layer.layer = 30
@@ -1139,9 +1160,10 @@ func _build_after_action_modal(credits_earned: int, scrap_earned: int, quality_s
 	if stat_story_clues_found.size() > 0:
 		clues_str = "• " + "\n• ".join(stat_story_clues_found)
 
-	txt.text = """[color=#00FF88]💰 SALVAGE & FINANCIAL RETURNS:[/color]
- • Total Cyber-Credits Earned: [color=#FFCC00]%d C[/color] (Base Payout + Inverse Salvage Multiplier)
- • Cyber-Scrap Material Salvaged: [color=#FFCC00]%d Scrap[/color]
+	if is_victory:
+		txt.text = """[color=#00FF88]💰 SALVAGE & FINANCIAL RETURNS:[/color]
+ • Total Cyber-Credits Earned: [color=#FFCC00]+%d C[/color] (Base Payout + Inverse Salvage Multiplier)
+ • Cyber-Scrap Material Salvaged: [color=#FFCC00]+%d Scrap[/color]
  • Harvested Tech Components: [color=#88CCFF]%d Advanced Modules[/color]
 
 [color=#FF5555]⚔️ COMBAT ENGAGEMENT STATS:[/color]
@@ -1153,11 +1175,31 @@ func _build_after_action_modal(credits_earned: int, scrap_earned: int, quality_s
 
 [color=#AA00FF]🔍 RECOVERED STORY INTEL & CLUES:[/color]
  %s""" % [
-		credits_earned, scrap_earned, stat_tech_harvested_count,
-		stat_enemies_destroyed, stat_total_rounds_fired, stat_total_crits_landed,
-		stat_highest_damage_dealt, mack_current_hp, final_hp_ratio * 100.0,
-		clues_str
-	]
+			credits_earned, scrap_earned, stat_tech_harvested_count,
+			stat_enemies_destroyed, stat_total_rounds_fired, stat_total_crits_landed,
+			stat_highest_damage_dealt, mack_current_hp, final_hp_ratio * 100.0,
+			clues_str
+		]
+	else:
+		txt.text = """[color=#FF3333]⚠️ CRITICAL FAILURE & RETREAT PENALTY:[/color]
+ • Emergency Overhaul Repair Fee: [color=#FF3333]%d C[/color] (Deducted for thermal engine recovery)
+ • Emergency Scrap Salvaged: [color=#FFCC00]+%d Scrap[/color]
+ • Story Note: [color=#FF9900]Mack's War-Rig Engine overheated! Upgrade Engine Cooling in The Pit to extend battle duration limit![/color]
+
+[color=#FF5555]⚔️ COMBAT ENGAGEMENT STATS:[/color]
+ • Enemy Units Neutralized: [color=#FF9900]%d Hostiles[/color] (Target Boss Survived)
+ • Total Gatling Rounds Fired: [color=#88CCFF]%d Rounds[/color]
+ • Critical Hits Landed: [color=#FFCC00]%d Crits[/color]
+ • Highest Single-Round Damage: [color=#FF3333]%d DMG[/color]
+ • Neural Instability Penalty: [color=#AA00FF]+35%% Paranoia Spike[/color]
+
+[color=#AA00FF]🔍 RECOVERED STORY INTEL & CLUES:[/color]
+ %s""" % [
+			credits_earned, scrap_earned,
+			stat_enemies_destroyed, stat_total_rounds_fired, stat_total_crits_landed,
+			stat_highest_damage_dealt,
+			clues_str
+		]
 
 	var close_btn = Button.new()
 	close_btn.text = " 💾 CLOSE SUMMARY SHEET & RETURN TO GARAGE "
