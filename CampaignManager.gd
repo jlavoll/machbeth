@@ -218,12 +218,6 @@ func _process(delta: float) -> void:
 			side_mission_active = false
 			_on_side_mission_expired()
 
-func _on_side_mission_expired() -> void:
-	mack_current_hp = max(5.0, mack_current_hp - 35.0)
-	mack_current_action = "Side mission timed out! War-Rig took heavy penalty (-35 HP)."
-	if is_instance_valid(neural_comms) and neural_comms.has_method("send_message"):
-		neural_comms.send_message("MISSION FAILED: Time expired! Mack's War-Rig suffered heavy structural damage (-35 HP).", "EMERGENCY MISSION FAILURE")
-
 	# Update 4-Stage Battle Phases based on elapsed battle timer (5 minutes = 300s)
 	_update_battle_phase()
 
@@ -265,6 +259,12 @@ func _on_side_mission_expired() -> void:
 	if battle_timer >= 230.0 and not decision_3_triggered:
 		decision_3_triggered = true
 		_trigger_random_decision_event()
+
+func _on_side_mission_expired() -> void:
+	mack_current_hp = max(5.0, mack_current_hp - 35.0)
+	mack_current_action = "Side mission timed out! War-Rig took heavy penalty (-35 HP)."
+	if is_instance_valid(neural_comms) and neural_comms.has_method("send_message"):
+		neural_comms.send_message("MISSION FAILED: Time expired! Mack's War-Rig suffered heavy structural damage (-35 HP).", "EMERGENCY MISSION FAILURE")
 
 func _update_battle_phase() -> void:
 	var old_phase = current_battle_phase
