@@ -349,12 +349,12 @@ func _build_ground_and_grid() -> void:
 	# Vector3(X=0.0, Y=-0.05, Z=0.0) -> (Horizontal, Height, Depth)
 	ground_mesh.position = Vector3(0, -0.05, 0)
 	
-		# Ground Material: Deep Cyberpunk Wet Asphalt with Neon Reflection Gloss
+		# Ground Material: Deep Cyberpunk Asphalt with Discrete Soft Reflections (~20% strength)
 	var ground_mat = StandardMaterial3D.new()
-	ground_mat.albedo_color = Color(0.008, 0.008, 0.018)
-	ground_mat.roughness = 0.15     # High gloss for wet neon asphalt reflections!
-	ground_mat.metallic = 0.85      # Slick reflective sheen
-	ground_mat.metallic_specular = 0.9
+	ground_mat.albedo_color = Color(0.01, 0.008, 0.02)
+	ground_mat.roughness = 0.70     # Soft matte diffusion for subtle discrete reflections
+	ground_mat.metallic = 0.17      # Toned down metallic sheen (~20% of previous 0.85)
+	ground_mat.metallic_specular = 0.18
 	ground_mesh.material_override = ground_mat
 
 	# --------------------------------------------------------------------------
