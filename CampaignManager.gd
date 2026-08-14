@@ -178,6 +178,14 @@ func _connect_dialogue_signals() -> void:
 	if is_instance_valid(dialogue_sys):
 		dialogue_sys.dialogue_choice_selected.connect(_on_decision_choice_selected)
 
+# Multi-Stage Battle Progression State
+enum BattlePhase { PHASE_1_ARRED_CARS, PHASE_2_FOOT_SOLDIERS, PHASE_3_DRONE_SWARM, PHASE_4_GUNSHIP_BOSS }
+var current_battle_phase: BattlePhase = BattlePhase.PHASE_1_ARRED_CARS
+
+# Active Enemy Wave Tracking
+var active_enemy_units: Array[Dictionary] = []
+var side_enemy_scanner_label: RichTextLabel = null
+
 func _process(delta: float) -> void:
 	if not is_battle_in_progress:
 		return
@@ -185,31 +193,30 @@ func _process(delta: float) -> void:
 	battle_timer += delta
 	last_rumor_tick += delta
 
-	# --- REAL-TIME COMBAT MATH CALCULATIONS ---
-	# 1. Base incoming DPS from corporate convoy
-	var incoming_dps: float = 0.55
+	# Update 4-Stage Battle Phases based on elapsed battle timer (5 minutes = 300s)
+	_update_battle_phase()
 
-	# 2. Mitigation from Mack's War-Rig Graphene Armor Level
+	# --- REAL-TIME COMBAT MATH CALCULATIONS ---
+	var incoming_dps: float = 0.40
+	match current_battle_phase:
+		BattlePhase.PHASE_1_ARRED_CARS: incoming_dps = 0.35
+		BattlePhase.PHASE_2_FOOT_SOLDIERS: incoming_dps = 0.45
+		BattlePhase.PHASE_3_DRONE_SWARM: incoming_dps = 0.55
+		BattlePhase.PHASE_4_GUNSHIP_BOSS: incoming_dps = 0.70
+
+	# Mitigation from Mack's War-Rig Graphene Armor Level
 	var armor_lvl: int = 1
 	var garage_mgr = get_parent().get_node_or_null("GarageManager")
 	if is_instance_valid(garage_mgr) and garage_mgr.fleet.has("MACK_RIG"):
 		armor_lvl = garage_mgr.fleet["MACK_RIG"]["upgrades"]["armor"].get("level", 1)
-	var armor_mitigation: float = (armor_lvl - 1) * 0.12 # Level 3 armor reduces damage by 24%
+	var armor_mitigation: float = (armor_lvl - 1) * 0.10
 	incoming_dps -= armor_mitigation
 
-	# 3. Mitigation from Mack's Sub-Dermal Plating Cyborg Mod
+	# Mitigation from Mack's Sub-Dermal Plating Cyborg Mod
 	var cyborg_mgr = get_parent().get_node_or_null("CyborgModdingManager")
 	if is_instance_valid(cyborg_mgr) and cyborg_mgr.cyberware_slots.has("subdermal_plating"):
 		var subdermal_tier: int = cyborg_mgr.cyberware_slots["subdermal_plating"].get("tier", 1)
-		incoming_dps -= (subdermal_tier - 1) * 0.08
-
-	# 4. Mitigation from Banquo's City Sabotages (Substation 09 or Bankes Server Vault)
-	if not is_substation_side_mission_active:
-		# If Substation power was severed, reduce incoming damage by 30%
-		pass
-	if not is_bankes_server_mission_active:
-		# If Bankes Shield Uplink was severed, reduce incoming damage by 25%
-		pass
+		incoming_dps -= (subdermal_tier - 1) * 0.07
 
 	incoming_dps = max(0.05, incoming_dps)
 	mack_current_hp = max(5.0, mack_current_hp - (delta * incoming_dps))
@@ -227,6 +234,41 @@ func _process(delta: float) -> void:
 	if battle_timer >= 230.0 and not decision_3_triggered:
 		decision_3_triggered = true
 		_trigger_random_decision_event()
+
+func _update_battle_phase() -> void:
+	var old_phase = current_battle_phase
+	if battle_timer < 75.0:
+		current_battle_phase = BattlePhase.PHASE_1_ARRED_CARS
+		mack_current_action = "PHASE I: Engaging Corporate Armored Cars..."
+		active_enemy_units = [
+			{"name": "Cawdor Interceptor Alpha", "type": "🚙 ARMORED CAR", "hp": 100, "weapon": "Twin 20mm Cannon", "icon": "🚙"},
+			{"name": "Cawdor Interceptor Beta", "type": "🚙 ARMORED CAR", "hp": 100, "weapon": "Spike Ram", "icon": "🚙"}
+		]
+	elif battle_timer < 160.0:
+		current_battle_phase = BattlePhase.PHASE_2_FOOT_SOLDIERS
+		mack_current_action = "PHASE II: Sweeping Corporate Foot-Soldier Barricade..."
+		active_enemy_units = [
+			{"name": "Fife Exo-Trooper Squad A", "type": "🎖️ HEAVY INFANTRY", "hp": 140, "weapon": "Plasma Rifle Array", "icon": "🎖️"},
+			{"name": "Fife Exo-Trooper Squad B", "type": "🎖️ HEAVY INFANTRY", "hp": 140, "weapon": "EMP Mortar", "icon": "🎖️"}
+		]
+	elif battle_timer < 240.0:
+		current_battle_phase = BattlePhase.PHASE_3_DRONE_SWARM
+		mack_current_action = "PHASE III: Cleaving Attack Drone Swarm..."
+		active_enemy_units = [
+			{"name": "Norns AI Hunter Drone #01", "type": "🛸 ATTACK DRONE", "hp": 80, "weapon": "Laser Cutter", "icon": "🛸"},
+			{"name": "Norns AI Hunter Drone #02", "type": "🛸 ATTACK DRONE", "hp": 80, "weapon": "Disruptor Beam", "icon": "🛸"},
+			{"name": "Norns AI Hunter Drone #03", "type": "🛸 ATTACK DRONE", "hp": 80, "weapon": "Nanite Swarm", "icon": "🛸"}
+		]
+	else:
+		current_battle_phase = BattlePhase.PHASE_4_GUNSHIP_BOSS
+		mack_current_action = "FINAL PHASE: Duel against Corporate Attack Helicopter!"
+		active_enemy_units = [
+			{"name": "Duncan Heavy Gunship Apex", "type": "🚁 ATTACK HELICOPTER BOSS", "hp": 450, "weapon": "Hellfire Ordnance Rockets", "icon": "🚁"}
+		]
+
+	if old_phase != current_battle_phase:
+		if is_instance_valid(neural_comms) and neural_comms.has_method("send_message"):
+			neural_comms.send_message("BATTLE PHASE TRANSITION: " + mack_current_action, "TACTICAL TELEMETRY")
 
 # Pool of dynamic decision triggers
 var decision_event_pool: Array[String] = [
@@ -636,12 +678,24 @@ func _build_telemetry_hud() -> void:
 	term_hdr.add_theme_color_override("font_color", Color(0.0, 0.85, 1.0))
 	vbox.add_child(term_hdr)
 
-	# Level 1: Live Vitals Feed
+	# Level 1: Live Vitals Feed & Active Enemy Unit Scanner
 	side_vitals_label = Label.new()
 	side_vitals_label.text = "CORE TEMP: 82°C | SHIELD: 100%\nRPM: 4200 | GATLING AMMO: 88%"
 	side_vitals_label.add_theme_font_size_override("font_size", 10)
 	side_vitals_label.add_theme_color_override("font_color", Color(0.9, 0.95, 1.0))
 	vbox.add_child(side_vitals_label)
+
+	var scanner_hdr = Label.new()
+	scanner_hdr.text = "📡 ACTIVE ENEMY THREAT SCANNER:"
+	scanner_hdr.add_theme_font_size_override("font_size", 10)
+	scanner_hdr.add_theme_color_override("font_color", Color(1.0, 0.35, 0.0))
+	vbox.add_child(scanner_hdr)
+
+	side_enemy_scanner_label = RichTextLabel.new()
+	side_enemy_scanner_label.custom_minimum_size = Vector2(0, 65)
+	side_enemy_scanner_label.bbcode_enabled = true
+	side_enemy_scanner_label.add_theme_font_size_override("normal_font_size", 9)
+	vbox.add_child(side_enemy_scanner_label)
 
 	# Level 2: Detailed Math Combat Calculations Log
 	side_math_text = RichTextLabel.new()
@@ -720,6 +774,15 @@ func _update_telemetry_hud() -> void:
 			side_vitals_label.text = "CORE TEMP: %.1f°C | HULL: %.0f/%.0f\nENGINE RPM: %d | GATLING AMMO: %.0f%%" % [
 				core_temp, mack_current_hp, mack_max_hp, rpm, (mack_current_hp / mack_max_hp) * 100.0
 			]
+
+		# Live Enemy Threat Scanner
+		if is_instance_valid(side_enemy_scanner_label):
+			var scan_text: String = ""
+			for enemy in active_enemy_units:
+				scan_text += "[color=#FFCC00]%s %s[/color]\n[color=#88CCFF]   Weapon: %s | Hull: %d HP[/color]\n" % [
+					enemy["icon"], enemy["name"], enemy["weapon"], enemy["hp"]
+				]
+			side_enemy_scanner_label.text = scan_text
 
 		# Level 2: Dice rolls math feed generator
 		if telemetry_lvl >= 2:
