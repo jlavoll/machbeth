@@ -349,12 +349,12 @@ func _build_ground_and_grid() -> void:
 	# Vector3(X=0.0, Y=-0.05, Z=0.0) -> (Horizontal, Height, Depth)
 	ground_mesh.position = Vector3(0, -0.05, 0)
 	
-		# Ground Material: Deep Dark Purple / Cyberpunk Asphalt
+		# Ground Material: Deep Cyberpunk Wet Asphalt with Neon Reflection Gloss
 	var ground_mat = StandardMaterial3D.new()
-	# Color(R=0.01, G=0.005, B=0.02) -> Almost pure black with a tiny tint of dark violet
-	ground_mat.roughness = 0.7     # Low roughness for a glossy/wet reflective surface
-	ground_mat.metallic = 0.2      # Subtle metallic sheen
-	ground_mat.albedo_color = Color(0.01, 0.005, 0.02)
+	ground_mat.albedo_color = Color(0.008, 0.008, 0.018)
+	ground_mat.roughness = 0.15     # High gloss for wet neon asphalt reflections!
+	ground_mat.metallic = 0.85      # Slick reflective sheen
+	ground_mat.metallic_specular = 0.9
 	ground_mesh.material_override = ground_mat
 
 	# --------------------------------------------------------------------------
@@ -770,9 +770,12 @@ func _spawn_building(pos: Vector3, b_size: Vector3, neon_colors: Array, b_type: 
 
 	var win_tex: Texture2D = _generate_window_texture(accent_color)
 
-	# Building Exterior Surface Material
+	# Building Exterior Surface Material (Cyberpunk Metallic Glass & Reflections)
 	var b_mat: StandardMaterial3D = StandardMaterial3D.new()
-	b_mat.albedo_color = Color(0.02, 0.02, 0.05)
+	b_mat.albedo_color = Color(0.015, 0.02, 0.04)
+	b_mat.metallic = 0.85
+	b_mat.roughness = 0.15
+	b_mat.metallic_specular = 0.8
 	b_mat.emission_enabled = true
 	b_mat.emission_texture = win_tex
 	b_mat.emission_energy_multiplier = 5.0
