@@ -353,8 +353,8 @@ func _physics_process(delta: float) -> void:
 
 func _unhandled_input(event: InputEvent) -> void:
 	if event is InputEventKey and event.pressed and not event.echo:
-		# 'H' key toggles/cycles headlight stages: OFF -> NEAR -> LONG -> OFF
-		if event.keycode == KEY_H and not is_on_foot:
+		# 'K' key toggles/cycles headlight stages: OFF -> NEAR -> LONG -> OFF
+		if event.keycode == KEY_K and not is_on_foot:
 			_cycle_headlight_mode()
 
 		# 'E' key exits the car — guard prevents double-fire on the same press as re-entry
