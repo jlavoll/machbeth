@@ -1448,7 +1448,7 @@ func _spawn_cyber_park(center: Vector3, b_size: Vector2, neon_colors: Array) -> 
 	var is_stage_event_today: bool = (active_event_id == "PARK_CONCERT" or active_event_id == "SHAKESPEARE_PARK")
 	var is_shakespeare_today: bool = (active_event_id == "SHAKESPEARE_PARK")
 
-	# Par Can Lighting Truss Towers (North and South ends of stage)
+	# Par Can Vertical Truss Posts (North and South ends of stage)
 	for z_side in [-5.5, 5.5]:
 		var truss = MeshInstance3D.new()
 		var t_mesh = BoxMesh.new()
@@ -1461,7 +1461,7 @@ func _spawn_cyber_park(center: Vector3, b_size: Vector2, neon_colors: Array) -> 
 		truss.material_override = t_mat
 		stage_node.add_child(truss)
 
-		# Par Can Spotlight Fixture
+		# Side Par Can Spotlight Fixture
 		var spot = SpotLight3D.new()
 		spot.name = "ParCanSpotlight"
 		spot.position = Vector3(3.5, 6.0, z_side)
@@ -1478,6 +1478,33 @@ func _spawn_cyber_park(center: Vector3, b_size: Vector2, neon_colors: Array) -> 
 		spot.spot_angle = 35.0
 		spot.spot_attenuation = 0.8
 		stage_node.add_child(spot)
+
+	# --- HORIZONTAL OVERHEAD CROSS-BEAM TRUSS & SPOTLIGHT ROW ---
+	var cross_beam = MeshInstance3D.new()
+	var cb_mesh = BoxMesh.new()
+	cb_mesh.size = Vector3(0.3, 0.3, 11.4)
+	cross_beam.mesh = cb_mesh
+	cross_beam.position = Vector3(3.5, 6.2, 0.0)
+	var cb_mat = StandardMaterial3D.new()
+	cb_mat.albedo_color = Color(0.25, 0.28, 0.32)
+	cb_mat.metallic = 0.9
+	cross_beam.material_override = cb_mat
+	stage_node.add_child(cross_beam)
+
+	# Line of 4 Overhead Down-Spotlights mounted along the cross-beam
+	var beam_spot_positions: Array[float] = [-4.0, -1.3, 1.3, 4.0]
+	for idx in range(beam_spot_positions.size()):
+		var b_z: float = beam_spot_positions[idx]
+		var beam_spot = SpotLight3D.new()
+		beam_spot.name = "CrossBeamSpotlight_%d" % idx
+		beam_spot.position = Vector3(3.5, 6.0, b_z)
+		beam_spot.rotation_degrees = Vector3(-55.0, 0.0, 0.0) # Aiming down towards stage center & band
+		beam_spot.light_color = Color(1.0, 0.0, 0.8) if (idx % 2 == 0) else Color(0.0, 0.85, 1.0)
+		beam_spot.light_energy = 8.5 if is_stage_event_today else 0.0
+		beam_spot.spot_range = 22.0
+		beam_spot.spot_angle = 40.0
+		beam_spot.spot_attenuation = 0.75
+		stage_node.add_child(beam_spot)
 
 	# --------------------------------------------------------------------------
 	# LIVE 3D BAND & LEAD SINGER ON STAGE (DURING CONCERT / EVENT)

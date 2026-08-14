@@ -118,6 +118,11 @@ func _process(delta: float) -> void:
 			is_wave_ripple_active = false
 			wave_ripple_progress = 0.0
 
+	# --------------------------------------------------------------------------
+	# 4. CONCERT STAGE SPOTLIGHT COLOR OSCILLATION & BAND BOUNCE ANIMATION
+	# --------------------------------------------------------------------------
+	_update_stage_lights_and_band_animation(delta)
+
 # Overmap override state (bypasses L key dimming/blackout for map view)
 var is_overmap_active: bool = false
 
@@ -265,5 +270,41 @@ func _update_node_lighting_recursively(target_node: Node, mult: float) -> void:
 
 	for child in target_node.get_children():
 		_update_node_lighting_recursively(child, mult)
+
+var _stage_anim_time: float = 0.0
+
+func _update_stage_lights_and_band_animation(delta: float) -> void:
+	_stage_anim_time += delta
+	var stage_node = get_parent().get_node_or_null("CityGenerator/CyberParkConcertStage")
+	if not is_instance_valid(stage_node):
+		return
+
+	# Oscillate spotlight colors along the cyber spectrum (Magenta <-> Cyan <-> Gold)
+	var hue1: Color = Color(1.0, 0.0, 0.8).lerp(Color(0.0, 0.85, 1.0), (sin(_stage_anim_time * 2.5) + 1.0) * 0.5)
+	var hue2: Color = Color(0.0, 0.85, 1.0).lerp(Color(1.0, 0.85, 0.0), (cos(_stage_anim_time * 2.5) + 1.0) * 0.5)
+
+	# Update cross-beam spotlights
+	for i in range(4):
+		var beam_spot = stage_node.get_node_or_null("CrossBeamSpotlight_%d" % i)
+		if is_instance_valid(beam_spot):
+			beam_spot.light_color = hue1 if (i % 2 == 0) else hue2
+			beam_spot.rotation_degrees.z = sin(_stage_anim_time * 3.0 + i) * 12.0 # Sweeping beam oscillation!
+
+	# Update side Par Can spotlights
+	for child in stage_node.get_children():
+		if child.name == "ParCanSpotlight":
+			child.light_color = hue2
+
+	# Animate 3D Band Members bouncing rhythmically to the music beat!
+	var band_node = stage_node.get_node_or_null("StageCyberBand")
+	if is_instance_valid(band_node):
+		var member_idx: int = 0
+		for member in band_node.get_children():
+			if member is Node3D:
+				var bounce_y: float = abs(sin(_stage_anim_time * 8.0 + member_idx * 0.5)) * 0.18 # Rhythmic vertical bounce
+				var sway_z: float = sin(_stage_anim_time * 4.0 + member_idx) * 0.08 # Subtle lateral sway
+				member.position.y = bounce_y
+				member.position.z = (member.name.hash() % 3 - 1) * 0.2 + sway_z
+				member_idx += 1
 
 
