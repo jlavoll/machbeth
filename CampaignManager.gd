@@ -72,6 +72,12 @@ var is_deployment_ui_open: bool = false
 
 var is_top_bar_user_toggled: bool = true
 var is_side_terminal_user_toggled: bool = true
+var is_scanner_terminal_user_toggled: bool = true
+
+# Timed Side Mission State
+var active_side_mission_name: String = ""
+var side_mission_time_left: float = 0.0
+var side_mission_active: bool = false
 
 func _input(event: InputEvent) -> void:
 	if event is InputEventKey and event.pressed and not event.echo:
@@ -96,6 +102,18 @@ func _input(event: InputEvent) -> void:
 			if is_instance_valid(neural_comms) and neural_comms.has_method("send_message"):
 				var state_str: String = "ENABLED" if is_side_terminal_user_toggled else "DISABLED"
 				neural_comms.send_message("SIDE TELEMETRY TERMINAL: " + state_str + " [Press 'H' to toggle]", "HUD CONFIG")
+			get_viewport().set_input_as_handled()
+			return
+
+		# 'J' Key: Toggle New Dedicated Enemy Threat Scanner Terminal on/off
+		if event.keycode == KEY_J and is_battle_in_progress:
+			is_scanner_terminal_user_toggled = not is_scanner_terminal_user_toggled
+			if is_instance_valid(scanner_terminal_panel):
+				scanner_terminal_panel.visible = is_scanner_terminal_user_toggled
+			var neural_comms = get_parent().get_node_or_null("NeuralNotificationSystem")
+			if is_instance_valid(neural_comms) and neural_comms.has_method("send_message"):
+				var state_str: String = "ENABLED" if is_scanner_terminal_user_toggled else "DISABLED"
+				neural_comms.send_message("ENEMY THREAT SCANNER TERMINAL: " + state_str + " [Press 'J' to toggle]", "HUD CONFIG")
 			get_viewport().set_input_as_handled()
 			return
 
@@ -192,6 +210,19 @@ func _process(delta: float) -> void:
 
 	battle_timer += delta
 	last_rumor_tick += delta
+
+	# Process active side mission timer
+	if side_mission_active:
+		side_mission_time_left -= delta
+		if side_mission_time_left <= 0.0:
+			side_mission_active = false
+			_on_side_mission_expired()
+
+func _on_side_mission_expired() -> void:
+	mack_current_hp = max(5.0, mack_current_hp - 35.0)
+	mack_current_action = "Side mission timed out! War-Rig took heavy penalty (-35 HP)."
+	if is_instance_valid(neural_comms) and neural_comms.has_method("send_message"):
+		neural_comms.send_message("MISSION FAILED: Time expired! Mack's War-Rig suffered heavy structural damage (-35 HP).", "EMERGENCY MISSION FAILURE")
 
 	# Update 4-Stage Battle Phases based on elapsed battle timer (5 minutes = 300s)
 	_update_battle_phase()
@@ -509,15 +540,21 @@ func _on_decision_choice_selected(_choice_index: int, target_node_id: String) ->
 			mack_current_action = "Holding ground. Hull damaged (-20 HP)."
 		"norns_accept":
 			is_substation_side_mission_active = true
+			side_mission_active = true
+			side_mission_name = "CUT SUBSTATION 09 POWER GRID"
+			side_mission_time_left = 60.0 # 60 Seconds timer
 			if is_instance_valid(neural_comms) and neural_comms.has_method("send_message"):
-				neural_comms.send_message("EMERGENCY OBJECTIVE: Drive to Substation 09 and interact with power grid to save Mack!", "TACTICAL ALERT")
+				neural_comms.send_message("EMERGENCY OBJECTIVE: Drive to Substation 09 in 60s to save Mack!", "TACTICAL ALERT")
 		"norns_ignore":
 			mack_current_hp = max(10.0, mack_current_hp - 25.0)
 			mack_current_action = "Ocular phantoms active. Heavy damage (-25 HP)."
 		"bankes_server_accept":
 			is_bankes_server_mission_active = true
+			side_mission_active = true
+			side_mission_name = "SEVER BANKES LOGISTICS SHIELD UPLINK"
+			side_mission_time_left = 60.0 # 60 Seconds timer
 			if is_instance_valid(neural_comms) and neural_comms.has_method("send_message"):
-				neural_comms.send_message("EMERGENCY OBJECTIVE: Enter Bankes Logistics HQ and shut down the server vault!", "TACTICAL ALERT")
+				neural_comms.send_message("EMERGENCY OBJECTIVE: Enter Bankes HQ in 60s & shut down server vault!", "TACTICAL ALERT")
 		"bankes_server_ignore":
 			mack_current_hp = max(10.0, mack_current_hp - 30.0)
 			mack_current_action = "Shielding link active. Heavy damage (-30 HP)."
@@ -646,8 +683,8 @@ func _build_telemetry_hud() -> void:
 	# --- 2. Right-Hand Side Advanced Telemetry Terminal ---
 	var side_margin = MarginContainer.new()
 	side_margin.set_anchors_preset(Control.PRESET_RIGHT_WIDE)
-	side_margin.offset_top = 70
-	side_margin.offset_bottom = -70
+	side_margin.offset_top = 135 # Shifted down so it never covers Overmap PiP camera feed!
+	side_margin.offset_bottom = -20
 	side_margin.offset_left = -360
 	side_margin.offset_right = -10
 	telemetry_hud_layer.add_child(side_margin)
@@ -748,14 +785,20 @@ func _update_telemetry_hud() -> void:
 	if is_instance_valid(mack_hp_bar):
 		mack_hp_bar.max_value = mack_max_hp
 		mack_hp_bar.value = mack_current_hp
-	if is_instance_valid(mack_action_label):
-		mack_action_label.text = mack_current_action
-	
-	var secs_left: int = max(0, int(battle_duration - battle_timer))
-	var mins: int = secs_left / 60
-	var secs: int = secs_left % 60
-	if is_instance_valid(mack_timer_label):
-		mack_timer_label.text = "%02d:%02d" % [mins, secs]
+	if side_mission_active:
+		if is_instance_valid(mack_action_label):
+			mack_action_label.text = "⚠️ MISSION: " + active_side_mission_name
+		if is_instance_valid(mack_timer_label):
+			var m_secs: int = max(0, int(side_mission_time_left))
+			mack_timer_label.text = "⏱️ %02ds" % m_secs
+	else:
+		if is_instance_valid(mack_action_label):
+			mack_action_label.text = mack_current_action
+		var secs_left: int = max(0, int(battle_duration - battle_timer))
+		var mins: int = secs_left / 60
+		var secs: int = secs_left % 60
+		if is_instance_valid(mack_timer_label):
+			mack_timer_label.text = "%02d:%02d" % [mins, secs]
 
 	# Check Telemetry Upgrade level from GarageManager
 	var telemetry_lvl: int = 0

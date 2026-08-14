@@ -246,6 +246,14 @@ func _build_porter_pit_floor() -> void:
 	_build_interior_desk(root_pit, Vector3(0.0, 0.5, -4.0), Vector3(5.0, 1.0, 2.0), Color(1.0, 0.3, 0.0))
 	_spawn_npc_character(root_pit, Vector3(0.0, 0.0, -5.5), Color(1.0, 0.3, 0.0), "Porter", Vector3(0.0, 0.0, 0.0))
 
+	# --- 3D TELEMETRY MONITOR MATRIX (Back Wall - North Side) ---
+	# Screen 1 (Left): Battle Vitals & HP Meter Monitor
+	_build_interior_pillar(root_pit, Vector3(-9.0, 3.2, -11.5), Vector3(8.0, 3.0, 0.2), Color(0.0, 0.85, 1.0))
+	# Screen 2 (Center): Main Telemetry Video / Tactical Feed Monitor
+	_build_interior_pillar(root_pit, Vector3(0.0, 3.4, -11.5), Vector3(10.0, 3.4, 0.2), Color(1.0, 0.35, 0.0))
+	# Screen 3 (Right): Enemy Threat & Combat Math Monitor
+	_build_interior_pillar(root_pit, Vector3(9.0, 3.2, -11.5), Vector3(8.0, 3.0, 0.2), Color(1.0, 0.85, 0.0))
+
 	# Interactive Pit Garage Fleet Terminal Console (West Bay)
 	_build_interior_desk(root_pit, Vector3(-10.0, 0.6, 0.0), Vector3(3.0, 1.2, 4.0), Color(1.0, 0.5, 0.0))
 
@@ -1044,6 +1052,7 @@ func _unhandled_input(event: InputEvent) -> void:
 					if is_instance_valid(campaign_mgr):
 						if campaign_mgr.is_bankes_server_mission_active:
 							campaign_mgr.is_bankes_server_mission_active = false
+							campaign_mgr.side_mission_active = false
 							campaign_mgr.mack_current_hp = min(campaign_mgr.mack_max_hp, campaign_mgr.mack_current_hp + 45.0)
 							campaign_mgr.mack_current_action = "Bankes Shield Uplink severed! Gatling output restored (+45 HP)."
 							
@@ -1065,6 +1074,7 @@ func _unhandled_input(event: InputEvent) -> void:
 					if is_instance_valid(campaign_mgr):
 						if campaign_mgr.is_substation_side_mission_active:
 							campaign_mgr.is_substation_side_mission_active = false
+							campaign_mgr.side_mission_active = false
 							campaign_mgr.mack_current_hp = min(campaign_mgr.mack_max_hp, campaign_mgr.mack_current_hp + 40.0)
 							campaign_mgr.mack_current_action = "Substation 09 severed! Norns phantoms purged (+40 HP)."
 							
