@@ -635,15 +635,17 @@ func _update_telemetry_hud() -> void:
 			side_terminal_panel.visible = false
 		return
 		
-	telemetry_panel.visible = true
-	mack_hp_bar.max_value = mack_max_hp
-	mack_hp_bar.value = mack_current_hp
-	mack_action_label.text = mack_current_action
+	if is_instance_valid(mack_hp_bar):
+		mack_hp_bar.max_value = mack_max_hp
+		mack_hp_bar.value = mack_current_hp
+	if is_instance_valid(mack_action_label):
+		mack_action_label.text = mack_current_action
 	
 	var secs_left: int = max(0, int(battle_duration - battle_timer))
 	var mins: int = secs_left / 60
 	var secs: int = secs_left % 60
-	mack_timer_label.text = "%02d:%02d" % [mins, secs]
+	if is_instance_valid(mack_timer_label):
+		mack_timer_label.text = "%02d:%02d" % [mins, secs]
 
 	# Check Telemetry Upgrade level from GarageManager
 	var telemetry_lvl: int = 0
@@ -652,14 +654,16 @@ func _update_telemetry_hud() -> void:
 		telemetry_lvl = garage_mgr.fleet["BANQUO_CAR"]["upgrades"]["telemetry"].get("level", 0)
 
 	if telemetry_lvl >= 1:
-		side_terminal_panel.visible = true
+		if is_instance_valid(side_terminal_panel):
+			side_terminal_panel.visible = true
 		
 		# Live Vitals
 		var core_temp: float = 75.0 + ((1.0 - (mack_current_hp / mack_max_hp)) * 35.0)
 		var rpm: int = 4000 + randi() % 800
-		side_vitals_label.text = "CORE TEMP: %.1f°C | HULL: %.0f/%.0f\nENGINE RPM: %d | GATLING AMMO: %.0f%%" % [
-			core_temp, mack_current_hp, mack_max_hp, rpm, (mack_current_hp / mack_max_hp) * 100.0
-		]
+		if is_instance_valid(side_vitals_label):
+			side_vitals_label.text = "CORE TEMP: %.1f°C | HULL: %.0f/%.0f\nENGINE RPM: %d | GATLING AMMO: %.0f%%" % [
+				core_temp, mack_current_hp, mack_max_hp, rpm, (mack_current_hp / mack_max_hp) * 100.0
+			]
 
 		# Level 2: Dice rolls math feed generator
 		if telemetry_lvl >= 2:
@@ -955,8 +959,10 @@ func _update_ui_contents() -> void:
 		return
 
 	var act_info: Dictionary = act_details.get(current_act, {})
-	_act_title_label.text = act_info.get("title", "UNKNOWN ACT")
-	_act_desc_label.text = act_info.get("description", "")
+	if is_instance_valid(_act_title_label):
+		_act_title_label.text = act_info.get("title", "UNKNOWN ACT")
+	if is_instance_valid(_act_desc_label):
+		_act_desc_label.text = act_info.get("description", "")
 	
 	var target_name: String = act_info.get("target_convoy", "Enemy Squad")
 	var hp: float = act_info.get("enemy_hp", 200.0)
@@ -964,13 +970,17 @@ func _update_ui_contents() -> void:
 	
 	if is_battle_in_progress:
 		var mins_left: float = (battle_duration - battle_timer) / 60.0
-		_convoy_info_label.text = "TARGET: %s\nCONVOY HULL: %.0f HP\nSTATUS: ENGAGEMENT IN PROGRESS (%.1f MINS REMAINING)" % [target_name, hp, mins_left]
-		_launch_btn.text = " ⏳ BATTLE IN PROGRESS (%.1f MINS) " % mins_left
-		_launch_btn.disabled = true
+		if is_instance_valid(_convoy_info_label):
+			_convoy_info_label.text = "TARGET: %s\nCONVOY HULL: %.0f HP\nSTATUS: ENGAGEMENT IN PROGRESS (%.1f MINS REMAINING)" % [target_name, hp, mins_left]
+		if is_instance_valid(_launch_btn):
+			_launch_btn.text = " ⏳ BATTLE IN PROGRESS (%.1f MINS) " % mins_left
+			_launch_btn.disabled = true
 	else:
-		_convoy_info_label.text = "TARGET: %s\nCONVOY HULL: %.0f HP\nREWARD: %d CYBER-CREDITS" % [target_name, hp, reward]
-		_launch_btn.text = " 🚀 DEPLOY MACK'S WAR-RIG TO GRAND HIT "
-		_launch_btn.disabled = false
+		if is_instance_valid(_convoy_info_label):
+			_convoy_info_label.text = "TARGET: %s\nCONVOY HULL: %.0f HP\nREWARD: %d CYBER-CREDITS" % [target_name, hp, reward]
+		if is_instance_valid(_launch_btn):
+			_launch_btn.text = " 🚀 DEPLOY MACK'S WAR-RIG TO GRAND HIT "
+			_launch_btn.disabled = false
 
 	# Update 9-Sector Grid Colors & Faction Names
 	for i in range(9):
