@@ -616,6 +616,7 @@ func _broadcast_next_rumor() -> void:
 
 # Advanced Side Terminal UI Nodes
 var side_terminal_panel: PanelContainer = null
+var scanner_terminal_panel: PanelContainer = null
 var side_vitals_label: Label = null
 var side_math_text: RichTextLabel = null
 var side_cam_rect: TextureRect = null
@@ -691,6 +692,7 @@ func _build_telemetry_hud() -> void:
 
 	side_terminal_panel = PanelContainer.new()
 	side_terminal_panel.visible = false
+	scanner_terminal_panel = side_terminal_panel # Links scanner_terminal_panel for 'J' key toggle
 	var side_style = StyleBoxFlat.new()
 	side_style.bg_color = Color(0.01, 0.03, 0.06, 0.94)
 	side_style.border_width_left = 2
