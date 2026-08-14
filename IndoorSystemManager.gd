@@ -1079,14 +1079,18 @@ func _process(_delta: float) -> void:
 				prompt_text = "[E] EXIT TO CITY STREETS"
 		elif current_floor == HQFloor.MACK_HIDEOUT:
 			var mack_pos: Vector3 = mack_hideout_origin + Vector3(0.0, 0.0, -5.5)
+			var cot_pos: Vector3 = mack_hideout_origin + Vector3(6.0, 0.0, -4.0)
 			if pos.distance_to(mack_pos) <= 4.0:
 				prompt_text = "[E] TALK TO COMMANDER MACK"
+			elif pos.distance_to(cot_pos) <= 4.5:
+				prompt_text = "[E] SLEEP & ADVANCE TO NEXT DAY"
 			elif pos.distance_to(floor_exit_pos) <= 4.5:
 				prompt_text = "[E] EXIT TO CITY STREETS"
 		elif current_floor == HQFloor.PORTER_PIT:
 			var terminal_pos: Vector3 = porter_pit_origin + Vector3(-10.0, 0.0, 0.0)
 			var cyborg_terminal_pos: Vector3 = porter_pit_origin + Vector3(10.0, 0.0, 0.0)
 			var wartable_pos: Vector3 = porter_pit_origin + Vector3(0.0, 0.0, 4.0)
+			var pit_cot_pos: Vector3 = porter_pit_origin + Vector3(14.0, 0.0, -4.0) # East Annex Crew Cot
 			if pos.distance_to(pit_backroom_door_pos) <= 4.5:
 				if not is_pit_backroom_door_open:
 					prompt_text = "[E] OPEN SIDE ENTRANCE DOOR // PIT BACK-ROOM ANNEX"
@@ -1098,6 +1102,8 @@ func _process(_delta: float) -> void:
 				prompt_text = "[E] ACCESS MACK'S NEURAL CYBORG MODDING SUITE"
 			elif pos.distance_to(wartable_pos) <= 4.0:
 				prompt_text = "[E] ACCESS WAR-TABLE // DEPLOY MACK TO GRAND HIT"
+			elif pos.distance_to(pit_cot_pos) <= 4.5:
+				prompt_text = "[E] SLEEP & ADVANCE TO NEXT DAY"
 			elif pos.distance_to(floor_exit_pos) <= 4.5:
 				prompt_text = "[E] EXIT TO CITY STREETS"
 		elif current_floor == HQFloor.BANKES_LOGISTICS:
@@ -1235,6 +1241,11 @@ func _unhandled_input(event: InputEvent) -> void:
 				elif pos.distance_to(wartable_pos) <= 4.0:
 					if is_instance_valid(campaign_mgr):
 						campaign_mgr.open_deployment_ui()
+						get_viewport().set_input_as_handled()
+						return
+				elif pos.distance_to(porter_pit_origin + Vector3(14.0, 0.0, -4.0)) <= 4.5:
+					if is_instance_valid(campaign_mgr):
+						campaign_mgr.advance_to_next_day()
 						get_viewport().set_input_as_handled()
 						return
 			
