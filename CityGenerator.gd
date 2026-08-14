@@ -1257,6 +1257,85 @@ func _spawn_cyber_park(center: Vector3, b_size: Vector2, neon_colors: Array) -> 
 		var park_streetlight_node = scenery_props.create_parking_lot_streetlight(center, pos, b_size)
 		add_child(park_streetlight_node)
 
+	# --------------------------------------------------------------------------
+	# 4. CONCERT STAGE & PAR CANS SPOTLIGHTS RIG (WEST SIDE OF PARK)
+	# --------------------------------------------------------------------------
+	var stage_node = Node3D.new()
+	stage_node.name = "CyberParkConcertStage"
+	# Position along the West side of the park facing East towards audience
+	var stage_pos = center + Vector3(-b_size.x * 0.35, 0.0, 0.0)
+	stage_node.position = stage_pos
+	add_child(stage_node)
+
+	# Raised Platform Solid Slab (8m wide, 1.2m tall, 12m long)
+	var stage_body = StaticBody3D.new()
+	stage_body.name = "StagePlatformCollider"
+	var stage_col = CollisionShape3D.new()
+	var stage_box = BoxShape3D.new()
+	stage_box.size = Vector3(8.0, 1.2, 12.0)
+	stage_col.shape = stage_box
+	stage_col.position = Vector3(0.0, 0.6, 0.0)
+	stage_body.add_child(stage_col)
+
+	var stage_mesh = MeshInstance3D.new()
+	var s_mesh = BoxMesh.new()
+	s_mesh.size = Vector3(8.0, 1.2, 12.0)
+	stage_mesh.mesh = s_mesh
+	stage_mesh.position = Vector3(0.0, 0.6, 0.0)
+	var stage_mat = StandardMaterial3D.new()
+	stage_mat.albedo_color = Color(0.05, 0.06, 0.08) # Metallic stage floor
+	stage_mat.metallic = 0.8
+	stage_mat.roughness = 0.3
+	stage_mesh.material_override = stage_mat
+	stage_body.add_child(stage_mesh)
+
+	# Glowing Neon Front Stage Edge Trim
+	var edge_mesh = MeshInstance3D.new()
+	var e_box = BoxMesh.new()
+	e_box.size = Vector3(0.2, 0.15, 12.0)
+	edge_mesh.mesh = e_box
+	edge_mesh.position = Vector3(4.0, 1.25, 0.0)
+	var edge_mat = StandardMaterial3D.new()
+	edge_mat.albedo_color = Color(1.0, 0.0, 0.8) # Hot Magenta Edge
+	edge_mat.emission_enabled = true
+	edge_mat.emission = Color(1.0, 0.0, 0.8)
+	edge_mat.emission_energy_multiplier = 4.0
+	edge_mesh.material_override = edge_mat
+	stage_body.add_child(edge_mesh)
+
+	stage_node.add_child(stage_body)
+
+	# Check if PARK_CONCERT event is currently active today
+	var is_concert_today: bool = false
+	var campaign_mgr = get_parent().get_node_or_null("CampaignManager")
+	if is_instance_valid(campaign_mgr) and campaign_mgr.active_daily_event.get("id", "") == "PARK_CONCERT":
+		is_concert_today = true
+
+	# Par Can Lighting Truss Towers (North and South ends of stage)
+	for z_side in [-5.5, 5.5]:
+		var truss = MeshInstance3D.new()
+		var t_mesh = BoxMesh.new()
+		t_mesh.size = Vector3(0.3, 5.0, 0.3)
+		truss.mesh = t_mesh
+		truss.position = Vector3(3.5, 3.7, z_side)
+		var t_mat = StandardMaterial3D.new()
+		t_mat.albedo_color = Color(0.2, 0.22, 0.25)
+		t_mat.metallic = 0.9
+		truss.material_override = t_mat
+		stage_node.add_child(truss)
+
+		# Par Can Spotlight Fixture
+		var spot = SpotLight3D.new()
+		spot.name = "ParCanSpotlight"
+		spot.position = Vector3(3.5, 6.0, z_side)
+		spot.rotation_degrees = Vector3(-35.0, 45.0 if z_side < 0 else -45.0, 0.0)
+		spot.light_color = Color(1.0, 0.0, 0.8) if z_side < 0 else Color(0.0, 0.85, 1.0) # Magenta & Cyan
+		spot.light_energy = 8.0 if is_concert_today else 0.0 # ON during concert, OFF when no concert!
+		spot.spot_range = 25.0
+		spot.spot_angle = 35.0
+		spot.spot_attenuation = 0.8
+		stage_node.add_child(spot)
+
 # Spawns a dark asphalt Parking Lot with glowing painted parking bay lines
 func _spawn_parking_lot(center: Vector3, b_size: Vector2, neon_colors: Array) -> void:
 	# Track lot bounding box rectangle
