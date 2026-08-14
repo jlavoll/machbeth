@@ -386,6 +386,11 @@ func _build_garage_ui() -> void:
 	_btn_engine_upg = Button.new()
 	_build_upgrade_card(right_vbox, "⚡ ENGINE TUNING", "Boosts Top Speed, Acceleration, and Combat ATB Charge Rate", _lbl_engine_info, _btn_engine_upg, func(): _on_upgrade_click("engine"))
 
+	# Slot 2: Reinforced Armor
+	_lbl_armor_info = Label.new()
+	_btn_armor_upg = Button.new()
+	_build_upgrade_card(right_vbox, "🛡️ REINFORCED GRAPHENE ARMOR", "Increases Max Hull Integrity & Damage Absorption", _lbl_armor_info, _btn_armor_upg, func(): _on_upgrade_click("armor"))
+
 	# Slot 3: Ordnance Mounts
 	_lbl_ordnance_info = Label.new()
 	_btn_ordnance_upg = Button.new()
@@ -503,6 +508,9 @@ func _update_ui_contents() -> void:
 		_lbl_telemetry_info.get_parent().get_parent().visible = false
 
 func _update_slot_card(slot_name: String, upg_dict: Dictionary, info_label: Label, button: Button, credits: int, veh_key: String) -> void:
+	if not is_instance_valid(info_label) or not is_instance_valid(button):
+		return
+
 	var lvl: int = upg_dict["level"]
 	var max_lvl: int = upg_dict["max_level"]
 	info_label.text = "Level %d / %d" % [lvl, max_lvl]
