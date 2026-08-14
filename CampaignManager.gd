@@ -289,8 +289,8 @@ func _start_day_1() -> void:
 	rng.randomize()
 	active_daily_event = special_city_events[rng.randi() % special_city_events.size()]
 	
-	# Open Day 1 Start Comms Hub Debriefing modal!
-	_build_end_of_day_comms_hub()
+	# Trigger sequential top-left HUD comms calls for Day 1 start!
+	_trigger_sequential_daily_calls()
 
 func _connect_dialogue_signals() -> void:
 	var dialogue_sys = get_parent().get_node_or_null("DialogueSystem")
@@ -1237,11 +1237,31 @@ func advance_to_next_day() -> void:
 	
 	print("[CAMPAIGN MANAGER] Rested at Safehouse. Advanced to Day ", current_day, " | Today's Special Event: ", active_daily_event.get("title", ""))
 	day_advanced.emit(current_day)
-	
-	if is_instance_valid(neural_comms) and neural_comms.has_method("send_message"):
-		neural_comms.send_message("SPECIAL CITY EVENT TODAY: %s! Check your debriefing logs." % active_daily_event.get("title", ""), "CITY DISPATCH")
 
-	_build_end_of_day_comms_hub()
+	# Sequential Neural Comms Calls with spaced delays
+	call_deferred("_trigger_sequential_daily_calls")
+
+func _trigger_sequential_daily_calls() -> void:
+	var event_title: String = active_daily_event.get("title", "NORMAL CITY GRID PATROL")
+	var event_text: String = active_daily_event.get("text", "Lady M: 'Standard patrol routines across central grid today.'")
+
+	# Call 1: Lady M (Immediately)
+	if is_instance_valid(neural_comms) and neural_comms.has_method("send_message"):
+		neural_comms.send_message("Lady M: 'Good morning, Banquo. Day %d is starting across the city grid. Check intel: %s!'" % [current_day, event_text], "LADY M // MISSION CONTROL")
+
+	# Call 2: Mack (After 4.5 seconds)
+	var t2 = get_tree().create_timer(4.5)
+	t2.timeout.connect(func():
+		if is_instance_valid(neural_comms) and neural_comms.has_method("send_message"):
+			neural_comms.send_message("Mack: 'My neural stack is primed for Day %d! Banquo, drive us to The Pit or launch the convoy hit when you're ready!'" % current_day, "MACK // WAR-RIG EXECUTOR")
+	)
+
+	# Call 3: The 3 Norns Prophecy (After 9.0 seconds)
+	var t3 = get_tree().create_timer(9.0)
+	t3.timeout.connect(func():
+		if is_instance_valid(neural_comms) and neural_comms.has_method("send_message"):
+			neural_comms.send_message("The 3 Norns: 'Beware the Thane of Fife! Macduff's security forces shadow our movement today... Event: %s!'" % event_title, "THE 3 NORNS // PROPHECY")
+	)
 
 # ------------------------------------------------------------------------------
 # SAFEHOUSE END-OF-DAY CINEMATIC COMMS HUB MODAL
