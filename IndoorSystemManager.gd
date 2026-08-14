@@ -786,7 +786,7 @@ func exit_building_interior() -> void:
 		if current_floor == HQFloor.LOBBY or current_floor == HQFloor.PENTHOUSE:
 			target_exit = city_gen.hq_door_pos if is_instance_valid(city_gen) and city_gen.hq_door_pos != Vector3.ZERO else saved_player_position
 		elif current_floor == HQFloor.MACK_HIDEOUT:
-			target_exit = city_gen.mack_hideout_door_pos if is_instance_valid(city_gen) and city_gen.mack_hideout_door_pos != Vector3.ZERO else saved_player_position
+			target_exit = city_gen.banquo_safehouse_door_pos if is_instance_valid(city_gen) and city_gen.banquo_safehouse_door_pos != Vector3.ZERO else saved_player_position
 		elif current_floor == HQFloor.LADY_M_LAIR:
 			target_exit = city_gen.lady_m_lair_door_pos if is_instance_valid(city_gen) and city_gen.lady_m_lair_door_pos != Vector3.ZERO else saved_player_position
 		elif current_floor == HQFloor.CHOP_SHOP:

@@ -1033,7 +1033,7 @@ func _attach_door_to_building(static_body: StaticBody3D, pos: Vector3, b_size: V
 		hq_door_pos = door_world_pos
 		hq_door_node = door_container
 	elif b_type == "HIDEOUT":
-		mack_hideout_door_pos = door_world_pos
+		banquo_safehouse_door_pos = door_world_pos
 	elif b_type == "LADY_M":
 		lady_m_lair_door_pos = door_world_pos
 	elif b_type == "CHOP_SHOP":

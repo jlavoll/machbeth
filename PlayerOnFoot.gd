@@ -353,7 +353,7 @@ func _unhandled_input(event: InputEvent) -> void:
 					indoor_mgr.enter_location(indoor_mgr.HQFloor.LOBBY)
 					get_viewport().set_input_as_handled()
 					return
-				elif city_gen.mack_hideout_door_pos != Vector3.ZERO and global_position.distance_to(city_gen.mack_hideout_door_pos) <= 7.0:
+				elif city_gen.banquo_safehouse_door_pos != Vector3.ZERO and global_position.distance_to(city_gen.banquo_safehouse_door_pos) <= 7.0:
 					indoor_mgr.enter_location(indoor_mgr.HQFloor.MACK_HIDEOUT)
 					get_viewport().set_input_as_handled()
 					return
