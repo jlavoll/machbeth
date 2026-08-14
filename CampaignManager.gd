@@ -120,6 +120,7 @@ var mack_next_action: String = "Flanking central highway chokepoint..."
 # Event Flags
 var decision_1_triggered: bool = false
 var decision_2_triggered: bool = false
+var decision_3_triggered: bool = false
 var is_substation_side_mission_active: bool = false
 
 # Live Telemetry HUD Bar Nodes
@@ -505,6 +506,7 @@ func launch_grand_deployment() -> void:
 	rumor_index = 0
 	decision_1_triggered = false
 	decision_2_triggered = false
+	decision_3_triggered = false
 	is_substation_side_mission_active = false
 	
 	# Fetch Mack stats from GarageManager if available
