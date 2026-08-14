@@ -363,3 +363,13 @@ When combined with your dynamic light stages (L key) and street floodlights (Cit
   * **Lady M's Ambush Recovery**: Later in the campaign, corporate strike forces ambush Lady M's penthouse.
   * **Secret Medical Bay**: Banquo and Mack extract Lady M and smuggle her into The Pit's subterranean panic room.
   * **Interactive Visits**: Player can visit Lady M's recovery pod inside the secret room for off-the-grid mission briefings and covert plot developments!
+
+### 4. Act II Story Mission: "Spectral Disguise & The Fife Infiltration"
+* **Story Arc**:
+  * **Corporate APB & Cordon Lockout**: Fife Security Patrol places an active high-alert APB on Banquo's standard telemetry signature and head glow color after a high-stakes highway intercept. Central checkpoints are blocked by scanners looking specifically for Banquo's default cyan/electric signature.
+  * **The Wardrobe Disguise Objective**: Lady M contacts Banquo: *"Banquo, Fife Security scanner turrets have your neural frequency locked! Return to your Private Loft immediately. Step into your Wardrobe Cupboard and cycle your head glow color outfit disguise to fool their optical scanners!"*
+  * **Gameplay Execution**:
+    1. Drive to Banquo's Private Loft in the South-East Corner (`250,250`).
+    2. Enter the apartment and approach the **Interactive Wardrobe Cupboard**.
+    3. Press `E` to cycle head color outfit to a new stealth palette (*e.g., Deep Crimson or Emerald Green*).
+    4. The security checkpoint scanner unlocks, allowing Banquo to slip past Fife Security patrols unnoticed to execute the stealth infiltration!
