@@ -76,6 +76,10 @@ func _find_grid_material_reference() -> void:
 # ==============================================================================
 
 func _process(delta: float) -> void:
+	# Automatically re-acquire grid_material_ref if city was regenerated (e.g. key '0' seed change)
+	if not is_instance_valid(grid_material_ref):
+		_find_grid_material_reference()
+
 	var active_bpm: float = default_bpm_tempo
 	
 	# Fetch live BPM from MusicPlaylistManager if available
