@@ -1281,11 +1281,19 @@ func _build_end_of_day_comms_hub() -> void:
 		event_title, event_text, event_location, event_effect, current_day
 	]
 
+	Input.mouse_mode = Input.MOUSE_MODE_VISIBLE
+
 	var wake_btn = Button.new()
 	wake_btn.text = " 🌅 WAKE UP & BEGIN DAY %d " % current_day
 	wake_btn.custom_minimum_size = Vector2(0, 44)
-	wake_btn.pressed.connect(func(): comms_layer.queue_free())
+	wake_btn.pressed.connect(func():
+		comms_layer.queue_free()
+		var indoor_mgr = get_parent().get_node_or_null("IndoorSystemManager")
+		if not is_instance_valid(indoor_mgr) or not indoor_mgr.is_inside_building:
+			Input.mouse_mode = Input.MOUSE_MODE_CAPTURED
+	)
 	vbox.add_child(wake_btn)
+	wake_btn.grab_focus()
 
 func _advance_campaign_act() -> void:
 	match current_act:
@@ -1437,11 +1445,20 @@ func _build_after_action_modal(credits_earned: int, scrap_earned: int, quality_s
 			clues_str
 		]
 
+	# Release mouse capture so player can click modal button with mouse or controller/keys!
+	Input.mouse_mode = Input.MOUSE_MODE_VISIBLE
+
 	var close_btn = Button.new()
 	close_btn.text = " 💾 CLOSE SUMMARY SHEET & RETURN TO GARAGE "
 	close_btn.custom_minimum_size = Vector2(0, 42)
-	close_btn.pressed.connect(func(): summary_layer.queue_free())
+	close_btn.pressed.connect(func():
+		summary_layer.queue_free()
+		var indoor_mgr = get_parent().get_node_or_null("IndoorSystemManager")
+		if not is_instance_valid(indoor_mgr) or not indoor_mgr.is_inside_building:
+			Input.mouse_mode = Input.MOUSE_MODE_CAPTURED
+	)
 	vbox.add_child(close_btn)
+	close_btn.grab_focus()
 
 # ==============================================================================
 # PROCEDURAL DEPLOYMENT UI BUILDER
