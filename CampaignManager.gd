@@ -643,6 +643,14 @@ func _build_telemetry_hud() -> void:
 	telemetry_hud_layer.layer = 15 # Below Dialogue (20), above Overmap
 	add_child(telemetry_hud_layer)
 
+	# --- 0. CRT SCANLINE & CYBERWARE HUD VIGNETTE OVERLAY ---
+	var crt_overlay = ColorRect.new()
+	crt_overlay.name = "CRTScanlineOverlay"
+	crt_overlay.set_anchors_preset(Control.PRESET_FULL_RECT)
+	crt_overlay.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	crt_overlay.color = Color(0.0, 0.05, 0.08, 0.06)
+	telemetry_hud_layer.add_child(crt_overlay)
+
 	# --- 1. Top Screen Compact Telemetry Bar ---
 	var top_margin = MarginContainer.new()
 	top_margin.set_anchors_preset(Control.PRESET_TOP_WIDE)

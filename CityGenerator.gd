@@ -837,6 +837,23 @@ func _spawn_building(pos: Vector3, b_size: Vector3, neon_colors: Array, b_type: 
 	border_mesh.surface_end()
 
 	# --------------------------------------------------------------------------
+	# HOLOGRAPHIC FORCEFIELD SHIELD MESH (SPECIAL CORPORATE TOWERS)
+	# --------------------------------------------------------------------------
+	if b_type in ["HQ", "NORNS_AI", "FIFE_HQ", "BANKES_LOGISTICS"]:
+		var shield_inst = MeshInstance3D.new()
+		var shield_box = BoxMesh.new()
+		shield_box.size = b_size + Vector3(1.2, 1.2, 1.2)
+		shield_inst.mesh = shield_box
+		var shield_mat = StandardMaterial3D.new()
+		shield_mat.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
+		shield_mat.albedo_color = Color(accent_color.r, accent_color.g, accent_color.b, 0.12)
+		shield_mat.emission_enabled = true
+		shield_mat.emission = accent_color
+		shield_mat.emission_energy_multiplier = 2.0
+		shield_inst.material_override = shield_mat
+		static_body.add_child(shield_inst)
+
+	# --------------------------------------------------------------------------
 	# PLAYABLE BUILDING ENTRANCE DOOR & AREA3D TRIGGER
 	# --------------------------------------------------------------------------
 	if b_type != "NORMAL":

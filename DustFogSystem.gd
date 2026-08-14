@@ -54,6 +54,16 @@ func _setup_volumetric_neon_fog() -> void:
 		env.glow_bloom = 0.35
 		env.glow_blend_mode = Environment.GLOW_BLEND_MODE_ADDITIVE
 
+		# --- ACES FILMIC COLOR GRADING & TONEMAPPING ---
+		env.tonemap_mode = Environment.TONE_MAP_ACES
+		env.tonemap_exposure = 1.15
+		env.tonemap_white = 6.0
+		
+		env.adjustment_enabled = true
+		env.adjustment_contrast = 1.18      # Punchy high-contrast shadows
+		env.adjustment_saturation = 1.25    # Vibrant cyberpunk neon saturation
+		env.adjustment_brightness = 0.96
+
 # ------------------------------------------------------------------------------
 # 2. FLOATING DUST PARTICLES (DYNAMIC LIGHT REFLECTION & BUILDING COLLISIONS)
 # ------------------------------------------------------------------------------
