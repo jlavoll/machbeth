@@ -784,32 +784,52 @@ func _update_telemetry_hud() -> void:
 				]
 			side_enemy_scanner_label.text = scan_text
 
-		# Level 2: Dice rolls math feed generator
+		# Level 2: Detailed Dual-Roll Combat Math Feed (Mack Attacks vs Enemy Offense & Graphene Absorption)
 		if telemetry_lvl >= 2:
 			side_math_text.visible = true
 			math_tick += 0.016
-			if math_tick >= 3.0:
+			if math_tick >= 2.2: # Faster pulse (every 2.2s) alternating Mack attacks and Enemy rolls
 				math_tick = 0.0
+				var is_player_turn: bool = (randi() % 2 == 0)
+
 				var ord_lvl: int = 1
+				var armor_lvl: int = 1
 				if is_instance_valid(garage_mgr) and garage_mgr.fleet.has("MACK_RIG"):
 					ord_lvl = garage_mgr.fleet["MACK_RIG"]["upgrades"]["ordnance"].get("level", 1)
+					armor_lvl = garage_mgr.fleet["MACK_RIG"]["upgrades"]["armor"].get("level", 1)
 				
 				var ocular_tier: int = 1
 				var cyborg_mgr = get_parent().get_node_or_null("CyborgModdingManager")
 				if is_instance_valid(cyborg_mgr) and cyborg_mgr.cyberware_slots.has("ocular_scope"):
 					ocular_tier = cyborg_mgr.cyberware_slots["ocular_scope"].get("tier", 1)
-					
-				var atk_bonus: int = (ord_lvl - 1) * 4 + (ocular_tier - 1) * 3
-				var crit_threshold: int = 15 - (ocular_tier - 1) * 2 # Ocular scope increases crit range (15 -> 13 -> 11)
-				var roll_d20: int = (randi() % 20) + 1
-				var total_val: int = roll_d20 + 8 + atk_bonus
-				var damage_dealt: int = int(18 + atk_bonus * 2.5)
-				
-				if roll_d20 >= crit_threshold:
-					damage_dealt = int(damage_dealt * 1.8)
-					_log_combat_math("[color=#FF9900][DICE 🎲 %d+%d=%d] CRITICAL Gatling Hit! -> %d DMG[/color]" % [roll_d20, 8 + atk_bonus, total_val, damage_dealt])
+
+				if is_player_turn:
+					# --- MACK ATTACK ROLL ---
+					var atk_bonus: int = (ord_lvl - 1) * 6 + (ocular_tier - 1) * 4
+					var crit_threshold: int = 15 - (ocular_tier - 1) * 2 # Crit range expands with ocular scope
+					var roll_d20: int = (randi() % 20) + 1
+					var total_val: int = roll_d20 + 8 + atk_bonus
+					var damage_dealt: int = int((18 + atk_bonus * 2.8) + (randi() % 6))
+
+					if roll_d20 >= crit_threshold:
+						damage_dealt = int(damage_dealt * 1.85)
+						_log_combat_math("[color=#FFCC00][MACK ATK ⚔️] d20(%d)+%d=%d [CRIT!] -> %d DMG[/color] (Ordnance L%d)" % [roll_d20, 8 + atk_bonus, total_val, damage_dealt, ord_lvl])
+					else:
+						_log_combat_math("[color=#00E5FF][MACK ATK ⚔️] d20(%d)+%d=%d Hit -> %d DMG[/color] (Ordnance L%d)" % [roll_d20, 8 + atk_bonus, total_val, damage_dealt, ord_lvl])
 				else:
-					_log_combat_math("[color=#88CCFF][DICE 🎲 %d+%d=%d] Standard Round -> %d DMG[/color]" % [roll_d20, 8 + atk_bonus, total_val, damage_dealt])
+					# --- ENEMY ATTACK ROLL & ARMOR ABSORPTION ---
+					var active_unit_name: String = "Corporate Target"
+					if not active_enemy_units.is_empty():
+						active_unit_name = active_enemy_units.pick_random().get("name", "Enemy Unit")
+
+					var enemy_roll: int = (randi() % 20) + 1
+					var enemy_raw_dmg: int = 24 + (randi() % 10)
+					var armor_absorbed: int = int(enemy_raw_dmg * ((armor_lvl - 1) * 0.15 + 0.10))
+					var net_dmg: int = max(4, enemy_raw_dmg - armor_absorbed)
+
+					_log_combat_math("[color=#FF5555][ENEMY ATK 💥] %s d20(%d) -> %d DMG [/color][color=#00FF88](Armor L%d Absorbed -%d HP! Net: %d)[/color]" % [
+						active_unit_name, enemy_roll, enemy_raw_dmg, armor_lvl, armor_absorbed, net_dmg
+					])
 		else:
 			side_math_text.visible = false
 
