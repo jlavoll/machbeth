@@ -702,9 +702,12 @@ func _create_block_cluster(center: Vector3, size: Vector2, neon_colors: Array) -
 			# West-Center Sector (Mid-Left): Bankes Logistics Hub
 			elif bankes_logistics_door_pos == Vector3.ZERO and bx < -50.0 and abs(bz) <= 50.0:
 				b_type = "BANKES_LOGISTICS"
-			# Central Core (Mid-Center): Mack's Hideout
-			elif mack_hideout_door_pos == Vector3.ZERO and abs(bx) <= 50.0 and abs(bz) <= 50.0:
+			# South-East Quadrant (Bottom-Right): Mack's Safehouse / Home
+			elif mack_hideout_door_pos == Vector3.ZERO and bx > 50.0 and bz > 50.0:
 				b_type = "HIDEOUT"
+			# Central Core (Mid-Center): Chop Shop Garage
+			elif chop_shop_door_pos == Vector3.ZERO and abs(bx) <= 50.0 and abs(bz) <= 50.0:
+				b_type = "CHOP_SHOP"
 			# East-Center Sector (Mid-Right): Clan Fife HQ
 			elif fife_hq_door_pos == Vector3.ZERO and bx > 50.0 and abs(bz) <= 50.0:
 				b_type = "FIFE_HQ"
@@ -714,9 +717,6 @@ func _create_block_cluster(center: Vector3, size: Vector2, neon_colors: Array) -
 			# South-Center Sector (Bottom-Center): Power Substation
 			elif power_substation_door_pos == Vector3.ZERO and abs(bx) <= 50.0 and bz > 50.0:
 				b_type = "SUBSTATION"
-			# South-East Quadrant (Bottom-Right): Chop Shop
-			elif chop_shop_door_pos == Vector3.ZERO and bx > 50.0 and bz > 50.0:
-				b_type = "CHOP_SHOP"
 
 			_spawn_building(Vector3(bx, b_height / 2.0 + 0.1, bz), Vector3(b_width, b_height, b_depth), neon_colors, b_type)
 
