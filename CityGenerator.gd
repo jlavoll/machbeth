@@ -1305,11 +1305,14 @@ func _spawn_cyber_park(center: Vector3, b_size: Vector2, neon_colors: Array) -> 
 
 	stage_node.add_child(stage_body)
 
-	# Check if PARK_CONCERT event is currently active today
-	var is_concert_today: bool = false
+	# Check if PARK_CONCERT or SHAKESPEARE_PARK event is currently active today
+	var active_event_id: String = ""
 	var campaign_mgr = get_parent().get_node_or_null("CampaignManager")
-	if is_instance_valid(campaign_mgr) and campaign_mgr.active_daily_event.get("id", "") == "PARK_CONCERT":
-		is_concert_today = true
+	if is_instance_valid(campaign_mgr):
+		active_event_id = campaign_mgr.active_daily_event.get("id", "")
+
+	var is_stage_event_today: bool = (active_event_id == "PARK_CONCERT" or active_event_id == "SHAKESPEARE_PARK")
+	var is_shakespeare_today: bool = (active_event_id == "SHAKESPEARE_PARK")
 
 	# Par Can Lighting Truss Towers (North and South ends of stage)
 	for z_side in [-5.5, 5.5]:
@@ -1329,8 +1332,14 @@ func _spawn_cyber_park(center: Vector3, b_size: Vector2, neon_colors: Array) -> 
 		spot.name = "ParCanSpotlight"
 		spot.position = Vector3(3.5, 6.0, z_side)
 		spot.rotation_degrees = Vector3(-35.0, 45.0 if z_side < 0 else -45.0, 0.0)
-		spot.light_color = Color(1.0, 0.0, 0.8) if z_side < 0 else Color(0.0, 0.85, 1.0) # Magenta & Cyan
-		spot.light_energy = 8.0 if is_concert_today else 0.0 # ON during concert, OFF when no concert!
+		
+		# Gold/Amber spotlights for Shakespeare, Magenta/Cyan for Concert!
+		if is_shakespeare_today:
+			spot.light_color = Color(1.0, 0.75, 0.2) # Golden Dramatic Theater Spotlight
+		else:
+			spot.light_color = Color(1.0, 0.0, 0.8) if z_side < 0 else Color(0.0, 0.85, 1.0) # Magenta & Cyan Synth
+
+		spot.light_energy = 9.0 if is_stage_event_today else 0.0 # ON during events, OFF when no event!
 		spot.spot_range = 25.0
 		spot.spot_angle = 35.0
 		spot.spot_attenuation = 0.8

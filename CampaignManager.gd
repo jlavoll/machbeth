@@ -53,6 +53,14 @@ var special_city_events: Array[Dictionary] = [
 		"text": "The 3 Norns: 'A strange ghost frequency echoes through Sector 4... The Weird Sisters have placed an ethereal blessing on Mack's War-Rig today. Engine thermal buildup is halved!'",
 		"location": "Sector 4 Data Network",
 		"effect": "Mack War-Rig Thermal Engine Heating Halved!"
+	},
+	{
+		"id": "SHAKESPEARE_PARK",
+		"title": "🎭 SHAKESPEARE IN THE PARK: HOLOGRAPHIC MACBETH RE-ENACTMENT",
+		"host": "LADY M // MISSION CONTROL",
+		"text": "Lady M: 'The Cyber-Arts Guild is performing an ethereal holographic re-enactment of Shakespeare's Macbeth on the Cyber Park stage today! 'Is this a dagger which I see before me?' Par Cans spotlights are lit up amber-gold!'",
+		"location": "Cyber Park Stage",
+		"effect": "+25% Neural Glitch & Paranoia Cooldown Rate today!"
 	}
 ]
 
