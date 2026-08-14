@@ -18,7 +18,7 @@ signal quest_completed(quest_id: String, reward_credits: int)
 # Active Quest State
 var active_quest_id: String = ""
 var active_quest_data: Dictionary = {}
-var player_credits: int = 0
+var player_credits: int = 15000 # High starting credits for testing
 
 # Registry of all data-driven quests in the game
 var quest_registry: Dictionary = {

@@ -723,11 +723,19 @@ func _conclude_autonomous_battle(success: bool) -> void:
 		return
 
 	var current_data: Dictionary = act_details.get(current_act, {})
-	var reward_c: int = current_data.get("reward_credits", 2500)
+	var base_reward_c: int = current_data.get("reward_credits", 2500)
+	
+	# Inverse Salvage Mechanics:
+	# Overpowering Mack (HP near 100%) vaporizes target convoy -> 0.8x base loot.
+	# Narrow desperate win (HP near 10-25%) leaves intact corporate components -> 2.2x base loot + 350 Scrap!
+	var hp_ratio: float = clamp(mack_current_hp / mack_max_hp, 0.05, 1.0)
+	var salvage_mult: float = lerp(2.2, 0.8, hp_ratio)
+	var final_payout: int = int(base_reward_c * salvage_mult)
+	var bonus_scrap: int = int(lerp(350, 40, hp_ratio))
 	
 	# Award credits to Banquo
 	if is_instance_valid(quest_manager):
-		quest_manager.player_credits += reward_c
+		quest_manager.player_credits += final_payout
 
 	# Inject +20% Glitch/Paranoia into Mack's stack
 	var glitch_sys = get_parent().get_node_or_null("NeuralGlitchSystem")
@@ -735,7 +743,7 @@ func _conclude_autonomous_battle(success: bool) -> void:
 		glitch_sys.inject_neural_instability(20.0)
 
 	_advance_campaign_act()
-	_show_after_action_summary(reward_c)
+	_show_after_action_summary(final_payout, bonus_scrap, hp_ratio)
 
 func _advance_campaign_act() -> void:
 	match current_act:
@@ -757,9 +765,15 @@ func _advance_campaign_act() -> void:
 	var title: String = act_info.get("title", "NEW ACT")
 	act_advanced.emit(int(current_act), title)
 
-func _show_after_action_summary(reward_credits: int) -> void:
+func _show_after_action_summary(reward_credits: int, bonus_scrap: int = 100, hp_ratio: float = 0.5) -> void:
+	var quality_desc: String = "OVERKILL VAPORIZATION (Minimal Salvage)"
+	if hp_ratio <= 0.35:
+		quality_desc = "DESPERATE NARROW VICTORY! (PRISTINE SALVAGE RETRIEVED! 🌟)"
+	elif hp_ratio <= 0.70:
+		quality_desc = "HARD-FOUGHT VICTORY (High-Grade Salvage)"
+
 	if is_instance_valid(neural_comms) and neural_comms.has_method("send_message"):
-		neural_comms.send_message("VICTORY! Mack's War-Rig crushed the corporate convoy! +%d Credits transferred to vault." % reward_credits, "TACTICAL REPORT")
+		neural_comms.send_message("VICTORY! Mack's War-Rig completed engagement. [%s] +%d Credits & +%d Scrap salvaged!" % [quality_desc, reward_credits, bonus_scrap], "AFTER-ACTION SALVAGE REPORT")
 
 # ==============================================================================
 # PROCEDURAL DEPLOYMENT UI BUILDER
