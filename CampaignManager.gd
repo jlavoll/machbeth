@@ -268,8 +268,9 @@ func _process(delta: float) -> void:
 		decision_3_triggered = true
 		_trigger_random_decision_event()
 
-	# Complete battle after 300 seconds (5 Minutes) and pop up Summary Sheet
-	if battle_timer >= battle_duration:
+	# Complete battle when Gunship Boss is destroyed OR after max 300 seconds (5 Minutes)
+	var boss_destroyed: bool = (current_battle_phase == BattlePhase.PHASE_4_GUNSHIP_BOSS and active_enemy_units.is_empty())
+	if boss_destroyed or battle_timer >= battle_duration:
 		is_battle_in_progress = false
 		_conclude_autonomous_battle(true)
 
