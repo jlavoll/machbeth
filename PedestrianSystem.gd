@@ -25,6 +25,8 @@ var active_gang_members: Array[Node3D] = []
 var active_narrow_street_residents: Array[Node3D] = []
 var active_delivery_recipients: Array[Node3D] = []
 
+var active_concert_crowd: Array[Node3D] = []
+
 # New Archetype Tracking Arrays
 var active_street_vendors: Array[Node3D] = []
 var active_fixers: Array[Node3D] = []
@@ -84,6 +86,7 @@ func _ready() -> void:
 	call_deferred("_spawn_parking_lot_gangs")
 	call_deferred("_spawn_narrow_street_residents")
 	call_deferred("_spawn_new_archetypes")
+	call_deferred("_spawn_concert_crowd")
 
 	# Wire quest event listener to DialogueSystem
 	call_deferred("_connect_dialogue_signals")
@@ -667,6 +670,7 @@ func _process(delta: float) -> void:
 				ped.set_meta("anim_phase", phase)
 				ped.position.y = abs(sin(phase)) * 0.1
 
+	_update_concert_crowd(delta)
 	_manage_food_truck_queues(delta)
 
 # Manages 3-10 customer line queues outside active city food trucks
@@ -955,6 +959,95 @@ func _spawn_line_dance_group(center: Vector3, count: int) -> void:
 		var color: Color = dancer_colors[i % dancer_colors.size()]
 		var dancer = _create_single_dancer(pos, color, "LINE", center, i, count)
 		dancer.rotation_degrees = Vector3(0, 0, 0) # Facing forward together
+
+func _spawn_concert_crowd() -> void:
+	var campaign_mgr = get_parent().get_node_or_null("CampaignManager")
+	var active_event_id: String = ""
+	if is_instance_valid(campaign_mgr) and campaign_mgr.get("active_daily_event") != null:
+		active_event_id = campaign_mgr.active_daily_event.get("id", "")
+
+	# ONLY spawn concert crowd when PARK_CONCERT is active today!
+	if active_event_id != "PARK_CONCERT":
+		return
+
+	var city_gen = get_parent().get_node_or_null("CityGenerator")
+	var stage_pos: Vector3 = Vector3(-80.0, 0.0, 0.0) # Default
+	if is_instance_valid(city_gen) and city_gen.get("active_park_boxes") != null and city_gen.active_park_boxes.size() > 0:
+		var park_rect: Rect2 = city_gen.active_park_boxes[0]
+		var park_center = Vector3(park_rect.position.x + park_rect.size.x / 2.0, 0.0, park_rect.position.y + park_rect.size.y / 2.0)
+		stage_pos = park_center + Vector3(-park_rect.size.x * 0.35, 0.0, 0.0)
+
+	# Crowd Audience Zone: In front of the concert stage facing West towards the performers!
+	# Stage platform is at stage_pos + Vector3(4.0, 0, 0)
+	var crowd_count: int = rng.randi_range(28, 42) # Dense hyped concert crowd!
+	var crowd_colors: Array[Color] = [
+		Color(1.0, 0.0, 0.8),  # Cyber Pink
+		Color(0.0, 0.85, 1.0), # Neon Cyan
+		Color(1.0, 0.85, 0.0), # Electric Gold
+		Color(0.7, 0.1, 1.0),  # Synth Purple
+		Color(0.1, 1.0, 0.4)   # Laser Green
+	]
+
+	for i in range(crowd_count):
+		# Spread crowd across audience plaza (8m to 25m in front of stage edge)
+		var cx: float = stage_pos.x + 6.0 + rng.randf_range(2.0, 22.0)
+		var cz: float = stage_pos.z + rng.randf_range(-12.0, 12.0)
+		var pos: Vector3 = Vector3(cx, 0.0, cz)
+
+		var crowd_guy = CharacterBody3D.new()
+		crowd_guy.name = "ConcertCrowdFan_%d" % i
+
+		var g_color: Color = crowd_colors[i % crowd_colors.size()]
+		var body_inst = MeshInstance3D.new()
+		body_inst.mesh = body_mesh_template
+		body_inst.position = Vector3(0.0, 0.6, 0.0)
+		var b_mat = StandardMaterial3D.new()
+		b_mat.albedo_color = Color(0.06, 0.06, 0.09)
+		body_inst.material_override = b_mat
+		crowd_guy.add_child(body_inst)
+
+		var head_inst = MeshInstance3D.new()
+		head_inst.mesh = head_mesh_template
+		head_inst.position = Vector3(0.0, 1.35, 0.0)
+		var h_mat = StandardMaterial3D.new()
+		h_mat.albedo_color = g_color
+		h_mat.emission_enabled = true
+		h_mat.emission = g_color
+		h_mat.emission_energy_multiplier = 3.5
+		head_inst.material_override = h_mat
+		crowd_guy.add_child(head_inst)
+
+		# Neon Cyber-Shades / Glow Visor for Concert Goers!
+		var visor = MeshInstance3D.new()
+		var v_box = BoxMesh.new()
+		v_box.size = Vector3(0.26, 0.08, 0.16)
+		visor.mesh = v_box
+		visor.position = Vector3(-0.12, 1.37, 0.0) # Facing West (-X)
+		visor.material_override = h_mat
+		crowd_guy.add_child(visor)
+
+		crowd_guy.position = pos
+		crowd_guy.look_at(stage_pos + Vector3(0.0, 1.2, 0.0), Vector3.UP) # Facing stage band!
+		crowd_guy.set_meta("base_pos", pos)
+		crowd_guy.set_meta("fan_idx", i)
+
+		add_child(crowd_guy)
+		active_concert_crowd.append(crowd_guy)
+
+	print("[PEDESTRIANS] Spawned %d Concert Crowd Fans in Cyber Park Plaza!" % active_concert_crowd.size())
+
+func _update_concert_crowd(delta: float) -> void:
+	var time: float = Time.get_ticks_msec() / 1000.0
+	for fan in active_concert_crowd:
+		if not is_instance_valid(fan):
+			continue
+		var base_p: Vector3 = fan.get_meta("base_pos", fan.position)
+		var idx: int = fan.get_meta("fan_idx", 0)
+
+		# Hyped concert jumping, arm waving, and headbanging!
+		var jump_y: float = abs(sin(time * 10.0 + idx * 0.4)) * 0.28
+		var sway_z: float = sin(time * 5.0 + idx * 0.7) * 0.12
+		fan.position = Vector3(base_p.x, base_p.y + jump_y, base_p.z + sway_z)
 
 # Procedural dance routine updates for all park dancers with car dodge & safe return logic
 func _update_park_dancers(delta: float) -> void:

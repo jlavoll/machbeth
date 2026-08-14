@@ -301,10 +301,10 @@ func _update_stage_lights_and_band_animation(delta: float) -> void:
 		var member_idx: int = 0
 		for member in band_node.get_children():
 			if member is Node3D:
-				var bounce_y: float = abs(sin(_stage_anim_time * 8.0 + member_idx * 0.5)) * 0.18 # Rhythmic vertical bounce
-				var sway_z: float = sin(_stage_anim_time * 4.0 + member_idx) * 0.08 # Subtle lateral sway
-				member.position.y = bounce_y
-				member.position.z = (member.name.hash() % 3 - 1) * 0.2 + sway_z
+				var base_p: Vector3 = member.get_meta("base_pos", member.position)
+				var bounce_y: float = abs(sin(_stage_anim_time * 9.0 + member_idx * 0.8)) * 0.35 # Energetic high bounce!
+				var sway_z: float = sin(_stage_anim_time * 4.5 + member_idx * 1.2) * 0.15 # Lateral rock & roll sway
+				member.position = Vector3(base_p.x, base_p.y + bounce_y, base_p.z + sway_z)
 				member_idx += 1
 
 

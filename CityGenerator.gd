@@ -1526,6 +1526,7 @@ func _spawn_cyber_park(center: Vector3, b_size: Vector2, neon_colors: Array) -> 
 			var char_body = Node3D.new()
 			char_body.name = member["name"]
 			char_body.position = member["pos"]
+			char_body.set_meta("base_pos", member["pos"])
 
 			var g_color: Color = member["color"]
 			var char_mat = StandardMaterial3D.new()
