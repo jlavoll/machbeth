@@ -344,3 +344,22 @@ for angle in [0, 90, 180, 270]:
 	window_spot.rotation_degrees.y = angle
 	static_body.add_child(window_spot)
 When combined with your dynamic light stages (L key) and street floodlights (CitySceneryProps.gd), turning the lighting stage down to DIM or DARK_BUILDINGS while keeping volumetric fog enabled will turn the city into a dramatic, atmospheric silhouette shrouded in glowing colored mist!
+
+---
+
+## 🏬 SAFEHOUSE NETWORK & STORY RECOVERY IDEAS
+
+### 1. Banquo's Tactical Loft Apartment
+* **Location**: High-rise residential tower in North-West Sector.
+* **Features**: Dedicated bed/resting point, high-speed overmap surveillance matrix, decrypted data drive analyzer, private balcony overlooking the city grid.
+* **Gameplay**: Can rest here to advance the day, check personal comms, or inspect stored trophies/intel.
+
+### 2. Dual Bunk System at Mack's Hideout
+* **Features**: A second designated bed in Mack's central hideout allowing Banquo to crash there after late-night battle prep or when staying close to Mack's thermal monitoring stack.
+
+### 3. The Pit's Secret Panic Room & Safehouse Vault
+* **Location**: Concealed heavy steel door along the back wall of "The Pit Garage" (Porter's subterranean hub).
+* **Story Arc**:
+  * **Lady M's Ambush Recovery**: Later in the campaign, corporate strike forces ambush Lady M's penthouse.
+  * **Secret Medical Bay**: Banquo and Mack extract Lady M and smuggle her into The Pit's subterranean panic room.
+  * **Interactive Visits**: Player can visit Lady M's recovery pod inside the secret room for off-the-grid mission briefings and covert plot developments!
