@@ -31,10 +31,10 @@ This document outlines the small, incremental steps forward to build out the dua
 **Focus**: Create an interactive Garage Hub UI at "The Pit" to store, view, and upgrade vehicles.
 
 * **Key Actions**:
-  - Create a dedicated Garage state/UI accessible at The Pit subterranean location.
+  - Create a dedicated Garage state/UI accessible at The Pit subterranean location (`GarageManager.gd`).
   - Support two distinct vehicles in the fleet: **Banquo's Intercept Car** (Agility/Speed) and **Mack's War-Rig** (Armor/Heavy Ordnance).
   - Add upgrade slots: Engine Tuning (ATB fill speed), Armor Plating (Hull HP), and Ordnance Mounts (Gatling / EMP).
-* **Achieved Summary**: A working base hub where resource spoils from Banquo's missions can be spent to upgrade both vehicles.
+* **Achieved Summary**: A working base hub where resource spoils from Banquo's missions can be spent to upgrade both vehicles, dynamically tuning handling and ATB combat stats.
 
 ---
 

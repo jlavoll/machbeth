@@ -204,9 +204,14 @@ func _on_player_gatling_attack() -> void:
 
 	_spawn_projectile_effect(Color(1.0, 0.8, 0.1), 0.1, 0.15) # Fast amber Gatling bullet tracer
 
-	var damage = 25.0
-	active_hostile_profile.current_hull_integrity = max(0.0, active_hostile_profile.current_hull_integrity - damage)
-	print("[COMBAT] Gatling Cannon struck ", active_hostile_profile.hostile_designation, " for ", damage, " HP!")
+	var base_damage = 25.0
+	var garage_mgr = get_parent().get_node_or_null("GarageManager")
+	if is_instance_valid(garage_mgr):
+		var veh_key: String = "BANQUO_CAR" if garage_mgr.active_fleet_selection == garage_mgr.VehicleID.BANQUO_CAR else "MACK_RIG"
+		base_damage = garage_mgr.fleet[veh_key]["stats"].get("gatling_damage", 25.0)
+
+	active_hostile_profile.current_hull_integrity = max(0.0, active_hostile_profile.current_hull_integrity - base_damage)
+	print("[COMBAT] Gatling Gun fired! Dealt ", base_damage, " damage!")
 	
 	cockpit_ui.set_target_hostile_info(
 		active_hostile_profile.hostile_designation,
