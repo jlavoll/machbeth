@@ -1296,11 +1296,11 @@ func _spawn_cyber_park(center: Vector3, b_size: Vector2, neon_colors: Array) -> 
 		p_box.size = Vector3(4.0, 1.8, 4.0)
 		ped_mesh.mesh = p_box
 		ped_mesh.position = Vector3(0.0, 0.9, 0.0)
-		var p_mat = StandardMaterial3D.new()
-		p_mat.albedo_color = Color(0.15, 0.15, 0.18) # Dark Granite/Marble
-		p_mat.metallic = 0.3
-		p_mat.roughness = 0.4
-		ped_mesh.material_override = p_mat
+		var ped_mat = StandardMaterial3D.new()
+		ped_mat.albedo_color = Color(0.15, 0.15, 0.18) # Dark Granite/Marble
+		ped_mat.metallic = 0.3
+		ped_mat.roughness = 0.4
+		ped_mesh.material_override = ped_mat
 		ped_body.add_child(ped_mesh)
 		statue_root.add_child(ped_body)
 
