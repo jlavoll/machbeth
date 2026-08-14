@@ -848,14 +848,22 @@ func _spawn_park_dance_groups() -> void:
 			dodgy.queue_free()
 	active_dodgy_characters.clear()
 
-	var dance_styles: Array[String] = ["CIRCLE", "PARTNERS", "LINE"]
-	var style_idx: int = 0
-
-	# Target Park 1 (MONUMENT Park) for Hare Krishna dance group!
+	# Target Park 1 (MONUMENT Park) for a randomized park dance group (Hare Krishna Circle, Partner Couples, or Line Dancers)!
 	var monument_park_rect: Rect2 = park_boxes[0]
 	var center_2d: Vector2 = monument_park_rect.get_center()
 	var center_pos: Vector3 = Vector3(center_2d.x, 0.0, center_2d.y)
-	_spawn_circle_dance_group(center_pos, 8) # Hare Krishna dance circle in Monument Park!
+
+	var dance_styles: Array[String] = ["CIRCLE", "PARTNERS", "LINE"]
+	var selected_style: String = dance_styles[rng.randi() % dance_styles.size()]
+
+	match selected_style:
+		"CIRCLE":
+			_spawn_circle_dance_group(center_pos, 8) # Hare Krishna dance circle!
+		"PARTNERS":
+			_spawn_partner_dance_group(center_pos, 3) # 3 couples (6 dancers)!
+		"LINE":
+			_spawn_line_dance_group(center_pos, 6) # Rhythmic line dancers!
+
 	_spawn_dodgy_park_character(monument_park_rect)
 
 func _create_single_dancer(pos: Vector3, neon_color: Color, dance_style: String, group_center: Vector3, index: int, total_count: int) -> CharacterBody3D:
