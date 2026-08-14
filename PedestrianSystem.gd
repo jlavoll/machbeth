@@ -1053,19 +1053,14 @@ func _update_concert_crowd(delta: float) -> void:
 	var time: float = Time.get_ticks_msec() / 1000.0
 	
 	# Fetch Preacher state from StageCyberBand if RELIGIOUS_RALLY is active
-	var preacher_head_color: Color = Color(0, 0, 0, 0)
-	var preacher_jump: float = 0.0
-	var preacher_tilt: float = 0.0
+	var band_node: Node = null
 	var is_religious_active: bool = false
 	
 	var city_gen = get_parent().get_node_or_null("CityGenerator")
 	if is_instance_valid(city_gen):
-		var band_node = city_gen.find_child("StageCyberBand", true, false)
-		if is_instance_valid(band_node) and band_node.has_meta("preacher_head_color"):
+		band_node = city_gen.find_child("StageCyberBand", true, false)
+		if is_instance_valid(band_node) and band_node.has_meta("routine_type"):
 			is_religious_active = true
-			preacher_head_color = band_node.get_meta("preacher_head_color", Color(1.0, 0.85, 0.0))
-			preacher_jump = band_node.get_meta("preacher_jump_offset", 0.0)
-			preacher_tilt = band_node.get_meta("preacher_tilt_x", 0.0)
 
 	for fan in active_concert_crowd:
 		if not is_instance_valid(fan):
