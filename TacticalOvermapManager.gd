@@ -123,10 +123,10 @@ func _setup_map_hud_overlay() -> void:
 	hq_blip_marker.color = Color(0.0, 1.0, 0.85, 0.95) # Cyan
 	map_overlay_panel.add_child(hq_blip_marker)
 
-	# Mack's Hideout Blip (Amber)
+	# Mack's Hideout / Safehouse Home Blip (Neon Magenta / Purple)
 	hideout_blip_marker = ColorRect.new()
 	hideout_blip_marker.size = Vector2(12, 12)
-	hideout_blip_marker.color = Color(1.0, 0.5, 0.0) # Amber
+	hideout_blip_marker.color = Color(1.0, 0.0, 0.8) # Neon Magenta / Purple
 	map_overlay_panel.add_child(hideout_blip_marker)
 
 	# Lady M Lair Blip (Magenta)
@@ -287,7 +287,7 @@ func _update_poi_legend() -> void:
 	var entries: Array[Dictionary] = []
 	
 	entries.append({"name": "PLAYER LOCATION", "color": Color(1.0, 0.0, 0.8)})
-	entries.append({"name": "SAFEHOUSE / HOME", "color": Color(1.0, 0.5, 0.0)})
+	entries.append({"name": "SAFEHOUSE / HOME", "color": Color(1.0, 0.0, 0.8)})
 	entries.append({"name": "EXEC LIMO TARGET", "color": Color(1.0, 0.8, 0.0)})
 	entries.append({"name": "DUNCAN HQ", "color": Color(0.0, 1.0, 0.85)})
 	entries.append({"name": "LADY M'S LAIR", "color": Color(1.0, 0.0, 0.8)})
