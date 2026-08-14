@@ -58,6 +58,17 @@ var _cam_yaw:            float   = 0.0   # orbital yaw offset in LOCAL space (0 
 var _cam_pitch:          float   = 0.0   # orbital pitch offset in radians (0 = default)
 var _is_orbiting:        bool    = false  # true while LMB held
 
+# Wardrobe Outfit Customization Palette (Head Glow Color)
+var outfit_color_index: int = 0
+var outfit_palette: Array[Dictionary] = [
+	{"name": "Electric Magenta", "color": Color(1.0, 0.0, 0.8)},
+	{"name": "Cyber Cyan", "color": Color(0.0, 1.0, 0.85)},
+	{"name": "Gold Warlord", "color": Color(1.0, 0.85, 0.0)},
+	{"name": "Neon Crimson", "color": Color(1.0, 0.1, 0.2)},
+	{"name": "Emerald Matrix", "color": Color(0.2, 1.0, 0.4)},
+	{"name": "Phantom Violet", "color": Color(0.6, 0.2, 1.0)}
+]
+
 # Interaction state: set by the scene when player enters an NPC/object trigger area
 var _nearby_dialogue_source:  String = ""   # Path to dialogue JSON, empty = no NPC nearby
 var _interaction_hint_label:  Label  = null  # "[F] Talk" HUD hint — created on demand
@@ -159,6 +170,25 @@ func _build_figure() -> void:
 	col_inst.shape    = col_shape
 	col_inst.position = Vector3(0.0, 0.75, 0.0)
 	add_child(col_inst)
+
+func cycle_outfit_head_color() -> String:
+	outfit_color_index = (outfit_color_index + 1) % outfit_palette.size()
+	var choice = outfit_palette[outfit_color_index]
+	var c_color: Color = choice["color"]
+	var c_name: String = choice["name"]
+
+	if is_instance_valid(_head_inst) and _head_inst.material_override is StandardMaterial3D:
+		var mat = _head_inst.material_override as StandardMaterial3D
+		mat.emission = c_color
+		mat.albedo_color = Color(c_color.r * 0.2, c_color.g * 0.2, c_color.b * 0.2)
+
+	var nose = _head_inst.get_node_or_null("PlayerNose") if is_instance_valid(_head_inst) else null
+	if is_instance_valid(nose) and nose.material_override is StandardMaterial3D:
+		var n_mat = nose.material_override as StandardMaterial3D
+		n_mat.emission = c_color
+		n_mat.albedo_color = c_color
+
+	return c_name
 
 # ==============================================================================
 # PROCESS LOOP
@@ -354,7 +384,7 @@ func _unhandled_input(event: InputEvent) -> void:
 					get_viewport().set_input_as_handled()
 					return
 				elif city_gen.banquo_safehouse_door_pos != Vector3.ZERO and global_position.distance_to(city_gen.banquo_safehouse_door_pos) <= 7.0:
-					indoor_mgr.enter_location(indoor_mgr.HQFloor.MACK_HIDEOUT)
+					indoor_mgr.enter_location(indoor_mgr.HQFloor.BANQUO_LOFT)
 					get_viewport().set_input_as_handled()
 					return
 				elif city_gen.mack_hideout_door_pos != Vector3.ZERO and global_position.distance_to(city_gen.mack_hideout_door_pos) <= 7.0:
@@ -387,6 +417,17 @@ func _unhandled_input(event: InputEvent) -> void:
 					return
 				elif city_gen.power_substation_door_pos != Vector3.ZERO and global_position.distance_to(city_gen.power_substation_door_pos) <= 7.0:
 					indoor_mgr.enter_location(indoor_mgr.HQFloor.SUBSTATION)
+					get_viewport().set_input_as_handled()
+					return
+
+			# 1B. Check if standing near Banquo's Wardrobe Cupboard inside his loft!
+			if is_instance_valid(indoor_mgr) and indoor_mgr.is_inside_building and indoor_mgr.current_floor == indoor_mgr.HQFloor.BANQUO_LOFT:
+				var cupboard = get_parent().get_node_or_null("IndoorSystemManager/BanquoLoftRoot/WardrobeCupboard")
+				if is_instance_valid(cupboard) and global_position.distance_to(cupboard.global_position) <= 3.5:
+					var new_style: String = cycle_outfit_head_color()
+					var comms = get_parent().get_node_or_null("NeuralCommsManager")
+					if is_instance_valid(comms) and comms.has_method("send_message"):
+						comms.send_message("👔 BANQUO'S WARDROBE: Changed head color outfit to [color=#FF00CC]%s[/color]!" % new_style, "OUTFIT CUSTOMIZER")
 					get_viewport().set_input_as_handled()
 					return
 

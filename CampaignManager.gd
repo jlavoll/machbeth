@@ -1089,6 +1089,11 @@ func launch_grand_deployment() -> void:
 	print("[CAMPAIGN MANAGER] Launching autonomous Grand Battle for: ", convoy_name, " (Max Thermal Limit: ", mins_limit, " mins)")
 	_update_telemetry_hud()
 	
+	# Mack and his War-Rig leave home to enter battle!
+	var city_gen = get_parent().get_node_or_null("CityGenerator")
+	if is_instance_valid(city_gen) and is_instance_valid(city_gen.mack_parked_rig_node):
+		city_gen.mack_parked_rig_node.visible = false
+	
 	if is_instance_valid(neural_comms) and neural_comms.has_method("send_message"):
 		neural_comms.send_message("WAR-RIG DISPATCHED! Mack deployed to central highway for %s. [ENGINE COOLER L%d: %d MIN MAX THERMAL LIMIT]" % [convoy_name, mack_engine_lvl, mins_limit], "LADY M // MISSION CONTROL")
 
@@ -1109,6 +1114,11 @@ func _conclude_autonomous_battle(success: bool) -> void:
 		var glitch_sys = get_parent().get_node_or_null("NeuralGlitchSystem")
 		if is_instance_valid(glitch_sys):
 			glitch_sys.inject_neural_instability(20.0)
+
+		# Mack & War-Rig return home safely after successful battle!
+		var city_gen = get_parent().get_node_or_null("CityGenerator")
+		if is_instance_valid(city_gen) and is_instance_valid(city_gen.mack_parked_rig_node):
+			city_gen.mack_parked_rig_node.visible = true
 
 		_advance_campaign_act()
 		_show_after_action_summary(final_payout, bonus_scrap, hp_ratio, true)

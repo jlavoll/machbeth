@@ -11,7 +11,7 @@ class_name IndoorSystemManager
 # - Interactive Security Vault Door sliding open/closed in the Penthouse.
 # - Exit portal trigger returning player to city streets outside.
 
-enum HQFloor { LOBBY, PENTHOUSE, MACK_HIDEOUT, LADY_M_LAIR, CHOP_SHOP, PORTER_PIT, NORNS_AI, FIFE_HQ, BANKES_LOGISTICS, SUBSTATION }
+enum HQFloor { LOBBY, PENTHOUSE, MACK_HIDEOUT, BANQUO_LOFT, LADY_M_LAIR, CHOP_SHOP, PORTER_PIT, NORNS_AI, FIFE_HQ, BANKES_LOGISTICS, SUBSTATION }
 var current_floor: HQFloor = HQFloor.LOBBY
 
 var is_inside_building: bool = false
@@ -21,6 +21,7 @@ var saved_player_position: Vector3 = Vector3.ZERO
 var lobby_floor_origin: Vector3 = Vector3(1000.0, 0.0, 1000.0)
 var penthouse_floor_origin: Vector3 = Vector3(2000.0, 0.0, 2000.0)
 var mack_hideout_origin: Vector3 = Vector3(3000.0, 0.0, 3000.0)
+var banquo_loft_origin: Vector3 = Vector3(3500.0, 0.0, 3500.0)
 var lady_m_lair_origin: Vector3 = Vector3(4000.0, 0.0, 4000.0)
 var chop_shop_origin: Vector3 = Vector3(5000.0, 0.0, 5000.0)
 var porter_pit_origin: Vector3 = Vector3(6000.0, 0.0, 6000.0)
@@ -57,6 +58,7 @@ func _ready() -> void:
 	_build_lobby_floor()
 	_build_penthouse_floor()
 	_build_hideout_floor()
+	_build_banquo_loft_floor()
 	_build_lady_m_lair_floor()
 	_build_chop_shop_floor()
 	_build_porter_pit_floor()
@@ -166,11 +168,70 @@ func _build_hideout_floor() -> void:
 	_build_interior_desk(root_hideout, Vector3(0.0, 0.6, -4.0), Vector3(4.0, 1.2, 1.6), Color(1.0, 0.5, 0.0))
 	_build_interior_pillar(root_hideout, Vector3(-6.0, 1.5, -5.0), Vector3(1.2, 3.0, 1.2), Color(1.0, 0.5, 0.0))
 
-	# Spawn Mack NPC Warlord
+	# Spawn Mack NPC Warlord (Only present at home when not out on battle missions!)
 	_spawn_npc_character(root_hideout, Vector3(0.0, 0.0, -5.5), Color(1.0, 0.3, 0.0), "Mack", Vector3(0.0, 0.0, 0.0))
 
 	# Exit Door (South Wall Center)
 	_build_exit_door(root_hideout, Vector3(0.0, 1.8, 8.2))
+
+# ==============================================================================
+# 3B. BANQUO'S PRIVATE LOFT (CYBER-PUNK HIGH-RISE APARTMENT - 24m x 18m)
+# ==============================================================================
+func _build_banquo_loft_floor() -> void:
+	var root_loft = Node3D.new()
+	root_loft.name = "BanquoLoftRoot"
+	root_loft.position = banquo_loft_origin
+	add_child(root_loft)
+
+	# Deep Violet / Magenta Cyber Blueprint Floor
+	_build_floor_plane(root_loft, Vector2(24.0, 18.0), Color(0.04, 0.01, 0.05))
+	_build_blueprint_grid(root_loft, 24, 18, Color(1.0, 0.0, 0.8)) # Electric Purple Grid
+
+	_build_interior_wall(root_loft, Vector3(0.0, 2.5, -9.0), Vector3(24.0, 5.0, 0.8), Color(1.0, 0.0, 0.8))
+	_build_interior_wall(root_loft, Vector3(0.0, 2.5, 9.0), Vector3(24.0, 5.0, 0.8), Color(1.0, 0.0, 0.8))
+	_build_interior_wall(root_loft, Vector3(-12.0, 2.5, 0.0), Vector3(0.8, 5.0, 18.0), Color(1.0, 0.0, 0.8))
+	_build_interior_wall(root_loft, Vector3(12.0, 2.5, 0.0), Vector3(0.8, 5.0, 18.0), Color(1.0, 0.0, 0.8))
+
+	# Banquo's Personal Rest Bed & Telemetry Terminal
+	_build_interior_desk(root_loft, Vector3(6.0, 0.4, -4.0), Vector3(3.2, 0.8, 4.5), Color(1.0, 0.0, 0.8))
+	_build_interior_desk(root_loft, Vector3(-5.0, 0.6, -4.0), Vector3(4.0, 1.2, 1.6), Color(1.0, 0.0, 0.8))
+
+	# --- INTERACTIVE OUTFIT WARDROBE CUPBOARD (West Wall - North Side) ---
+	var cupboard_body = StaticBody3D.new()
+	cupboard_body.name = "WardrobeCupboard"
+	cupboard_body.position = Vector3(-9.5, 1.5, -4.0)
+
+	var cupboard_col = CollisionShape3D.new()
+	var cupboard_shape = BoxShape3D.new()
+	cupboard_shape.size = Vector3(1.4, 3.0, 2.2)
+	cupboard_col.shape = cupboard_shape
+	cupboard_body.add_child(cupboard_col)
+
+	var cupboard_mesh = MeshInstance3D.new()
+	var c_box = BoxMesh.new()
+	c_box.size = Vector3(1.4, 3.0, 2.2)
+	cupboard_mesh.mesh = c_box
+	var c_mat = StandardMaterial3D.new()
+	c_mat.albedo_color = Color(0.08, 0.02, 0.1)
+	c_mat.emission_enabled = true
+	c_mat.emission = Color(1.0, 0.0, 0.8) # Neon Magenta Outline
+	c_mat.emission_energy_multiplier = 4.0
+	cupboard_mesh.material_override = c_mat
+	cupboard_body.add_child(cupboard_mesh)
+
+	# Wardrobe 3D Label
+	var c_lbl = Label3D.new()
+	c_lbl.text = "👔 BANQUO'S OUTFIT WARDROBE\n[PRESS 'E' TO CHANGE HEAD COLOR!]"
+	c_lbl.position = Vector3(0.0, 2.0, 0.0)
+	c_lbl.font_size = 20
+	c_lbl.pixel_size = 0.004
+	c_lbl.modulate = Color(1.0, 0.0, 0.8)
+	cupboard_body.add_child(c_lbl)
+
+	root_loft.add_child(cupboard_body)
+
+	# Exit Door (South Wall Center)
+	_build_exit_door(root_loft, Vector3(0.0, 1.8, 8.2))
 
 # ==============================================================================
 # 4. LADY M'S HACKER LAIR (UNDERGROUND NETRUNNER VAULT - 30m x 20m)
@@ -847,6 +908,8 @@ func _get_origin_for_floor(fl: HQFloor) -> Vector3:
 			return penthouse_floor_origin
 		HQFloor.MACK_HIDEOUT:
 			return mack_hideout_origin
+		HQFloor.BANQUO_LOFT:
+			return banquo_loft_origin
 		HQFloor.LADY_M_LAIR:
 			return lady_m_lair_origin
 		HQFloor.CHOP_SHOP:
@@ -882,6 +945,9 @@ func _update_hud_floor_label() -> void:
 			HQFloor.MACK_HIDEOUT:
 				indoor_title_label.text = "MACK'S SAFEHOUSE\n // APARTMENT & WORKSHOP\n " + mode_suffix
 				indoor_title_label.add_theme_color_override("font_color", Color(1.0, 0.5, 0.0))
+			HQFloor.BANQUO_LOFT:
+				indoor_title_label.text = "BANQUO'S PRIVATE LOFT\n // RESIDENTIAL HIGH-RISE APARTMENT\n " + mode_suffix
+				indoor_title_label.add_theme_color_override("font_color", Color(1.0, 0.0, 0.8))
 			HQFloor.LADY_M_LAIR:
 				indoor_title_label.text = "LADY M'S NETRUNNER VAULT\n // UNDERGROUND LAIR\n " + mode_suffix
 				indoor_title_label.add_theme_color_override("font_color", Color(1.0, 0.0, 0.8))

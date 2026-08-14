@@ -50,6 +50,7 @@ var hq_door_node: Node3D = null
 
 var banquo_safehouse_door_pos: Vector3 = Vector3.ZERO
 var mack_hideout_door_pos: Vector3 = Vector3.ZERO
+var mack_parked_rig_node: Node3D = null
 var lady_m_lair_door_pos: Vector3 = Vector3.ZERO
 var chop_shop_door_pos: Vector3 = Vector3.ZERO
 
@@ -911,6 +912,41 @@ func _spawn_building(pos: Vector3, b_size: Vector3, neon_colors: Array, b_type: 
 			hq_door_node = door_container
 		elif b_type == "MACK_HIDEOUT":
 			mack_hideout_door_pos = door_world_pos
+			# Spawn Mack's War-Rig parked outside his home
+			var rig_body = StaticBody3D.new()
+			rig_body.name = "MackParkedWarRig"
+			rig_body.position = pos + Vector3(0.0, 1.25, hd + 5.0)
+			var r_col = CollisionShape3D.new()
+			var r_shape = BoxShape3D.new()
+			r_shape.size = Vector3(4.2, 2.8, 8.0)
+			r_col.shape = r_shape
+			rig_body.add_child(r_col)
+
+			var r_mesh = MeshInstance3D.new()
+			var box = BoxMesh.new()
+			box.size = Vector3(4.2, 2.8, 8.0)
+			r_mesh.mesh = box
+			var mat = StandardMaterial3D.new()
+			mat.albedo_color = Color(0.12, 0.05, 0.02)
+			mat.metallic = 0.8
+			mat.roughness = 0.2
+			mat.emission_enabled = true
+			mat.emission = Color(1.0, 0.35, 0.0) # Rust Orange Emissive Grille
+			mat.emission_energy_multiplier = 3.5
+			r_mesh.material_override = mat
+			rig_body.add_child(r_mesh)
+
+			# 3D Label
+			var rig_lbl = Label3D.new()
+			rig_lbl.text = "🚛 MACK'S WAR-RIG EXECUTOR\n[PARKED OUTSIDE HIDEOUT]"
+			rig_lbl.position = Vector3(0.0, 3.2, 0.0)
+			rig_lbl.font_size = 24
+			rig_lbl.pixel_size = 0.005
+			rig_lbl.modulate = Color(1.0, 0.35, 0.0)
+			rig_body.add_child(rig_lbl)
+
+			add_child(rig_body)
+			mack_parked_rig_node = rig_body
 		elif b_type == "BANQUO_LOFT":
 			banquo_safehouse_door_pos = door_world_pos
 		elif b_type == "LADY_M":
