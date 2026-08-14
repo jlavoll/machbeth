@@ -1058,6 +1058,18 @@ func _unhandled_input(event: InputEvent) -> void:
 						return
 			
 			if current_floor == HQFloor.PORTER_PIT:
+				var campaign_mgr = get_parent().get_node_or_null("CampaignManager")
+				if is_instance_valid(campaign_mgr) and campaign_mgr.is_norns_recovery_active:
+					campaign_mgr.is_norns_recovery_active = false
+					if is_instance_valid(campaign_mgr.norns_recovery_node):
+						campaign_mgr.norns_recovery_node.queue_free()
+					var neural_comms = get_parent().get_node_or_null("NeuralNotificationSystem")
+					if is_instance_valid(neural_comms) and neural_comms.has_method("send_message"):
+						neural_comms.send_message("RECOVERY QUEST COMPLETE! Mack's War-Rig delivered to The Pit Garage! Full thermal overhaul complete (+400 C fee refunded).", "NORNS RECOVERY SUCCESS")
+					var quest_mgr = get_parent().get_node_or_null("QuestManager")
+					if is_instance_valid(quest_mgr):
+						quest_mgr.player_credits += 400
+
 				var terminal_pos: Vector3 = porter_pit_origin + Vector3(-10.0, 0.0, 0.0)
 				var cyborg_terminal_pos: Vector3 = porter_pit_origin + Vector3(10.0, 0.0, 0.0)
 				var wartable_pos: Vector3 = porter_pit_origin + Vector3(0.0, 0.0, 4.0)
@@ -1074,7 +1086,6 @@ func _unhandled_input(event: InputEvent) -> void:
 						get_viewport().set_input_as_handled()
 						return
 				elif pos.distance_to(wartable_pos) <= 4.0:
-					var campaign_mgr = get_parent().get_node_or_null("CampaignManager")
 					if is_instance_valid(campaign_mgr):
 						campaign_mgr.open_deployment_ui()
 						get_viewport().set_input_as_handled()

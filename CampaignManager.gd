@@ -171,6 +171,12 @@ var stat_total_rounds_fired: int = 0
 var stat_tech_harvested_count: int = 0
 var stat_story_clues_found: Array[String] = []
 
+# The 3 Norns Towing & Extraction Recovery Quest State
+var is_norns_recovery_active: bool = false
+var norns_recovery_drop_pos: Vector3 = Vector3.ZERO
+var norns_recovery_node: Node3D = null
+var is_war_rig_towed: bool = false
+
 # Event Flags
 var decision_1_triggered: bool = false
 var decision_2_triggered: bool = false
@@ -1059,7 +1065,49 @@ func _conclude_autonomous_battle(success: bool) -> void:
 		if is_instance_valid(glitch_sys):
 			glitch_sys.inject_neural_instability(35.0)
 
+		# Launch The 3 Norns Towing Recovery Quest
+		_spawn_norns_recovery_quest()
+
 		_show_after_action_summary(-penalty_repair_cost, scrap_salvaged, hp_ratio, false)
+
+func _spawn_norns_recovery_quest() -> void:
+	is_norns_recovery_active = true
+	# Select North City Gate Edge (Vector3(0.0, 0.0, -280.0))
+	norns_recovery_drop_pos = Vector3(0.0, 0.5, -280.0)
+
+	# Clean existing recovery mesh
+	if is_instance_valid(norns_recovery_node):
+		norns_recovery_node.queue_free()
+
+	norns_recovery_node = Node3D.new()
+	norns_recovery_node.name = "NornsSmolderingWarRigDrop"
+	norns_recovery_node.position = norns_recovery_drop_pos
+	get_parent().add_child(norns_recovery_node)
+
+	# Smoldering War-Rig Mesh
+	var rig_inst = MeshInstance3D.new()
+	var box = BoxMesh.new()
+	box.size = Vector3(4.0, 2.5, 7.0)
+	rig_inst.mesh = box
+	var mat = StandardMaterial3D.new()
+	mat.albedo_color = Color(0.1, 0.04, 0.02)
+	mat.emission_enabled = true
+	mat.emission = Color(0.7, 0.1, 1.0) # Deep Norns Violet Runes
+	mat.emission_energy_multiplier = 4.0
+	rig_inst.material_override = mat
+	norns_recovery_node.add_child(rig_inst)
+
+	# 3D Label Rune Marker
+	var label = Label3D.new()
+	label.text = "🔮 NORNS RECOVERY DROP-OFF\n[MACK'S SMOLDERING WAR-RIG]\nTOW TO THE PIT GARAGE FOR REPAIR"
+	label.position = Vector3(0.0, 3.5, 0.0)
+	label.font_size = 28
+	label.pixel_size = 0.005
+	label.modulate = Color(0.7, 0.1, 1.0)
+	norns_recovery_node.add_child(label)
+
+	if is_instance_valid(neural_comms) and neural_comms.has_method("send_message"):
+		neural_comms.send_message("🔮 THE 3 NORNS // WEIRD SISTERS DISPATCH: 'None of woman born shall harm Macbeth!' We extracted Mack from the highway. Drive to the North Gate drop-off and tow his War-Rig to The Pit Garage for emergency overhaul!", "NORNS RECOVERY QUEST")
 
 func _advance_campaign_act() -> void:
 	match current_act:

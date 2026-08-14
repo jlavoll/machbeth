@@ -179,6 +179,14 @@ func _setup_map_hud_overlay() -> void:
 	limo_blip_marker.visible = false
 	map_overlay_panel.add_child(limo_blip_marker)
 
+	# Norns Recovery Drop-Off Blip Marker (Deep Purple / Violet Pulse)
+	var norns_rec_blip: ColorRect = ColorRect.new()
+	norns_rec_blip.name = "NornsRecoveryBlipMarker"
+	norns_rec_blip.size = Vector2(14, 14)
+	norns_rec_blip.color = Color(0.7, 0.1, 1.0, 1.0) # Deep Purple Norns Rune
+	norns_rec_blip.visible = false
+	map_overlay_panel.add_child(norns_rec_blip)
+
 	# Parked Car Blip Marker (Amber Orange)
 	parked_car_blip_marker = ColorRect.new()
 	parked_car_blip_marker.name = "ParkedCarBlipMarker"
@@ -380,6 +388,17 @@ func _process(_delta: float) -> void:
 				limo_marker.position = limo_target_unprojected_screen_position - (limo_marker.size / 2.0)
 			else:
 				limo_marker.visible = false
+
+		# Norns Recovery Drop-Off Target Tracking Update
+		var norns_rec_marker = map_overlay_panel.get_node_or_null("NornsRecoveryBlipMarker")
+		if is_instance_valid(norns_rec_marker):
+			var campaign_mgr = $"../CampaignManager"
+			if is_instance_valid(campaign_mgr) and campaign_mgr.is_norns_recovery_active and is_instance_valid(map_camera):
+				norns_rec_marker.visible = true
+				var rec_screen_pos: Vector2 = map_camera.unproject_position(campaign_mgr.norns_recovery_drop_pos)
+				norns_rec_marker.position = rec_screen_pos - (norns_rec_marker.size / 2.0)
+			else:
+				norns_rec_marker.visible = false
 
 
 		# Parked car blip update (visible when walking on foot)
