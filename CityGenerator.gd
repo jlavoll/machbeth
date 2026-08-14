@@ -1494,11 +1494,11 @@ func _spawn_cyber_park(center: Vector3, b_size: Vector2, neon_colors: Array, par
 			beam_spot.spot_attenuation = 0.75
 			stage_node.add_child(beam_spot)
 
-		# LIVE 3D BAND / PREACHER RALLY ON STAGE
+		# LIVE 3D STAGE PERFORMERS (Cyber-Punk Band / Charismatic Preacher & Disciples / Shakespeare Actors)
 		if is_stage_event_today:
-			var band_node = Node3D.new()
-			band_node.name = "StageCyberBand"
-			band_node.position = Vector3(1.0, 1.2, 0.0)
+			var performers_node = Node3D.new()
+			performers_node.name = "StagePerformers"
+			performers_node.position = Vector3(1.0, 1.2, 0.0)
 
 			var band_members: Array[Dictionary] = []
 			if is_religious_today:
@@ -1572,9 +1572,9 @@ func _spawn_cyber_park(center: Vector3, b_size: Vector2, neon_colors: Array, par
 					inst_mesh.material_override = glow_mat
 					char_body.add_child(inst_mesh)
 
-				band_node.add_child(char_body)
+				performers_node.add_child(char_body)
 
-			stage_node.add_child(band_node)
+			stage_node.add_child(performers_node)
 
 	# 3. Corner Streetlights
 	var scenery_props_script = preload("res://CitySceneryProps.gd")

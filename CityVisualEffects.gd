@@ -307,8 +307,10 @@ func _update_stage_lights_and_band_animation(delta: float) -> void:
 		active_event_id = campaign_mgr.active_daily_event.get("id", "RELIGIOUS_RALLY")
 
 	# Animate Stage Performers (Cyber Band vs Charismatic Preacher + Quiet Disciples)
-	var band_node = stage_node.get_node_or_null("StageCyberBand")
-	if is_instance_valid(band_node):
+	var performers_node = stage_node.get_node_or_null("StagePerformers")
+	if not is_instance_valid(performers_node):
+		performers_node = stage_node.get_node_or_null("StageCyberBand") # Backward compatibility fallback
+	if is_instance_valid(performers_node):
 		if active_event_id == "RELIGIOUS_RALLY":
 			# CALL-AND-RESPONSE RITUAL CYCLE (5.0s Total Cycle):
 			# [0.0s - 1.8s] PREACHER ACTS (2 double jumps / prostration bow / color flare)
@@ -316,7 +318,7 @@ func _update_stage_lights_and_band_animation(delta: float) -> void:
 			# [2.5s - 4.5s] CROWD MIMICKS PREACHER'S ACTION IN UNISON
 			# [4.5s - 5.0s] RESET PAUSE
 			var cycle_time: float = fmod(_stage_anim_time, 5.0)
-			var preacher_node = band_node.get_node_or_null("Cyber Preacher")
+			var preacher_node = performers_node.get_node_or_null("Cyber Preacher")
 			
 			var routine_type: int = int(_stage_anim_time / 5.0) % 3 # 0: Double Jump, 1: Color Flare & Bow, 2: Swaying Blessing
 			var preacher_head_color: Color = Color(1.0, 0.85, 0.0) # Default Gold
@@ -365,15 +367,15 @@ func _update_stage_lights_and_band_animation(delta: float) -> void:
 						h_mat.emission = preacher_head_color
 
 			# Pass state to metadata for crowd copying
-			band_node.set_meta("cycle_time", cycle_time)
-			band_node.set_meta("routine_type", routine_type)
-			band_node.set_meta("action_color", preacher_head_color)
-			band_node.set_meta("active_action_jump", active_action_jump)
-			band_node.set_meta("active_action_sway", active_action_sway)
-			band_node.set_meta("active_action_tilt", active_action_tilt)
+			performers_node.set_meta("cycle_time", cycle_time)
+			performers_node.set_meta("routine_type", routine_type)
+			performers_node.set_meta("action_color", preacher_head_color)
+			performers_node.set_meta("active_action_jump", active_action_jump)
+			performers_node.set_meta("active_action_sway", active_action_sway)
+			performers_node.set_meta("active_action_tilt", active_action_tilt)
 
 			# Quiet Disciples stay still/quiet behind preacher
-			for member in band_node.get_children():
+			for member in performers_node.get_children():
 				if member != preacher_node and member is Node3D:
 					var base_p: Vector3 = member.get_meta("base_pos", member.position)
 					member.position = base_p + Vector3(0.0, sin(_stage_anim_time * 1.5) * 0.04, 0.0)
@@ -382,7 +384,7 @@ func _update_stage_lights_and_band_animation(delta: float) -> void:
 		else:
 			# Standard Cyber-Punk Rock Band Bounce
 			var member_idx: int = 0
-			for member in band_node.get_children():
+			for member in performers_node.get_children():
 				if member is Node3D:
 					var base_p: Vector3 = member.get_meta("base_pos", member.position)
 					var bounce_y: float = abs(sin(_stage_anim_time * 12.0 + member_idx * 0.9)) * 0.45

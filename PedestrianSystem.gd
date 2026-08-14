@@ -1052,14 +1052,16 @@ func _spawn_concert_crowd() -> void:
 func _update_concert_crowd(delta: float) -> void:
 	var time: float = Time.get_ticks_msec() / 1000.0
 	
-	# Fetch Preacher state from StageCyberBand if RELIGIOUS_RALLY is active
-	var band_node: Node = null
+	# Fetch Preacher state from StagePerformers if RELIGIOUS_RALLY is active
+	var performers_node: Node = null
 	var is_religious_active: bool = false
 	
 	var city_gen = get_parent().get_node_or_null("CityGenerator")
 	if is_instance_valid(city_gen):
-		band_node = city_gen.find_child("StageCyberBand", true, false)
-		if is_instance_valid(band_node) and band_node.has_meta("routine_type"):
+		performers_node = city_gen.find_child("StagePerformers", true, false)
+		if not is_instance_valid(performers_node):
+			performers_node = city_gen.find_child("StageCyberBand", true, false) # Fallback
+		if is_instance_valid(performers_node) and performers_node.has_meta("routine_type"):
 			is_religious_active = true
 
 	for fan in active_concert_crowd:
@@ -1074,11 +1076,11 @@ func _update_concert_crowd(delta: float) -> void:
 			# [1.8s - 2.5s] Brief pause in still reverence!
 			# [2.5s - 4.5s] Crowd mimicks Preacher's exact move in unison!
 			# [4.5s - 5.0s] Reset pause!
-			var cycle_time: float = band_node.get_meta("cycle_time", 0.0)
-			var action_color: Color = band_node.get_meta("action_color", Color(1.0, 0.85, 0.0))
-			var active_action_jump: float = band_node.get_meta("active_action_jump", 0.0)
-			var active_action_sway: float = band_node.get_meta("active_action_sway", 0.0)
-			var active_action_tilt: float = band_node.get_meta("active_action_tilt", 0.0)
+			var cycle_time: float = performers_node.get_meta("cycle_time", 0.0)
+			var action_color: Color = performers_node.get_meta("action_color", Color(1.0, 0.85, 0.0))
+			var active_action_jump: float = performers_node.get_meta("active_action_jump", 0.0)
+			var active_action_sway: float = performers_node.get_meta("active_action_sway", 0.0)
+			var active_action_tilt: float = performers_node.get_meta("active_action_tilt", 0.0)
 
 			var crowd_jump: float = 0.0
 			var crowd_sway: float = 0.0
