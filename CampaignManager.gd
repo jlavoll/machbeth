@@ -114,6 +114,24 @@ var battle_timer: float = 0.0
 var battle_duration: float = 300.0 # 5 Minutes epic battle duration
 var last_rumor_tick: float = 0.0
 
+# Mack's Live Telemetry State
+var mack_current_hp: float = 100.0
+var mack_max_hp: float = 100.0
+var mack_current_action: String = "Engaging convoy vanguard..."
+var mack_next_action: String = "Flanking central highway chokepoint..."
+
+# Event Flags
+var decision_1_triggered: bool = false
+var decision_2_triggered: bool = false
+var is_substation_side_mission_active: bool = false
+
+# Live Telemetry HUD Bar Nodes
+var telemetry_hud_layer: CanvasLayer = null
+var telemetry_panel: PanelContainer = null
+var mack_hp_bar: ProgressBar = null
+var mack_action_label: Label = null
+var mack_timer_label: Label = null
+
 # Dynamic rumor feed messages sent every 45-60 seconds during battle
 var rumor_dispatches: Array[String] = [
 	"RUMOR // HIGHWAY FEED: Mack's War-Rig spotted breaching outer corporate barrier!",
@@ -124,10 +142,15 @@ var rumor_dispatches: Array[String] = [
 ]
 var rumor_index: int = 0
 
-# Summary Report UI
-var _summary_panel: PanelContainer
-var _summary_title_label: Label
-var _summary_body_label: Label
+func _ready() -> void:
+	_build_deployment_ui()
+	_build_telemetry_hud()
+	call_deferred("_connect_dialogue_signals")
+
+func _connect_dialogue_signals() -> void:
+	var dialogue_sys = get_parent().get_node_or_null("DialogueSystem")
+	if is_instance_valid(dialogue_sys):
+		dialogue_sys.dialogue_choice_selected.connect(_on_decision_choice_selected)
 
 func _process(delta: float) -> void:
 	if not is_battle_in_progress:
@@ -136,7 +159,21 @@ func _process(delta: float) -> void:
 	battle_timer += delta
 	last_rumor_tick += delta
 
-	# Dispatch a new rumor every 55 seconds during battle
+	# Natural battle HP decay / damage simulation
+	mack_current_hp = max(10.0, mack_current_hp - (delta * 0.15))
+	_update_telemetry_hud()
+
+	# Dynamic Decision Event #1 at ~75 seconds (Lady M ICE Hack Override)
+	if battle_timer >= 75.0 and not decision_1_triggered:
+		decision_1_triggered = true
+		_trigger_decision_event_lady_m()
+
+	# Dynamic Decision Event #2 at ~180 seconds (The 3 Norns Server Interference)
+	if battle_timer >= 180.0 and not decision_2_triggered:
+		decision_2_triggered = true
+		_trigger_decision_event_norns()
+
+	# Dispatch rumor every 55s
 	if last_rumor_tick >= 55.0:
 		last_rumor_tick = 0.0
 		_broadcast_next_rumor()
@@ -153,6 +190,171 @@ func _broadcast_next_rumor() -> void:
 		if is_instance_valid(neural_comms) and neural_comms.has_method("send_message"):
 			neural_comms.send_message(msg, "TACTICAL TELEMETRY")
 
+# ==============================================================================
+# DYNAMIC NEURAL DECISION EVENTS
+# ==============================================================================
+
+func _trigger_decision_event_lady_m() -> void:
+	var dialogue_sys = get_parent().get_node_or_null("DialogueSystem")
+	if not is_instance_valid(dialogue_sys):
+		return
+	
+	var event_tree = {
+		"speaker_display_name": "Lady M",
+		"speaker_subtitle": "MISSION CONTROL // OVERRIDE PROTOCOL",
+		"speaker_color": "#FF00CC",
+		"nodes": {
+			"start": {
+				"text": "Banquo! Mack's War-Rig is trapped under intense corporate EMP suppressive fire at Sector 4! His hull is taking heavy damage. I can execute an unauthorized ICE override on their grid to shut down their turret array — but it will inject severe neural static into Mack's stack. What should I do?",
+				"portrait_emotion": "urgent",
+				"choices": [
+					{ "text": "Execute the override! Protect Mack's chassis. [HP +35%, Paranoia +15%]", "target": "lady_m_override" },
+					{ "text": "No, stay off the grid. Let Mack fight through it. [Take Damage]", "target": "lady_m_hold" }
+				]
+			},
+			"lady_m_override": {
+				"text": "Executing ICE override... Turret array offline! Mack's hull is stabilized, but his neural stack is spiking wildly. Keep an eye on him.",
+				"portrait_emotion": "satisfied",
+				"choices": [ { "text": "[Return to Streets]", "target": "exit" } ]
+			},
+			"lady_m_hold": {
+				"text": "Understood. Holding offline protocol. Mack's taking heavy structural hits, but his mind remains intact. Re-routing telemetry.",
+				"portrait_emotion": "grave",
+				"choices": [ { "text": "[Return to Streets]", "target": "exit" } ]
+			}
+		}
+	}
+	dialogue_sys.start_dialogue_dict(event_tree)
+
+func _trigger_decision_event_norns() -> void:
+	var dialogue_sys = get_parent().get_node_or_null("DialogueSystem")
+	if not is_instance_valid(dialogue_sys):
+		return
+	
+	var event_tree = {
+		"speaker_display_name": "The 3 Norns",
+		"speaker_subtitle": "#03-NORNS // DEEP-WEB PREDICTIVE AI",
+		"speaker_color": "#B01BFF",
+		"nodes": {
+			"start": {
+				"text": "Banquo... the threads of thread-code tremble. We are broadcasting phantom target vectors directly into Mack's ocular scope! He is firing at shadows while the enemy convoy reloads! Drive to Substation 09 immediately and sever the grid power, or watch the War-Rig crumble!",
+				"portrait_emotion": "cryptic",
+				"choices": [
+					{ "text": "I'm heading to Substation 09 now! [Emergency Mission]", "target": "norns_accept" },
+					{ "text": "Ignore the phantoms. Mack will push through.", "target": "norns_ignore" }
+				]
+			},
+			"norns_accept": {
+				"text": "Hurry, Banquo... the clock ticks at Substation 09. Cut the power link before Mack's core burns.",
+				"portrait_emotion": "satisfied",
+				"choices": [ { "text": "[Drive to Substation 09]", "target": "exit" } ]
+			},
+			"norns_ignore": {
+				"text": "A foolish choice... the shadows strike hard.",
+				"portrait_emotion": "grave",
+				"choices": [ { "text": "[Return to Streets]", "target": "exit" } ]
+			}
+		}
+	}
+	dialogue_sys.start_dialogue_dict(event_tree)
+
+func _on_decision_choice_selected(_choice_index: int, target_node_id: String) -> void:
+	match target_node_id:
+		"lady_m_override":
+			mack_current_hp = min(mack_max_hp, mack_current_hp + 35.0)
+			mack_current_action = "ICE Override active! Hull repaired (+35 HP)."
+			var glitch_sys = get_parent().get_node_or_null("NeuralGlitchSystem")
+			if is_instance_valid(glitch_sys):
+				glitch_sys.inject_neural_instability(15.0)
+		"lady_m_hold":
+			mack_current_hp = max(10.0, mack_current_hp - 20.0)
+			mack_current_action = "Holding ground. Hull damaged (-20 HP)."
+		"norns_accept":
+			is_substation_side_mission_active = true
+			if is_instance_valid(neural_comms) and neural_comms.has_method("send_message"):
+				neural_comms.send_message("EMERGENCY OBJECTIVE: Drive to Substation 09 and interact with power grid to save Mack!", "TACTICAL ALERT")
+		"norns_ignore":
+			mack_current_hp = max(10.0, mack_current_hp - 25.0)
+			mack_current_action = "Ocular phantoms active. Heavy damage (-25 HP)."
+
+# ==============================================================================
+# LIVE TELEMETRY HUD BAR UI (TOP CENTER OF SCREEN)
+# ==============================================================================
+
+func _build_telemetry_hud() -> void:
+	telemetry_hud_layer = CanvasLayer.new()
+	telemetry_hud_layer.name = "TelemetryHUDLayer"
+	telemetry_hud_layer.layer = 15 # Below Dialogue (20), above Overmap
+	add_child(telemetry_hud_layer)
+
+	var margin = MarginContainer.new()
+	margin.set_anchors_preset(Control.PRESET_TOP_WIDE)
+	margin.offset_top = 10
+	margin.offset_left = 220
+	margin.offset_right = -260
+	margin.offset_bottom = 60
+	telemetry_hud_layer.add_child(margin)
+
+	telemetry_panel = PanelContainer.new()
+	telemetry_panel.visible = false
+	var p_style = StyleBoxFlat.new()
+	p_style.bg_color = Color(0.02, 0.04, 0.07, 0.92)
+	p_style.border_width_bottom = 2
+	p_style.border_color = Color(1.0, 0.35, 0.0) # Rust Orange
+	p_style.content_margin_left = 12
+	p_style.content_margin_right = 12
+	p_style.content_margin_top = 4
+	p_style.content_margin_bottom = 4
+	telemetry_panel.add_theme_stylebox_override("panel", p_style)
+	margin.add_child(telemetry_panel)
+
+	var hbox = HBoxContainer.new()
+	hbox.add_theme_constant_override("separation", 14)
+	telemetry_panel.add_child(hbox)
+
+	var mack_lbl = Label.new()
+	mack_lbl.text = "🚜 MACK'S WAR-RIG:"
+	mack_lbl.add_theme_font_size_override("font_size", 11)
+	mack_lbl.add_theme_color_override("font_color", Color(1.0, 0.35, 0.0))
+	hbox.add_child(mack_lbl)
+
+	mack_hp_bar = ProgressBar.new()
+	mack_hp_bar.custom_minimum_size = Vector2(140, 14)
+	mack_hp_bar.max_value = 100.0
+	mack_hp_bar.value = 100.0
+	hbox.add_child(mack_hp_bar)
+
+	mack_action_label = Label.new()
+	mack_action_label.text = "Engaging convoy..."
+	mack_action_label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	mack_action_label.add_theme_font_size_override("font_size", 10)
+	mack_action_label.add_theme_color_override("font_color", Color(0.85, 0.9, 0.95))
+	hbox.add_child(mack_action_label)
+
+	mack_timer_label = Label.new()
+	mack_timer_label.text = "05:00"
+	mack_timer_label.add_theme_font_size_override("font_size", 11)
+	mack_timer_label.add_theme_color_override("font_color", Color(1.0, 0.85, 0.0))
+	hbox.add_child(mack_timer_label)
+
+func _update_telemetry_hud() -> void:
+	if not is_instance_valid(telemetry_panel):
+		return
+	
+	if not is_battle_in_progress:
+		telemetry_panel.visible = false
+		return
+		
+	telemetry_panel.visible = true
+	mack_hp_bar.max_value = mack_max_hp
+	mack_hp_bar.value = mack_current_hp
+	mack_action_label.text = mack_current_action
+	
+	var secs_left: int = max(0, int(battle_duration - battle_timer))
+	var mins: int = secs_left / 60
+	var secs: int = secs_left % 60
+	mack_timer_label.text = "%02d:%02d" % [mins, secs]
+
 func launch_grand_deployment() -> void:
 	if is_battle_in_progress:
 		print("[CAMPAIGN MANAGER] Battle already in progress!")
@@ -164,13 +366,25 @@ func launch_grand_deployment() -> void:
 	battle_timer = 0.0
 	last_rumor_tick = 0.0
 	rumor_index = 0
+	decision_1_triggered = false
+	decision_2_triggered = false
+	is_substation_side_mission_active = false
+	
+	# Fetch Mack stats from GarageManager if available
+	var garage_mgr = get_parent().get_node_or_null("GarageManager")
+	if is_instance_valid(garage_mgr) and garage_mgr.fleet.has("MACK_RIG"):
+		mack_max_hp = garage_mgr.fleet["MACK_RIG"]["stats"].get("hull_integrity", 250.0)
+	else:
+		mack_max_hp = 250.0
+	mack_current_hp = mack_max_hp
+	mack_current_action = "Breaching highway entry vector..."
 	
 	var current_data: Dictionary = act_details.get(current_act, {})
 	var convoy_name: String = current_data.get("target_convoy", "Corporate Vanguard")
 	
 	print("[CAMPAIGN MANAGER] Launching autonomous 5-minute Grand Battle for: ", convoy_name)
+	_update_telemetry_hud()
 	
-	# Send initial Neural Comms announcement
 	if is_instance_valid(neural_comms) and neural_comms.has_method("send_message"):
 		neural_comms.send_message("WAR-RIG DISPATCHED! Mack deployed to central highway for " + convoy_name + ". Estimated engagement time: 5 MINS.", "LADY M // MISSION CONTROL")
 

@@ -353,6 +353,9 @@ func _build_substation_floor() -> void:
 	for tx in [-6.0, 6.0]:
 		_build_interior_pillar(root_sub, Vector3(tx, 2.0, -2.0), Vector3(3.0, 4.0, 3.0), Color(1.0, 0.9, 0.0))
 
+	# Interactive Substation 09 Power Grid Breaker Terminal
+	_build_interior_desk(root_sub, Vector3(0.0, 0.6, -6.0), Vector3(4.0, 1.2, 2.0), Color(1.0, 0.9, 0.0))
+
 	# Exit Door (South Wall Center)
 	_build_exit_door(root_sub, Vector3(0.0, 1.8, 9.2))
 
@@ -931,6 +934,12 @@ func _process(_delta: float) -> void:
 				prompt_text = "[E] ACCESS WAR-TABLE // DEPLOY MACK TO GRAND HIT"
 			elif pos.distance_to(floor_exit_pos) <= 4.5:
 				prompt_text = "[E] EXIT TO CITY STREETS"
+		elif current_floor == HQFloor.SUBSTATION:
+			var sub_breaker_pos: Vector3 = substation_origin + Vector3(0.0, 0.0, -6.0)
+			if pos.distance_to(sub_breaker_pos) <= 4.0:
+				prompt_text = "[E] CUT SUBSTATION 09 POWER GRID // SEVER NORNS FEED"
+			elif pos.distance_to(floor_exit_pos) <= 4.5:
+				prompt_text = "[E] EXIT TO CITY STREETS"
 		elif pos.distance_to(floor_exit_pos) <= 4.5:
 			prompt_text = "[E] EXIT TO CITY STREETS"
 
@@ -1022,6 +1031,27 @@ func _unhandled_input(event: InputEvent) -> void:
 						get_viewport().set_input_as_handled()
 						return
 			
+			if current_floor == HQFloor.SUBSTATION:
+				var sub_breaker_pos: Vector3 = substation_origin + Vector3(0.0, 0.0, -6.0)
+				if pos.distance_to(sub_breaker_pos) <= 4.0:
+					var campaign_mgr = get_parent().get_node_or_null("CampaignManager")
+					if is_instance_valid(campaign_mgr):
+						if campaign_mgr.is_substation_side_mission_active:
+							campaign_mgr.is_substation_side_mission_active = false
+							campaign_mgr.mack_current_hp = min(campaign_mgr.mack_max_hp, campaign_mgr.mack_current_hp + 40.0)
+							campaign_mgr.mack_current_action = "Substation 09 severed! Norns phantoms purged (+40 HP)."
+							
+							var quest_mgr = get_parent().get_node_or_null("QuestManager")
+							if is_instance_valid(quest_mgr):
+								quest_mgr.player_credits += 750
+							
+							var neural_comms = get_parent().get_node_or_null("NeuralNotificationSystem")
+							if is_instance_valid(neural_comms) and neural_comms.has_method("send_message"):
+								neural_comms.send_message("SUBSTATION 09 POWER CUT! Norns AI ocular interference purged from Mack's War-Rig! +750 Credits awarded.", "EMERGENCY MISSION COMPLETE")
+							
+							get_viewport().set_input_as_handled()
+							return
+
 			if pos.distance_to(floor_exit_pos) <= 4.5:
 				exit_building_interior()
 				get_viewport().set_input_as_handled()
