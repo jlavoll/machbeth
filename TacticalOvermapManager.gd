@@ -24,7 +24,8 @@ var map_title_label: Label
 var player_blip_marker: ColorRect
 var delivery_blip_marker: ColorRect
 var hq_blip_marker: ColorRect
-var hideout_blip_marker: ColorRect
+var banquo_blip_marker: ColorRect
+var mack_blip_marker: ColorRect
 var lady_m_blip_marker: ColorRect
 var chop_shop_blip_marker: ColorRect
 var pit_blip_marker: ColorRect
@@ -123,11 +124,17 @@ func _setup_map_hud_overlay() -> void:
 	hq_blip_marker.color = Color(0.0, 1.0, 0.85, 0.95) # Cyan
 	map_overlay_panel.add_child(hq_blip_marker)
 
-	# Mack's Hideout / Safehouse Home Blip (Neon Magenta / Purple)
-	hideout_blip_marker = ColorRect.new()
-	hideout_blip_marker.size = Vector2(12, 12)
-	hideout_blip_marker.color = Color(1.0, 0.0, 0.8) # Neon Magenta / Purple
-	map_overlay_panel.add_child(hideout_blip_marker)
+	# Banquo's Private Loft / Home Blip (Neon Magenta / Purple)
+	banquo_blip_marker = ColorRect.new()
+	banquo_blip_marker.size = Vector2(12, 12)
+	banquo_blip_marker.color = Color(1.0, 0.0, 0.8) # Neon Magenta / Purple
+	map_overlay_panel.add_child(banquo_blip_marker)
+
+	# Mack's Hideout & War-Rig Workshop Blip (Amber Orange)
+	mack_blip_marker = ColorRect.new()
+	mack_blip_marker.size = Vector2(12, 12)
+	mack_blip_marker.color = Color(1.0, 0.5, 0.0) # Amber
+	map_overlay_panel.add_child(mack_blip_marker)
 
 	# Lady M Lair Blip (Magenta)
 	lady_m_blip_marker = ColorRect.new()
@@ -287,7 +294,8 @@ func _update_poi_legend() -> void:
 	var entries: Array[Dictionary] = []
 	
 	entries.append({"name": "PLAYER LOCATION", "color": Color(1.0, 0.0, 0.8)})
-	entries.append({"name": "SAFEHOUSE / HOME", "color": Color(1.0, 0.0, 0.8)})
+	entries.append({"name": "BANQUO'S LOFT / HOME", "color": Color(1.0, 0.0, 0.8)})
+	entries.append({"name": "MACK'S HIDEOUT", "color": Color(1.0, 0.5, 0.0)})
 	entries.append({"name": "EXEC LIMO TARGET", "color": Color(1.0, 0.8, 0.0)})
 	entries.append({"name": "DUNCAN HQ", "color": Color(0.0, 1.0, 0.85)})
 	entries.append({"name": "LADY M'S LAIR", "color": Color(1.0, 0.0, 0.8)})
@@ -361,9 +369,10 @@ func _process(_delta: float) -> void:
 			else:
 				delivery_blip_marker.visible = false
 
-		# Duncan Dynamics HQ blip update
+		# Special Location Blips Update
 		_update_single_blip(hq_blip_marker, city_gen.hq_door_pos if is_instance_valid(city_gen) else Vector3.ZERO)
-		_update_single_blip(hideout_blip_marker, city_gen.banquo_safehouse_door_pos if is_instance_valid(city_gen) else Vector3.ZERO)
+		_update_single_blip(banquo_blip_marker, city_gen.banquo_safehouse_door_pos if is_instance_valid(city_gen) else Vector3.ZERO)
+		_update_single_blip(mack_blip_marker, city_gen.mack_hideout_door_pos if is_instance_valid(city_gen) else Vector3.ZERO)
 		_update_single_blip(lady_m_blip_marker, city_gen.lady_m_lair_door_pos if is_instance_valid(city_gen) else Vector3.ZERO)
 		_update_single_blip(chop_shop_blip_marker, city_gen.chop_shop_door_pos if is_instance_valid(city_gen) else Vector3.ZERO)
 		_update_single_blip(pit_blip_marker, city_gen.porter_pit_door_pos if is_instance_valid(city_gen) else Vector3.ZERO)
