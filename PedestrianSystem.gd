@@ -851,22 +851,12 @@ func _spawn_park_dance_groups() -> void:
 	var dance_styles: Array[String] = ["CIRCLE", "PARTNERS", "LINE"]
 	var style_idx: int = 0
 
-	for park in park_boxes:
-		var center_2d: Vector2 = park.get_center()
-		var center_pos: Vector3 = Vector3(center_2d.x, 0.0, center_2d.y)
-		var style: String = dance_styles[style_idx % dance_styles.size()]
-		style_idx += 1
-
-		match style:
-			"CIRCLE":
-				_spawn_circle_dance_group(center_pos, 8)
-			"PARTNERS":
-				_spawn_partner_dance_group(center_pos, 3) # 3 couples (6 dancers)
-			"LINE":
-				_spawn_line_dance_group(center_pos, 6)
-
-		# Spawn a "dodgy character" hanging out under one of the corner streetlamps in the park
-		_spawn_dodgy_park_character(park)
+	# Target Park 1 (MONUMENT Park) for Hare Krishna dance group!
+	var monument_park_rect: Rect2 = park_boxes[0]
+	var center_2d: Vector2 = monument_park_rect.get_center()
+	var center_pos: Vector3 = Vector3(center_2d.x, 0.0, center_2d.y)
+	_spawn_circle_dance_group(center_pos, 8) # Hare Krishna dance circle in Monument Park!
+	_spawn_dodgy_park_character(monument_park_rect)
 
 func _create_single_dancer(pos: Vector3, neon_color: Color, dance_style: String, group_center: Vector3, index: int, total_count: int) -> CharacterBody3D:
 	var ped_node = CharacterBody3D.new()
@@ -973,7 +963,9 @@ func _spawn_concert_crowd() -> void:
 	var city_gen = get_parent().get_node_or_null("CityGenerator")
 	var stage_pos: Vector3 = Vector3(-80.0, 0.0, 0.0) # Default
 	if is_instance_valid(city_gen) and city_gen.get("active_park_boxes") != null and city_gen.active_park_boxes.size() > 0:
-		var park_rect: Rect2 = city_gen.active_park_boxes[0]
+		# Use Second Park box (index 1) if available, which holds the Stage!
+		var p_idx: int = 1 if city_gen.active_park_boxes.size() > 1 else 0
+		var park_rect: Rect2 = city_gen.active_park_boxes[p_idx]
 		var park_center = Vector3(park_rect.position.x + park_rect.size.x / 2.0, 0.0, park_rect.position.y + park_rect.size.y / 2.0)
 		stage_pos = park_center + Vector3(-park_rect.size.x * 0.35, 0.0, 0.0)
 

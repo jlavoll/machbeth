@@ -525,11 +525,14 @@ func _generate_city_grid() -> void:
 	var river_axis: String = "X" if rng.randf() > 0.5 else "Z" # River runs North-South or East-West
 	var river_cell_index: int = rng.randi_range(1, 2) # Which cell column/row is flooded by river
 
-	# Pick 1-2 cells for Cyber Parks with holographic foliage
-	var park_count: int = rng.randi_range(1, 2)
+	# Always pick exactly 2 distinct cells for Cyber Parks:
+	# Park 1: Monument Statue Park (with Hare Krishna / dancing group)
+	# Park 2: Concert Stage Park (with Stage, Light Rig, & Live Band)
 	var park_indices: Array[int] = []
-	for p in range(park_count):
-		park_indices.append(rng.randi_range(0, total_cells - 1))
+	var p1: int = rng.randi_range(0, total_cells - 1)
+	var p2: int = (p1 + total_cells / 2) % total_cells
+	park_indices.append(p1)
+	park_indices.append(p2)
 
 	# Pick up to 4 cells for Asphalt Parking Lots
 	var parking_count: int = rng.randi_range(2, 4)
@@ -579,7 +582,9 @@ func _generate_city_grid() -> void:
 					if overlaps_origin:
 						_spawn_parking_lot(center, size, neon_colors)
 					else:
-						_spawn_cyber_park(center, size, neon_colors)
+						# Distinct park types: First park gets MONUMENT, Second park gets STAGE!
+						var park_type: String = "MONUMENT" if (current_cell_idx == park_indices[0]) else "STAGE"
+						_spawn_cyber_park(center, size, neon_colors, park_type)
 				elif current_cell_idx in parking_indices:
 					_spawn_parking_lot(center, size, neon_colors)
 				else:
@@ -1215,13 +1220,11 @@ func _build_river_guardrails(center: Vector3, b_size: Vector2) -> void:
 			railing_node.add_child(post)
 
 # Spawns a Cyber Park with green grass ground & glowing holographic trees/foliage
-func _spawn_cyber_park(center: Vector3, b_size: Vector2, neon_colors: Array) -> void:
+func _spawn_cyber_park(center: Vector3, b_size: Vector2, neon_colors: Array, park_type: String = "MONUMENT") -> void:
 	# Track park bounding box rectangle
 	var park_rect = Rect2(center.x - b_size.x / 2.0, center.z - b_size.y / 2.0, b_size.x, b_size.y)
 	active_park_boxes.append(park_rect)
 	# 0. Impassable StaticBody3D Wall around Park Perimeter (AI Traffic Obstacle only)
-	# collision_layer = 4, collision_mask = 0: blocks AI traffic (which checks layer 4)
-	# but is invisible to the player car and on-foot character (which use default mask 1)
 	var park_block_body = StaticBody3D.new()
 	park_block_body.name = "CyberParkBlockBoundary"
 	park_block_body.position = center
@@ -1234,6 +1237,7 @@ func _spawn_cyber_park(center: Vector3, b_size: Vector2, neon_colors: Array) -> 
 	park_block_collision_shape.shape = box_shape
 	park_block_body.add_child(park_block_collision_shape)
 	add_child(park_block_body)
+
 	# 1. Dark Green Synthetic Grass Ground Plane
 	var park_ground = MeshInstance3D.new()
 	var plane = PlaneMesh.new()
@@ -1249,133 +1253,318 @@ func _spawn_cyber_park(center: Vector3, b_size: Vector2, neon_colors: Array) -> 
 	park_ground.material_override = p_mat
 	add_child(park_ground)
 
-	# 2. Spawn Big Park Monument Statue (Giant Non-Emissive Metallic Stick Figure on Marble Pedestal)
-	if park_statue_pos == Vector3.ZERO:
-		park_statue_pos = center + Vector3(0.0, 0.0, 0.0)
+	# --------------------------------------------------------------------------
+	# PARK TYPE A: MONUMENT STATUE PARK (Statue + Hare Krishna Dance Group)
+	# --------------------------------------------------------------------------
+	if park_type == "MONUMENT":
+		if park_statue_pos == Vector3.ZERO:
+			park_statue_pos = center + Vector3(0.0, 0.0, 0.0)
 
-		# Pool of Prominent Historical Figures & Lore Backstories
-		var statue_pool: Array[Dictionary] = [
-			{
-				"name": "King James VI of Scotland & I of England",
-				"title": "MONUMENT OF KING JAMES VI & I // MONARCH OF DUNCAN TOWER",
-				"text": "Inscription: 'Patron of the Royal Cyber-Guards. Secretly grants combat allowances to proven warlords, but harbors a dark agenda to drive Mack's stack into terminal thermal paranoia...'"
-			},
-			{
-				"name": "CEO Duncan Senior",
-				"title": "MONUMENT OF CEO DUNCAN SR. // FOUNDER OF DUNCAN DYNAMICS",
-				"text": "Inscription: 'Architect of the Corporate Grid. Built the central tower and established executive outrider patrols across Glamis Highway.'"
-			},
-			{
-				"name": "Thane of Glamis",
-				"title": "MONUMENT OF THE THANE OF GLAMIS // HIGHLIGHT OF HIGHWAY CLEARANCE",
-				"text": "Inscription: 'Hero of the First Rebel Clearance. Commemorating the victory over Sweno's iron war-rigs.'"
-			},
-			{
-				"name": "General Banquo The Undefeated",
-				"title": "MONUMENT OF GENERAL BANQUO // TACTICAL OVERLORD OF FIFE",
-				"text": "Inscription: 'Master strategist of telemetry and orbital surveillance. None born of woman shall break his defense grid.'"
-			}
-		]
-		park_statue_identity = statue_pool[rng.randi() % statue_pool.size()]
+			# Pool of Prominent Historical Figures & Lore Backstories
+			var statue_pool: Array[Dictionary] = [
+				{
+					"name": "King James VI of Scotland & I of England",
+					"title": "MONUMENT OF KING JAMES VI & I // MONARCH OF DUNCAN TOWER",
+					"text": "Inscription: 'Patron of the Royal Cyber-Guards. Secretly grants combat allowances to proven warlords, but harbors a dark agenda to drive Mack's stack into terminal thermal paranoia...'"
+				},
+				{
+					"name": "CEO Duncan Senior",
+					"title": "MONUMENT OF CEO DUNCAN SR. // FOUNDER OF DUNCAN DYNAMICS",
+					"text": "Inscription: 'Architect of the Corporate Grid. Built the central tower and established executive outrider patrols across Glamis Highway.'"
+				},
+				{
+					"name": "Thane of Glamis",
+					"title": "MONUMENT OF THE THANE OF GLAMIS // HIGHLIGHT OF HIGHWAY CLEARANCE",
+					"text": "Inscription: 'Hero of the First Rebel Clearance. Commemorating the victory over Sweno's iron war-rigs.'"
+				},
+				{
+					"name": "General Banquo The Undefeated",
+					"title": "MONUMENT OF GENERAL BANQUO // TACTICAL OVERLORD OF FIFE",
+					"text": "Inscription: 'Master strategist of telemetry and orbital surveillance. None born of woman shall break his defense grid.'"
+				}
+			]
+			park_statue_identity = statue_pool[rng.randi() % statue_pool.size()]
 
-		var statue_root = Node3D.new()
-		statue_root.name = "ParkMonumentStatue"
-		statue_root.position = park_statue_pos
+			var statue_root = Node3D.new()
+			statue_root.name = "ParkMonumentStatue"
+			statue_root.position = park_statue_pos
 
-		# Marble Pedestal Base
-		var ped_body = StaticBody3D.new()
-		var ped_col = CollisionShape3D.new()
-		var ped_shape = BoxShape3D.new()
-		ped_shape.size = Vector3(4.0, 1.8, 4.0)
-		ped_col.shape = ped_shape
-		ped_col.position = Vector3(0.0, 0.9, 0.0)
-		ped_body.add_child(ped_col)
+			# Marble Pedestal Base
+			var ped_body = StaticBody3D.new()
+			var ped_col = CollisionShape3D.new()
+			var ped_shape = BoxShape3D.new()
+			ped_shape.size = Vector3(4.0, 1.8, 4.0)
+			ped_col.shape = ped_shape
+			ped_col.position = Vector3(0.0, 0.9, 0.0)
+			ped_body.add_child(ped_col)
 
-		var ped_mesh = MeshInstance3D.new()
-		var p_box = BoxMesh.new()
-		p_box.size = Vector3(4.0, 1.8, 4.0)
-		ped_mesh.mesh = p_box
-		ped_mesh.position = Vector3(0.0, 0.9, 0.0)
-		var ped_mat = StandardMaterial3D.new()
-		ped_mat.albedo_color = Color(0.15, 0.15, 0.18) # Dark Granite/Marble
-		ped_mat.metallic = 0.3
-		ped_mat.roughness = 0.4
-		ped_mesh.material_override = ped_mat
-		ped_body.add_child(ped_mesh)
-		statue_root.add_child(ped_body)
+			var ped_mesh = MeshInstance3D.new()
+			var p_box = BoxMesh.new()
+			p_box.size = Vector3(4.0, 1.8, 4.0)
+			ped_mesh.mesh = p_box
+			ped_mesh.position = Vector3(0.0, 0.9, 0.0)
+			var ped_mat = StandardMaterial3D.new()
+			ped_mat.albedo_color = Color(0.15, 0.15, 0.18) # Dark Granite/Marble
+			ped_mat.metallic = 0.3
+			ped_mat.roughness = 0.4
+			ped_mesh.material_override = ped_mat
+			ped_body.add_child(ped_mesh)
+			statue_root.add_child(ped_body)
 
-		# GIANT METALLIC STICK FIGURE STATUE (Height ~7.5m above pedestal, NON-GLOWING!)
-		var statue_mat = StandardMaterial3D.new()
-		statue_mat.albedo_color = Color(0.22, 0.24, 0.28) # Dark Cast Iron / Bronze Metal
-		statue_mat.metallic = 0.95
-		statue_mat.roughness = 0.25
-		statue_mat.emission_enabled = false # NO GLOW ON HEAD OR BODY!
+			# GIANT METALLIC STICK FIGURE STATUE (Height ~7.5m above pedestal, NON-GLOWING!)
+			var statue_mat = StandardMaterial3D.new()
+			statue_mat.albedo_color = Color(0.22, 0.24, 0.28) # Dark Cast Iron / Bronze Metal
+			statue_mat.metallic = 0.95
+			statue_mat.roughness = 0.25
+			statue_mat.emission_enabled = false # NO GLOW ON HEAD OR BODY!
 
-		# Stick Figure Torso (Thick vertical rod)
-		var torso = MeshInstance3D.new()
-		var torso_mesh = CylinderMesh.new()
-		torso_mesh.top_radius = 0.2
-		torso_mesh.bottom_radius = 0.2
-		torso_mesh.height = 3.5
-		torso.mesh = torso_mesh
-		torso.position = Vector3(0.0, 3.55, 0.0)
-		torso.material_override = statue_mat
-		statue_root.add_child(torso)
+			# Stick Figure Torso (Thick vertical rod)
+			var torso = MeshInstance3D.new()
+			var torso_mesh = CylinderMesh.new()
+			torso_mesh.top_radius = 0.2
+			torso_mesh.bottom_radius = 0.2
+			torso_mesh.height = 3.5
+			torso.mesh = torso_mesh
+			torso.position = Vector3(0.0, 3.55, 0.0)
+			torso.material_override = statue_mat
+			statue_root.add_child(torso)
 
-		# Stick Figure Non-Glowing Head (Metallic Sphere)
-		var head = MeshInstance3D.new()
-		var head_mesh = SphereMesh.new()
-		head_mesh.radius = 0.55
-		head_mesh.height = 1.1
-		head.mesh = head_mesh
-		head.position = Vector3(0.0, 5.85, 0.0)
-		head.material_override = statue_mat # Metallic non-glowing head!
-		statue_root.add_child(head)
+			# Stick Figure Non-Glowing Head (Metallic Sphere)
+			var head = MeshInstance3D.new()
+			var head_mesh = SphereMesh.new()
+			head_mesh.radius = 0.55
+			head_mesh.height = 1.1
+			head.mesh = head_mesh
+			head.position = Vector3(0.0, 5.85, 0.0)
+			head.material_override = statue_mat # Metallic non-glowing head!
+			statue_root.add_child(head)
 
-		# Stick Figure Arms (Horizontal rod across shoulders)
-		var arms = MeshInstance3D.new()
-		var arm_mesh = CylinderMesh.new()
-		arm_mesh.top_radius = 0.14
-		arm_mesh.bottom_radius = 0.14
-		arm_mesh.height = 3.2
-		arms.mesh = arm_mesh
-		arms.position = Vector3(0.0, 4.8, 0.0)
-		arms.rotation_degrees = Vector3(0.0, 0.0, 90.0)
-		arms.material_override = statue_mat
-		statue_root.add_child(arms)
+			# Stick Figure Arms (Horizontal rod across shoulders)
+			var arms = MeshInstance3D.new()
+			var arm_mesh = CylinderMesh.new()
+			arm_mesh.top_radius = 0.14
+			arm_mesh.bottom_radius = 0.14
+			arm_mesh.height = 3.2
+			arms.mesh = arm_mesh
+			arms.position = Vector3(0.0, 4.8, 0.0)
+			arms.rotation_degrees = Vector3(0.0, 0.0, 90.0)
+			arms.material_override = statue_mat
+			statue_root.add_child(arms)
 
-		# Stick Figure Left Leg
-		var leg_l = MeshInstance3D.new()
-		var leg_mesh = CylinderMesh.new()
-		leg_mesh.top_radius = 0.14
-		leg_mesh.bottom_radius = 0.14
-		leg_mesh.height = 2.4
-		leg_l.mesh = leg_mesh
-		leg_l.position = Vector3(-0.6, 2.2, 0.0)
-		leg_l.rotation_degrees = Vector3(0.0, 0.0, 20.0)
-		leg_l.material_override = statue_mat
-		statue_root.add_child(leg_l)
+			# Stick Figure Left Leg
+			var leg_l = MeshInstance3D.new()
+			var leg_mesh = CylinderMesh.new()
+			leg_mesh.top_radius = 0.14
+			leg_mesh.bottom_radius = 0.14
+			leg_mesh.height = 2.4
+			leg_l.mesh = leg_mesh
+			leg_l.position = Vector3(-0.6, 2.2, 0.0)
+			leg_l.rotation_degrees = Vector3(0.0, 0.0, 20.0)
+			leg_l.material_override = statue_mat
+			statue_root.add_child(leg_l)
 
-		# Stick Figure Right Leg
-		var leg_r = MeshInstance3D.new()
-		leg_r.mesh = leg_mesh
-		leg_r.position = Vector3(0.6, 2.2, 0.0)
-		leg_r.rotation_degrees = Vector3(0.0, 0.0, -20.0)
-		leg_r.material_override = statue_mat
-		statue_root.add_child(leg_r)
+			# Stick Figure Right Leg
+			var leg_r = MeshInstance3D.new()
+			leg_r.mesh = leg_mesh
+			leg_r.position = Vector3(0.6, 2.2, 0.0)
+			leg_r.rotation_degrees = Vector3(0.0, 0.0, -20.0)
+			leg_r.material_override = statue_mat
+			statue_root.add_child(leg_r)
 
-		# Plaque Label
-		var plaque_lbl = Label3D.new()
-		plaque_lbl.text = "🏛️ %s\n[PRESS 'E' TO READ INSCRIPTION]" % park_statue_identity.get("name", "CITY MONUMENT")
-		plaque_lbl.position = Vector3(0.0, 2.2, 2.1)
-		plaque_lbl.font_size = 20
-		plaque_lbl.pixel_size = 0.004
-		plaque_lbl.modulate = Color(1.0, 0.85, 0.0)
-		statue_root.add_child(plaque_lbl)
+			# Plaque Label
+			var plaque_lbl = Label3D.new()
+			plaque_lbl.text = "🏛️ %s\n[PRESS 'E' TO READ INSCRIPTION]" % park_statue_identity.get("name", "CITY MONUMENT")
+			plaque_lbl.position = Vector3(0.0, 2.2, 2.1)
+			plaque_lbl.font_size = 20
+			plaque_lbl.pixel_size = 0.004
+			plaque_lbl.modulate = Color(1.0, 0.85, 0.0)
+			statue_root.add_child(plaque_lbl)
 
-		add_child(statue_root)
+			add_child(statue_root)
 
-	# 3. Corner Streetlights (Independent lights aimed towards park center using CitySceneryProps)
+	# --------------------------------------------------------------------------
+	# PARK TYPE B: CONCERT STAGE PARK (Stage + Light Rig + 3D Live Band)
+	# --------------------------------------------------------------------------
+	elif park_type == "STAGE":
+		var stage_node = Node3D.new()
+		stage_node.name = "CyberParkConcertStage"
+		var stage_pos = center + Vector3(-b_size.x * 0.35, 0.0, 0.0)
+		stage_node.position = stage_pos
+		add_child(stage_node)
+
+		# Raised Platform Solid Slab (8m wide, 1.2m tall, 12m long)
+		var stage_body = StaticBody3D.new()
+		stage_body.name = "StagePlatformCollider"
+		var stage_col = CollisionShape3D.new()
+		var stage_box = BoxShape3D.new()
+		stage_box.size = Vector3(8.0, 1.2, 12.0)
+		stage_col.shape = stage_box
+		stage_col.position = Vector3(0.0, 0.6, 0.0)
+		stage_body.add_child(stage_col)
+
+		var stage_mesh = MeshInstance3D.new()
+		var s_mesh = BoxMesh.new()
+		s_mesh.size = Vector3(8.0, 1.2, 12.0)
+		stage_mesh.mesh = s_mesh
+		stage_mesh.position = Vector3(0.0, 0.6, 0.0)
+		var stage_mat = StandardMaterial3D.new()
+		stage_mat.albedo_color = Color(0.05, 0.06, 0.08) # Metallic stage floor
+		stage_mat.metallic = 0.8
+		stage_mat.roughness = 0.3
+		stage_mesh.material_override = stage_mat
+		stage_body.add_child(stage_mesh)
+
+		# Glowing Neon Front Stage Edge Trim
+		var edge_mesh = MeshInstance3D.new()
+		var e_box = BoxMesh.new()
+		e_box.size = Vector3(0.2, 0.15, 12.0)
+		edge_mesh.mesh = e_box
+		edge_mesh.position = Vector3(4.0, 1.25, 0.0)
+		var edge_mat = StandardMaterial3D.new()
+		edge_mat.albedo_color = Color(1.0, 0.0, 0.8) # Hot Magenta Edge
+		edge_mat.emission_enabled = true
+		edge_mat.emission = Color(1.0, 0.0, 0.8)
+		edge_mat.emission_energy_multiplier = 4.0
+		edge_mesh.material_override = edge_mat
+		stage_body.add_child(edge_mesh)
+
+		stage_node.add_child(stage_body)
+
+		# Check active event today
+		var active_event_id: String = "PARK_CONCERT"
+		var campaign_mgr = get_parent().get_node_or_null("CampaignManager")
+		if is_instance_valid(campaign_mgr) and campaign_mgr.active_daily_event.has("id"):
+			active_event_id = campaign_mgr.active_daily_event.get("id", "PARK_CONCERT")
+
+		var is_stage_event_today: bool = (active_event_id == "PARK_CONCERT" or active_event_id == "SHAKESPEARE_PARK")
+		var is_shakespeare_today: bool = (active_event_id == "SHAKESPEARE_PARK")
+
+		# Par Can Vertical Truss Posts (North and South ends of stage)
+		for z_side in [-5.5, 5.5]:
+			var truss = MeshInstance3D.new()
+			var t_mesh = BoxMesh.new()
+			t_mesh.size = Vector3(0.3, 5.0, 0.3)
+			truss.mesh = t_mesh
+			truss.position = Vector3(3.5, 3.7, z_side)
+			var t_mat = StandardMaterial3D.new()
+			t_mat.albedo_color = Color(0.2, 0.22, 0.25)
+			t_mat.metallic = 0.9
+			truss.material_override = t_mat
+			stage_node.add_child(truss)
+
+			# Side Par Can Spotlight Fixture
+			var spot = SpotLight3D.new()
+			spot.name = "ParCanSpotlight"
+			spot.position = Vector3(3.5, 6.0, z_side)
+			spot.rotation_degrees = Vector3(-35.0, 45.0 if z_side < 0 else -45.0, 0.0)
+			if is_shakespeare_today:
+				spot.light_color = Color(1.0, 0.75, 0.2)
+			else:
+				spot.light_color = Color(1.0, 0.0, 0.8) if z_side < 0 else Color(0.0, 0.85, 1.0)
+			spot.light_energy = 9.0 if is_stage_event_today else 0.0
+			spot.spot_range = 25.0
+			spot.spot_angle = 35.0
+			spot.spot_attenuation = 0.8
+			stage_node.add_child(spot)
+
+		# HORIZONTAL OVERHEAD CROSS-BEAM TRUSS & SPOTLIGHT ROW
+		var cross_beam = MeshInstance3D.new()
+		var cb_mesh = BoxMesh.new()
+		cb_mesh.size = Vector3(0.3, 0.3, 11.4)
+		cross_beam.mesh = cb_mesh
+		cross_beam.position = Vector3(3.5, 6.2, 0.0)
+		var cb_mat = StandardMaterial3D.new()
+		cb_mat.albedo_color = Color(0.25, 0.28, 0.32)
+		cb_mat.metallic = 0.9
+		cross_beam.material_override = cb_mat
+		stage_node.add_child(cross_beam)
+
+		# Line of 4 Overhead Down-Spotlights
+		var beam_spot_positions: Array[float] = [-4.0, -1.3, 1.3, 4.0]
+		for idx in range(beam_spot_positions.size()):
+			var b_z: float = beam_spot_positions[idx]
+			var beam_spot = SpotLight3D.new()
+			beam_spot.name = "CrossBeamSpotlight_%d" % idx
+			beam_spot.position = Vector3(3.5, 6.0, b_z)
+			beam_spot.rotation_degrees = Vector3(-55.0, 0.0, 0.0)
+			beam_spot.light_color = Color(1.0, 0.0, 0.8) if (idx % 2 == 0) else Color(0.0, 0.85, 1.0)
+			beam_spot.light_energy = 8.5 if is_stage_event_today else 0.0
+			beam_spot.spot_range = 22.0
+			beam_spot.spot_angle = 40.0
+			beam_spot.spot_attenuation = 0.75
+			stage_node.add_child(beam_spot)
+
+		# LIVE 3D BAND & LEAD SINGER ON STAGE
+		if is_stage_event_today:
+			var band_node = Node3D.new()
+			band_node.name = "StageCyberBand"
+			band_node.position = Vector3(1.0, 1.2, 0.0)
+
+			var band_members: Array[Dictionary] = [
+				{"name": "Lead Singer", "pos": Vector3(1.5, 0.0, 0.0), "color": Color(1.0, 0.0, 0.8), "mic": true},
+				{"name": "Cyber Guitarist", "pos": Vector3(-0.5, 0.0, -3.0), "color": Color(0.0, 0.85, 1.0), "mic": false},
+				{"name": "Bassist", "pos": Vector3(-0.5, 0.0, 3.0), "color": Color(1.0, 0.85, 0.0), "mic": false},
+				{"name": "Synth Drummer", "pos": Vector3(-2.2, 0.0, 0.0), "color": Color(0.2, 1.0, 0.4), "mic": false}
+			]
+
+			for member in band_members:
+				var char_body = Node3D.new()
+				char_body.name = member["name"]
+				char_body.position = member["pos"]
+				char_body.set_meta("base_pos", member["pos"])
+
+				var g_color: Color = member["color"]
+				var char_mat = StandardMaterial3D.new()
+				char_mat.albedo_color = Color(0.05, 0.05, 0.08)
+
+				var glow_mat = StandardMaterial3D.new()
+				glow_mat.albedo_color = g_color
+				glow_mat.emission_enabled = true
+				glow_mat.emission = g_color
+				glow_mat.emission_energy_multiplier = 3.5
+
+				var body_inst = MeshInstance3D.new()
+				var b_capsule = CapsuleMesh.new()
+				b_capsule.radius = 0.22
+				b_capsule.height = 1.2
+				body_inst.mesh = b_capsule
+				body_inst.position = Vector3(0.0, 0.6, 0.0)
+				body_inst.material_override = char_mat
+				char_body.add_child(body_inst)
+
+				var head_inst = MeshInstance3D.new()
+				var h_sphere = SphereMesh.new()
+				h_sphere.radius = 0.25
+				h_sphere.height = 0.5
+				head_inst.mesh = h_sphere
+				head_inst.position = Vector3(0.0, 1.4, 0.0)
+				head_inst.material_override = glow_mat
+				char_body.add_child(head_inst)
+
+				if member["mic"]:
+					var mic_stand = MeshInstance3D.new()
+					var m_rod = CylinderMesh.new()
+					m_rod.top_radius = 0.04
+					m_rod.bottom_radius = 0.04
+					m_rod.height = 1.4
+					mic_stand.mesh = m_rod
+					mic_stand.position = Vector3(0.4, 0.7, 0.0)
+					mic_stand.material_override = glow_mat
+					char_body.add_child(mic_stand)
+				else:
+					var inst_mesh = MeshInstance3D.new()
+					var i_box = BoxMesh.new()
+					i_box.size = Vector3(0.18, 0.4, 1.1)
+					inst_mesh.mesh = i_box
+					inst_mesh.position = Vector3(0.2, 0.7, 0.0)
+					inst_mesh.material_override = glow_mat
+					char_body.add_child(inst_mesh)
+
+				band_node.add_child(char_body)
+
+			stage_node.add_child(band_node)
+
+	# 3. Corner Streetlights
 	var scenery_props_script = preload("res://CitySceneryProps.gd")
 	var scenery_props = scenery_props_script.new()
 	var park_offset_half_width: float = b_size.x / 2.0 - 1.5
@@ -1390,197 +1579,6 @@ func _spawn_cyber_park(center: Vector3, b_size: Vector2, neon_colors: Array) -> 
 	for pos in park_corner_positions:
 		var park_streetlight_node = scenery_props.create_parking_lot_streetlight(center, pos, b_size)
 		add_child(park_streetlight_node)
-
-	# --------------------------------------------------------------------------
-	# 4. CONCERT STAGE & PAR CANS SPOTLIGHTS RIG (WEST SIDE OF PARK)
-	# --------------------------------------------------------------------------
-	var stage_node = Node3D.new()
-	stage_node.name = "CyberParkConcertStage"
-	# Position along the West side of the park facing East towards audience
-	var stage_pos = center + Vector3(-b_size.x * 0.35, 0.0, 0.0)
-	stage_node.position = stage_pos
-	add_child(stage_node)
-
-	# Raised Platform Solid Slab (8m wide, 1.2m tall, 12m long)
-	var stage_body = StaticBody3D.new()
-	stage_body.name = "StagePlatformCollider"
-	var stage_col = CollisionShape3D.new()
-	var stage_box = BoxShape3D.new()
-	stage_box.size = Vector3(8.0, 1.2, 12.0)
-	stage_col.shape = stage_box
-	stage_col.position = Vector3(0.0, 0.6, 0.0)
-	stage_body.add_child(stage_col)
-
-	var stage_mesh = MeshInstance3D.new()
-	var s_mesh = BoxMesh.new()
-	s_mesh.size = Vector3(8.0, 1.2, 12.0)
-	stage_mesh.mesh = s_mesh
-	stage_mesh.position = Vector3(0.0, 0.6, 0.0)
-	var stage_mat = StandardMaterial3D.new()
-	stage_mat.albedo_color = Color(0.05, 0.06, 0.08) # Metallic stage floor
-	stage_mat.metallic = 0.8
-	stage_mat.roughness = 0.3
-	stage_mesh.material_override = stage_mat
-	stage_body.add_child(stage_mesh)
-
-	# Glowing Neon Front Stage Edge Trim
-	var edge_mesh = MeshInstance3D.new()
-	var e_box = BoxMesh.new()
-	e_box.size = Vector3(0.2, 0.15, 12.0)
-	edge_mesh.mesh = e_box
-	edge_mesh.position = Vector3(4.0, 1.25, 0.0)
-	var edge_mat = StandardMaterial3D.new()
-	edge_mat.albedo_color = Color(1.0, 0.0, 0.8) # Hot Magenta Edge
-	edge_mat.emission_enabled = true
-	edge_mat.emission = Color(1.0, 0.0, 0.8)
-	edge_mat.emission_energy_multiplier = 4.0
-	edge_mesh.material_override = edge_mat
-	stage_body.add_child(edge_mesh)
-
-	stage_node.add_child(stage_body)
-
-	# Check if PARK_CONCERT or SHAKESPEARE_PARK event is currently active today
-	var active_event_id: String = "PARK_CONCERT" # Default to PARK_CONCERT on initial city build!
-	var campaign_mgr = get_parent().get_node_or_null("CampaignManager")
-	if is_instance_valid(campaign_mgr) and campaign_mgr.active_daily_event.has("id"):
-		active_event_id = campaign_mgr.active_daily_event.get("id", "PARK_CONCERT")
-
-	var is_stage_event_today: bool = (active_event_id == "PARK_CONCERT" or active_event_id == "SHAKESPEARE_PARK")
-	var is_shakespeare_today: bool = (active_event_id == "SHAKESPEARE_PARK")
-
-	# Par Can Vertical Truss Posts (North and South ends of stage)
-	for z_side in [-5.5, 5.5]:
-		var truss = MeshInstance3D.new()
-		var t_mesh = BoxMesh.new()
-		t_mesh.size = Vector3(0.3, 5.0, 0.3)
-		truss.mesh = t_mesh
-		truss.position = Vector3(3.5, 3.7, z_side)
-		var t_mat = StandardMaterial3D.new()
-		t_mat.albedo_color = Color(0.2, 0.22, 0.25)
-		t_mat.metallic = 0.9
-		truss.material_override = t_mat
-		stage_node.add_child(truss)
-
-		# Side Par Can Spotlight Fixture
-		var spot = SpotLight3D.new()
-		spot.name = "ParCanSpotlight"
-		spot.position = Vector3(3.5, 6.0, z_side)
-		spot.rotation_degrees = Vector3(-35.0, 45.0 if z_side < 0 else -45.0, 0.0)
-		
-		# Gold/Amber spotlights for Shakespeare, Magenta/Cyan for Concert!
-		if is_shakespeare_today:
-			spot.light_color = Color(1.0, 0.75, 0.2) # Golden Dramatic Theater Spotlight
-		else:
-			spot.light_color = Color(1.0, 0.0, 0.8) if z_side < 0 else Color(0.0, 0.85, 1.0) # Magenta & Cyan Synth
-
-		spot.light_energy = 9.0 if is_stage_event_today else 0.0 # ON during events, OFF when no event!
-		spot.spot_range = 25.0
-		spot.spot_angle = 35.0
-		spot.spot_attenuation = 0.8
-		stage_node.add_child(spot)
-
-	# --- HORIZONTAL OVERHEAD CROSS-BEAM TRUSS & SPOTLIGHT ROW ---
-	var cross_beam = MeshInstance3D.new()
-	var cb_mesh = BoxMesh.new()
-	cb_mesh.size = Vector3(0.3, 0.3, 11.4)
-	cross_beam.mesh = cb_mesh
-	cross_beam.position = Vector3(3.5, 6.2, 0.0)
-	var cb_mat = StandardMaterial3D.new()
-	cb_mat.albedo_color = Color(0.25, 0.28, 0.32)
-	cb_mat.metallic = 0.9
-	cross_beam.material_override = cb_mat
-	stage_node.add_child(cross_beam)
-
-	# Line of 4 Overhead Down-Spotlights mounted along the cross-beam
-	var beam_spot_positions: Array[float] = [-4.0, -1.3, 1.3, 4.0]
-	for idx in range(beam_spot_positions.size()):
-		var b_z: float = beam_spot_positions[idx]
-		var beam_spot = SpotLight3D.new()
-		beam_spot.name = "CrossBeamSpotlight_%d" % idx
-		beam_spot.position = Vector3(3.5, 6.0, b_z)
-		beam_spot.rotation_degrees = Vector3(-55.0, 0.0, 0.0) # Aiming down towards stage center & band
-		beam_spot.light_color = Color(1.0, 0.0, 0.8) if (idx % 2 == 0) else Color(0.0, 0.85, 1.0)
-		beam_spot.light_energy = 8.5 if is_stage_event_today else 0.0
-		beam_spot.spot_range = 22.0
-		beam_spot.spot_angle = 40.0
-		beam_spot.spot_attenuation = 0.75
-		stage_node.add_child(beam_spot)
-
-	# --------------------------------------------------------------------------
-	# LIVE 3D BAND & LEAD SINGER ON STAGE (DURING CONCERT / EVENT)
-	# --------------------------------------------------------------------------
-	if is_stage_event_today:
-		var band_node = Node3D.new()
-		band_node.name = "StageCyberBand"
-		band_node.position = Vector3(1.0, 1.2, 0.0) # Height on top of raised stage
-
-		# Band Members Setup: Lead Singer, Guitarist, Bassist, Synth Drummer
-		var band_members: Array[Dictionary] = [
-			{"name": "Lead Singer", "pos": Vector3(1.5, 0.0, 0.0), "color": Color(1.0, 0.0, 0.8), "mic": true},
-			{"name": "Cyber Guitarist", "pos": Vector3(-0.5, 0.0, -3.0), "color": Color(0.0, 0.85, 1.0), "mic": false},
-			{"name": "Bassist", "pos": Vector3(-0.5, 0.0, 3.0), "color": Color(1.0, 0.85, 0.0), "mic": false},
-			{"name": "Synth Drummer", "pos": Vector3(-2.2, 0.0, 0.0), "color": Color(0.2, 1.0, 0.4), "mic": false}
-		]
-
-		for member in band_members:
-			var char_body = Node3D.new()
-			char_body.name = member["name"]
-			char_body.position = member["pos"]
-			char_body.set_meta("base_pos", member["pos"])
-
-			var g_color: Color = member["color"]
-			var char_mat = StandardMaterial3D.new()
-			char_mat.albedo_color = Color(0.05, 0.05, 0.08)
-
-			var glow_mat = StandardMaterial3D.new()
-			glow_mat.albedo_color = g_color
-			glow_mat.emission_enabled = true
-			glow_mat.emission = g_color
-			glow_mat.emission_energy_multiplier = 3.5
-
-			# Torso Capsule
-			var body_inst = MeshInstance3D.new()
-			var b_capsule = CapsuleMesh.new()
-			b_capsule.radius = 0.22
-			b_capsule.height = 1.2
-			body_inst.mesh = b_capsule
-			body_inst.position = Vector3(0.0, 0.6, 0.0)
-			body_inst.material_override = char_mat
-			char_body.add_child(body_inst)
-
-			# Glowing Neon Cyber Head Sphere
-			var head_inst = MeshInstance3D.new()
-			var h_sphere = SphereMesh.new()
-			h_sphere.radius = 0.25
-			h_sphere.height = 0.5
-			head_inst.mesh = h_sphere
-			head_inst.position = Vector3(0.0, 1.4, 0.0)
-			head_inst.material_override = glow_mat
-			char_body.add_child(head_inst)
-
-			# Instrument / Mic Stand Accessory
-			if member["mic"]:
-				var mic_stand = MeshInstance3D.new()
-				var m_rod = CylinderMesh.new()
-				m_rod.top_radius = 0.04
-				m_rod.bottom_radius = 0.04
-				m_rod.height = 1.4
-				mic_stand.mesh = m_rod
-				mic_stand.position = Vector3(0.4, 0.7, 0.0)
-				mic_stand.material_override = glow_mat
-				char_body.add_child(mic_stand)
-			else:
-				var inst_mesh = MeshInstance3D.new()
-				var i_box = BoxMesh.new()
-				i_box.size = Vector3(0.18, 0.4, 1.1)
-				inst_mesh.mesh = i_box
-				inst_mesh.position = Vector3(0.2, 0.7, 0.0)
-				inst_mesh.material_override = glow_mat
-				char_body.add_child(inst_mesh)
-
-			band_node.add_child(char_body)
-
-		stage_node.add_child(band_node)
 
 # Spawns a dark asphalt Parking Lot with glowing painted parking bay lines
 func _spawn_parking_lot(center: Vector3, b_size: Vector2, neon_colors: Array) -> void:
