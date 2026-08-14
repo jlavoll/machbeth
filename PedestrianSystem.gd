@@ -960,12 +960,12 @@ func _spawn_line_dance_group(center: Vector3, count: int) -> void:
 
 func _spawn_concert_crowd() -> void:
 	var campaign_mgr = get_parent().get_node_or_null("CampaignManager")
-	var active_event_id: String = "PARK_CONCERT" # Default to PARK_CONCERT!
+	var active_event_id: String = "RELIGIOUS_RALLY" # Default to RELIGIOUS_RALLY!
 	if is_instance_valid(campaign_mgr) and campaign_mgr.active_daily_event.has("id"):
-		active_event_id = campaign_mgr.active_daily_event.get("id", "PARK_CONCERT")
+		active_event_id = campaign_mgr.active_daily_event.get("id", "RELIGIOUS_RALLY")
 
-	# ONLY spawn concert crowd when PARK_CONCERT is active today!
-	if active_event_id != "PARK_CONCERT":
+	# Spawn crowd when PARK_CONCERT or RELIGIOUS_RALLY is active today!
+	if active_event_id != "PARK_CONCERT" and active_event_id != "RELIGIOUS_RALLY":
 		return
 
 	var city_gen = get_parent().get_node_or_null("CityGenerator")
@@ -1010,6 +1010,7 @@ func _spawn_concert_crowd() -> void:
 		crowd_guy.add_child(body_inst)
 
 		var head_inst = MeshInstance3D.new()
+		head_inst.name = "HeadMesh"
 		head_inst.mesh = head_mesh_template
 		head_inst.position = Vector3(0.0, 1.35, 0.0)
 		var h_mat = StandardMaterial3D.new()
@@ -1020,37 +1021,79 @@ func _spawn_concert_crowd() -> void:
 		head_inst.material_override = h_mat
 		crowd_guy.add_child(head_inst)
 
-		# Neon Cyber-Shades / Glow Visor for Concert Goers!
-		var visor = MeshInstance3D.new()
-		var v_box = BoxMesh.new()
-		v_box.size = Vector3(0.26, 0.08, 0.16)
-		visor.mesh = v_box
-		visor.position = Vector3(-0.12, 1.37, 0.0) # Facing West (-X)
-		visor.material_override = h_mat
-		crowd_guy.add_child(visor)
+		if active_event_id == "RELIGIOUS_RALLY":
+			# Glowing Holy Halo/Crown for Devout Religious Crowd!
+			var halo = MeshInstance3D.new()
+			halo.mesh = crown_mesh_template
+			halo.position = Vector3(0.0, 1.62, 0.0)
+			halo.material_override = h_mat
+			crowd_guy.add_child(halo)
+		else:
+			# Neon Cyber-Shades / Glow Visor for Concert Goers!
+			var visor = MeshInstance3D.new()
+			var v_box = BoxMesh.new()
+			v_box.size = Vector3(0.26, 0.08, 0.16)
+			visor.mesh = v_box
+			visor.position = Vector3(-0.12, 1.37, 0.0) # Facing West (-X)
+			visor.material_override = h_mat
+			crowd_guy.add_child(visor)
 
 		crowd_guy.position = pos
-		crowd_guy.look_at(stage_pos + Vector3(0.0, 1.2, 0.0), Vector3.UP) # Facing stage band!
+		crowd_guy.look_at(stage_pos + Vector3(0.0, 1.2, 0.0), Vector3.UP) # Facing stage preacher / band!
 		crowd_guy.set_meta("base_pos", pos)
 		crowd_guy.set_meta("fan_idx", i)
+		crowd_guy.set_meta("event_id", active_event_id)
 
 		add_child(crowd_guy)
 		active_concert_crowd.append(crowd_guy)
 
-	print("[PEDESTRIANS] Spawned %d Concert Crowd Fans in Cyber Park Plaza!" % active_concert_crowd.size())
+	print("[PEDESTRIANS] Spawned %d %s Fans in Cyber Park Plaza!" % [active_concert_crowd.size(), active_event_id])
 
 func _update_concert_crowd(delta: float) -> void:
 	var time: float = Time.get_ticks_msec() / 1000.0
+	
+	# Fetch Preacher state from StageCyberBand if RELIGIOUS_RALLY is active
+	var preacher_head_color: Color = Color.ZERO
+	var preacher_jump: float = 0.0
+	var preacher_tilt: float = 0.0
+	var is_religious_active: bool = false
+	
+	var city_gen = get_parent().get_node_or_null("CityGenerator")
+	if is_instance_valid(city_gen):
+		var band_node = city_gen.find_child("StageCyberBand", true, false)
+		if is_instance_valid(band_node) and band_node.has_meta("preacher_head_color"):
+			is_religious_active = true
+			preacher_head_color = band_node.get_meta("preacher_head_color", Color(1.0, 0.85, 0.0))
+			preacher_jump = band_node.get_meta("preacher_jump_offset", 0.0)
+			preacher_tilt = band_node.get_meta("preacher_tilt_x", 0.0)
+
 	for fan in active_concert_crowd:
 		if not is_instance_valid(fan):
 			continue
 		var base_p: Vector3 = fan.get_meta("base_pos", fan.position)
 		var idx: int = fan.get_meta("fan_idx", 0)
 
-		# Hyped concert jumping, arm waving, and headbanging!
-		var jump_y: float = abs(sin(time * 10.0 + idx * 0.4)) * 0.28
-		var sway_z: float = sin(time * 5.0 + idx * 0.7) * 0.12
-		fan.position = Vector3(base_p.x, base_p.y + jump_y, base_p.z + sway_z)
+		if is_religious_active:
+			# DEVOUT RELIGIOUS CROWD: Mimicks the Charismatic Preacher's jumps, bows & head color!
+			var crowd_jump: float = preacher_jump * 0.85 # Synchronized devout jump!
+			var crowd_tilt: float = preacher_tilt * 0.75 # Synchronized bow / prostration!
+			
+			fan.position = Vector3(base_p.x, base_p.y + crowd_jump, base_p.z)
+			fan.rotation_degrees = Vector3(crowd_tilt, fan.rotation_degrees.y, 0.0)
+
+			# Mimick Preacher's head color shift across the entire crowd!
+			if preacher_head_color != Color.ZERO:
+				var head_node = fan.get_node_or_null("HeadMesh")
+				if is_instance_valid(head_node) and is_instance_valid(head_node.material_override):
+					var h_mat = head_node.material_override as StandardMaterial3D
+					if is_instance_valid(h_mat):
+						h_mat.albedo_color = preacher_head_color
+						h_mat.emission = preacher_head_color
+		else:
+			# Hyped concert jumping, arm waving, and headbanging!
+			var jump_y: float = abs(sin(time * 10.0 + idx * 0.4)) * 0.28
+			var sway_z: float = sin(time * 5.0 + idx * 0.7) * 0.12
+			fan.position = Vector3(base_p.x, base_p.y + jump_y, base_p.z + sway_z)
 
 # Procedural dance routine updates for all park dancers with car dodge & safe return logic
 func _update_park_dancers(delta: float) -> void:

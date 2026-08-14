@@ -297,17 +297,84 @@ func _update_stage_lights_and_band_animation(delta: float) -> void:
 		if child.name == "ParCanSpotlight":
 			child.light_color = hue2
 
-	# Animate 3D Band Members bouncing rhythmically to the music beat!
+	# Check active event ID
+	var campaign_mgr = get_parent().get_node_or_null("CampaignManager")
+	var active_event_id: String = "RELIGIOUS_RALLY"
+	if is_instance_valid(campaign_mgr) and campaign_mgr.active_daily_event.has("id"):
+		active_event_id = campaign_mgr.active_daily_event.get("id", "RELIGIOUS_RALLY")
+
+	# Animate Stage Performers (Cyber Band vs Charismatic Preacher + Quiet Disciples)
 	var band_node = stage_node.get_node_or_null("StageCyberBand")
 	if is_instance_valid(band_node):
-		var member_idx: int = 0
-		for member in band_node.get_children():
-			if member is Node3D:
-				var base_p: Vector3 = member.get_meta("base_pos", member.position)
-				var bounce_y: float = abs(sin(_stage_anim_time * 12.0 + member_idx * 0.9)) * 0.45 # Fast energetic jump!
-				var sway_z: float = sin(_stage_anim_time * 6.0 + member_idx * 1.3) * 0.25 # Rock & roll lateral sway
-				member.position = Vector3(base_p.x, base_p.y + bounce_y, base_p.z + sway_z)
-				member.rotation_degrees.z = sin(_stage_anim_time * 12.0 + member_idx) * 15.0 # Rhythmic headbanging tilt!
-				member_idx += 1
+		if active_event_id == "RELIGIOUS_RALLY":
+			# CHARISMATIC PREACHER ROUTINE ENGINE:
+			# Preacher cycles through 4 ritual phases every ~8 seconds:
+			# Phase 0: Double Jump Sermon (2 quick vertical jumps)
+			# Phase 1: Holy Color Shift (Head shifts between Gold, Cyan, Magenta, Emerald)
+			# Phase 2: Arms-Up Swaying Blessing
+			# Phase 3: Rapid Bow & Prostration
+			var routine_time: float = fmod(_stage_anim_time, 8.0)
+			var routine_phase: int = int(routine_time / 2.0)
+			
+			var preacher_node = band_node.get_node_or_null("Cyber Preacher")
+			var preacher_head_color: Color = Color(1.0, 0.85, 0.0) # Default Amber Gold
+			var preacher_jump_offset: float = 0.0
+			var preacher_sway_z: float = 0.0
+			var preacher_tilt_x: float = 0.0
+
+			match routine_phase:
+				0: # Phase 0: Double Jump Ritual (2 fast jumps!)
+					var jump_sub: float = fmod(routine_time, 1.0)
+					preacher_jump_offset = abs(sin(jump_sub * PI)) * 0.65 # High 0.65m jump!
+					preacher_head_color = Color(1.0, 0.85, 0.0)
+				1: # Phase 1: Holy Glow Color Cycle (Gold -> Cyan -> Magenta -> Green)
+					var color_step: int = int((_stage_anim_time * 2.0)) % 4
+					var holy_colors: Array[Color] = [Color(1.0, 0.85, 0.0), Color(0.0, 0.85, 1.0), Color(1.0, 0.0, 0.8), Color(0.2, 1.0, 0.4)]
+					preacher_head_color = holy_colors[color_step]
+					preacher_jump_offset = 0.05
+				2: # Phase 2: Arms-Up Swaying Blessing
+					preacher_sway_z = sin(_stage_anim_time * 4.0) * 0.35
+					preacher_head_color = Color(0.0, 0.85, 1.0) # Radiant Cyan
+				3: # Phase 3: Prostration Bow
+					preacher_tilt_x = sin(_stage_anim_time * 3.0) * 25.0
+					preacher_head_color = Color(1.0, 0.0, 0.8) # Radiant Magenta
+
+			# Apply position, rotation & head color to Preacher
+			if is_instance_valid(preacher_node):
+				var p_base: Vector3 = preacher_node.get_meta("base_pos", preacher_node.position)
+				preacher_node.position = Vector3(p_base.x, p_base.y + preacher_jump_offset, p_base.z + preacher_sway_z)
+				preacher_node.rotation_degrees = Vector3(preacher_tilt_x, 0.0, 0.0)
+				
+				var p_head = preacher_node.get_node_or_null("HeadMesh")
+				if is_instance_valid(p_head) and is_instance_valid(p_head.material_override):
+					var h_mat = p_head.material_override as StandardMaterial3D
+					if is_instance_valid(h_mat):
+						h_mat.albedo_color = preacher_head_color
+						h_mat.emission = preacher_head_color
+
+			# Store current preacher state in band node metadata for the crowd to mimick!
+			band_node.set_meta("preacher_head_color", preacher_head_color)
+			band_node.set_meta("preacher_jump_offset", preacher_jump_offset)
+			band_node.set_meta("preacher_sway_z", preacher_sway_z)
+			band_node.set_meta("preacher_tilt_x", preacher_tilt_x)
+
+			# Quiet Disciples stay still/quiet behind preacher, bowing slightly in reverence
+			for member in band_node.get_children():
+				if member != preacher_node and member is Node3D:
+					var base_p: Vector3 = member.get_meta("base_pos", member.position)
+					member.position = base_p + Vector3(0.0, sin(_stage_anim_time * 1.5) * 0.05, 0.0)
+					member.rotation_degrees = Vector3(sin(_stage_anim_time * 2.0) * 5.0, 0.0, 0.0)
+
+		else:
+			# Standard Cyber-Punk Rock Band Bounce
+			var member_idx: int = 0
+			for member in band_node.get_children():
+				if member is Node3D:
+					var base_p: Vector3 = member.get_meta("base_pos", member.position)
+					var bounce_y: float = abs(sin(_stage_anim_time * 12.0 + member_idx * 0.9)) * 0.45
+					var sway_z: float = sin(_stage_anim_time * 6.0 + member_idx * 1.3) * 0.25
+					member.position = Vector3(base_p.x, base_p.y + bounce_y, base_p.z + sway_z)
+					member.rotation_degrees.z = sin(_stage_anim_time * 12.0 + member_idx) * 15.0
+					member_idx += 1
 
 

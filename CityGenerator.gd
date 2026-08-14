@@ -1430,13 +1430,14 @@ func _spawn_cyber_park(center: Vector3, b_size: Vector2, neon_colors: Array, par
 		stage_node.add_child(stage_body)
 
 		# Check active event today
-		var active_event_id: String = "PARK_CONCERT"
+		var active_event_id: String = "RELIGIOUS_RALLY"
 		var campaign_mgr = get_parent().get_node_or_null("CampaignManager")
 		if is_instance_valid(campaign_mgr) and campaign_mgr.active_daily_event.has("id"):
-			active_event_id = campaign_mgr.active_daily_event.get("id", "PARK_CONCERT")
+			active_event_id = campaign_mgr.active_daily_event.get("id", "RELIGIOUS_RALLY")
 
-		var is_stage_event_today: bool = (active_event_id == "PARK_CONCERT" or active_event_id == "SHAKESPEARE_PARK")
+		var is_stage_event_today: bool = (active_event_id == "PARK_CONCERT" or active_event_id == "SHAKESPEARE_PARK" or active_event_id == "RELIGIOUS_RALLY")
 		var is_shakespeare_today: bool = (active_event_id == "SHAKESPEARE_PARK")
+		var is_religious_today: bool = (active_event_id == "RELIGIOUS_RALLY")
 
 		# Par Can Vertical Truss Posts (North and South ends of stage)
 		for z_side in [-5.5, 5.5]:
@@ -1493,18 +1494,29 @@ func _spawn_cyber_park(center: Vector3, b_size: Vector2, neon_colors: Array, par
 			beam_spot.spot_attenuation = 0.75
 			stage_node.add_child(beam_spot)
 
-		# LIVE 3D BAND & LEAD SINGER ON STAGE
+		# LIVE 3D BAND / PREACHER RALLY ON STAGE
 		if is_stage_event_today:
 			var band_node = Node3D.new()
 			band_node.name = "StageCyberBand"
 			band_node.position = Vector3(1.0, 1.2, 0.0)
 
-			var band_members: Array[Dictionary] = [
-				{"name": "Lead Singer", "pos": Vector3(1.5, 0.0, 0.0), "color": Color(1.0, 0.0, 0.8), "mic": true},
-				{"name": "Cyber Guitarist", "pos": Vector3(-0.5, 0.0, -3.0), "color": Color(0.0, 0.85, 1.0), "mic": false},
-				{"name": "Bassist", "pos": Vector3(-0.5, 0.0, 3.0), "color": Color(1.0, 0.85, 0.0), "mic": false},
-				{"name": "Synth Drummer", "pos": Vector3(-2.2, 0.0, 0.0), "color": Color(0.2, 1.0, 0.4), "mic": false}
-			]
+			var band_members: Array[Dictionary] = []
+			if is_religious_today:
+				# Charismatic Preacher (front center) + 3 Quiet Disciples (flanking behind)
+				band_members = [
+					{"name": "Cyber Preacher", "pos": Vector3(1.5, 0.0, 0.0), "color": Color(1.0, 0.85, 0.0), "mic": true, "robe": true},
+					{"name": "Quiet Disciple North", "pos": Vector3(-0.5, 0.0, -3.0), "color": Color(0.15, 0.2, 0.3), "mic": false, "robe": false},
+					{"name": "Quiet Disciple Center", "pos": Vector3(-2.2, 0.0, 0.0), "color": Color(0.15, 0.2, 0.3), "mic": false, "robe": false},
+					{"name": "Quiet Disciple South", "pos": Vector3(-0.5, 0.0, 3.0), "color": Color(0.15, 0.2, 0.3), "mic": false, "robe": false}
+				]
+			else:
+				# Cyber-Punk Rock Band
+				band_members = [
+					{"name": "Lead Singer", "pos": Vector3(1.5, 0.0, 0.0), "color": Color(1.0, 0.0, 0.8), "mic": true, "robe": false},
+					{"name": "Cyber Guitarist", "pos": Vector3(-0.5, 0.0, -3.0), "color": Color(0.0, 0.85, 1.0), "mic": false, "robe": false},
+					{"name": "Bassist", "pos": Vector3(-0.5, 0.0, 3.0), "color": Color(1.0, 0.85, 0.0), "mic": false, "robe": false},
+					{"name": "Synth Drummer", "pos": Vector3(-2.2, 0.0, 0.0), "color": Color(0.2, 1.0, 0.4), "mic": false, "robe": false}
+				]
 
 			for member in band_members:
 				var char_body = Node3D.new()
@@ -1532,6 +1544,7 @@ func _spawn_cyber_park(center: Vector3, b_size: Vector2, neon_colors: Array, par
 				char_body.add_child(body_inst)
 
 				var head_inst = MeshInstance3D.new()
+				head_inst.name = "HeadMesh"
 				var h_sphere = SphereMesh.new()
 				h_sphere.radius = 0.25
 				h_sphere.height = 0.5
@@ -1550,7 +1563,7 @@ func _spawn_cyber_park(center: Vector3, b_size: Vector2, neon_colors: Array, par
 					mic_stand.position = Vector3(0.4, 0.7, 0.0)
 					mic_stand.material_override = glow_mat
 					char_body.add_child(mic_stand)
-				else:
+				elif not is_religious_today:
 					var inst_mesh = MeshInstance3D.new()
 					var i_box = BoxMesh.new()
 					i_box.size = Vector3(0.18, 0.4, 1.1)

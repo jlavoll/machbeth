@@ -23,6 +23,14 @@ var max_side_missions_per_day: int = 2
 var active_daily_event: Dictionary = {}
 var special_city_events: Array[Dictionary] = [
 	{
+		"id": "RELIGIOUS_RALLY",
+		"title": "⚡ CHARISMATIC CYBER-RELIGIOUS RALLY",
+		"host": "LADY M // MISSION CONTROL",
+		"text": "Lady M: 'A high-voltage Charismatic Cyber-Preacher is holding a revival rally on the Cyber Park stage today! The preacher is performing synchronized ritual gestures and the devout crowd is mimicking his every move.'",
+		"location": "Cyber Park Stage",
+		"effect": "+30% Neural Glitch Resistance & Telemetry Shielding today!"
+	},
+	{
 		"id": "PARK_CONCERT",
 		"title": "🎵 NEON SYNDICATE CYBER-PUNK CONCERT",
 		"host": "LADY M // MISSION CONTROL",
@@ -284,8 +292,8 @@ func _ready() -> void:
 	call_deferred("_start_day_1")
 
 func _start_day_1() -> void:
-	# Force Day 1 event to always be the Cyber-Punk Concert!
-	active_daily_event = special_city_events[0] # PARK_CONCERT
+	# Force Day 1 event to be the Charismatic Cyber-Religious Rally for testing!
+	active_daily_event = special_city_events[0] # RELIGIOUS_RALLY
 	
 	# Trigger sequential top-left HUD comms calls for Day 1 start!
 	_trigger_sequential_daily_calls()
