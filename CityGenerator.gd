@@ -1257,8 +1257,7 @@ func _spawn_cyber_park(center: Vector3, b_size: Vector2, neon_colors: Array, par
 	# PARK TYPE A: MONUMENT STATUE PARK (Statue + Hare Krishna Dance Group)
 	# --------------------------------------------------------------------------
 	if park_type == "MONUMENT":
-		if park_statue_pos == Vector3.ZERO:
-			park_statue_pos = center + Vector3(0.0, 0.0, 0.0)
+		park_statue_pos = center + Vector3(0.0, 0.0, 0.0)
 
 			# Pool of Prominent Historical Figures & Lore Backstories
 			var statue_pool: Array[Dictionary] = [
