@@ -316,6 +316,9 @@ func _spawn_car_on_loop(loop_route: Array[Vector3], start_waypoint_index: int) -
 		car_body_mat.metallic                   = 1.0
 		car_body_mat.roughness                  = 0.05
 
+	car_node.set_meta("archetype", archetype)
+
+
 	var wheel_radius: float  = 0.35
 	var body_y_offset: float = wheel_radius * 1.5 + car_size.y * 0.5
 
@@ -555,6 +558,14 @@ func _process(delta: float) -> void:
 			active_traffic_cars.remove_at(car_idx)
 			continue
 
+		# Skip movement, physics, and audio updates for destroyed wrecks
+		if car.get_meta("is_destroyed", false):
+			car.velocity = Vector3.ZERO
+			var eng = car.get_node_or_null("EngineAudio")
+			if is_instance_valid(eng) and eng.playing:
+				eng.stop()
+			continue
+
 		_update_headlights(car, is_dark_stage, delta)
 
 		var move_speed: float = _drive_loop(car, space_state)
@@ -567,6 +578,7 @@ func _process(delta: float) -> void:
 		car.move_and_slide()
 
 		_check_stuck(car, car_idx, delta)
+
 
 # ==============================================================================
 # 5. LOOP DRIVING
@@ -739,3 +751,11 @@ func _check_stuck(car: Node3D, array_idx: int, delta: float) -> void:
 			# Moving fine — reset sample window
 			car.set_meta("stuck_timer",       0.0)
 			car.set_meta("last_progress_pos", car.global_position)
+
+# ==============================================================================
+# 9. TARGET INTERCEPT CHECK (Proximity & Status Tracking)
+# ==============================================================================
+
+func _physics_process(_delta: float) -> void:
+	if not is_instance_valid(player_car):
+		return

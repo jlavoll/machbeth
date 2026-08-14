@@ -22,6 +22,14 @@ var player_credits: int = 0
 
 # Registry of all data-driven quests in the game
 var quest_registry: Dictionary = {
+	"limo_intercept": {
+		"title": "EXEC LIMO INTERCEPT",
+		"description": "Hunt down Duncan Dynamics Exec Limo on the city grid. Side-swipe or trap to engage cockpit combat.",
+		"reward_credits": 1200,
+		"reward_scrap": 50,
+		"map_blip_color": Color(1.0, 0.2, 0.4, 0.95),
+		"completion_lady_m_text": "Target limo destroyed! Exec telemetry secured. 1,200 Cyber-Credits & 50 Scrap added to inventory."
+	},
 	"fetch_data_chip": {
 		"title": "ENCRYPTED DATA HANDOVER",
 		"description": "Deliver the encrypted Syndicate data-chip to Banquo's contact waiting on the street.",
@@ -37,6 +45,7 @@ var quest_registry: Dictionary = {
 		"completion_lady_m_text": "Data-chip received and decrypted cleanly. Great work, Banquo. 500 Credits added to your Neural Vault."
 	}
 }
+
 
 # Quest HUD Overlay
 var quest_hud_layer: CanvasLayer

@@ -67,15 +67,16 @@ var power_substation_door_pos: Vector3 = Vector3.ZERO
 func _ready() -> void:
 	generate_city_from_seed(city_seed)
 
-# Listen for 1/2 keys to cycle city seeds in real-time during gameplay
+# Listen for 9/0 keys to cycle city seeds in real-time during gameplay
 func _unhandled_input(event: InputEvent) -> void:
 	if event is InputEventKey and event.pressed and not event.echo:
-		if event.keycode == KEY_2:
-			# Key 2: Increase city seed (+1)
+		if event.keycode == KEY_0:
+			# Key 0: Increase city seed (+1)
 			regenerate_city(city_seed + 1)
-		elif event.keycode == KEY_1:
-			# Key 1: Decrease city seed (-1)
+		elif event.keycode == KEY_9:
+			# Key 9: Decrease city seed (-1)
 			regenerate_city(city_seed - 1)
+
 
 # Clears existing city building and streetlight nodes, sets new seed, and rebuilds the city
 func regenerate_city(new_seed: int) -> void:

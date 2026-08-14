@@ -9,11 +9,27 @@ extends Node
 # Signal emitted when a combat encounter is initiated
 signal combat_encounter_requested
 
+# Signal emitted when a specific targeted combat encounter is initiated (e.g. Limo Intercept)
+signal combat_encounter_requested_with_target(target_profile: Dictionary)
+
 # Signal emitted when a combat encounter is concluded
 signal combat_encounter_concluded
 
-# Boolean tracking whether Mack is currently engaged in active cockpit combat
+# Boolean tracking whether Mack/Banquo is currently engaged in active cockpit combat
 var is_combat_encounter_active: bool = false
+
+func trigger_targeted_encounter(target_profile: Dictionary) -> void:
+	if not is_combat_encounter_active:
+		is_combat_encounter_active = true
+		print("[BATTLE TRIGGER] Targeted encounter triggered: ", target_profile.get("designation", "Target"))
+		combat_encounter_requested_with_target.emit(target_profile)
+
+func conclude_encounter() -> void:
+	if is_combat_encounter_active:
+		is_combat_encounter_active = false
+		print("[BATTLE TRIGGER] Encounter concluded.")
+		combat_encounter_concluded.emit()
+
 
 # ==============================================================================
 # INPUT LISTENER LOOP

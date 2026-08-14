@@ -146,7 +146,7 @@ func _construct_cockpit_dashboard_layout() -> void:
 	dash_panel.add_child(grid)
 
 	# --- MODULE 1: ORDNANCE ARRAY (Gatling/EMP) ---
-	var m1 = _create_dashboard_module("ORDNANCE ARRAY", "Gatling Cannon Strike", Color(1, 0.2, 0.2))
+	var m1 = _create_dashboard_module("ORDNANCE ARRAY", "[1] Gatling Cannon", Color(1, 0, 0.2))
 	gatling_button = m1["button"]
 	gatling_atb_gauge = m1["gauge"]
 	gatling_button.pressed.connect(func():
@@ -156,7 +156,7 @@ func _construct_cockpit_dashboard_layout() -> void:
 	grid.add_child(m1["container"])
 
 	# --- MODULE 2: NETRUNNER DECK (ICE-Breaker Keypad) ---
-	var m2 = _create_dashboard_module("NETRUNNER DECK", "ICE-Breaker Hack", Color(0, 0.85, 1))
+	var m2 = _create_dashboard_module("NETRUNNER DECK", "[2] ICE-Breaker Hack", Color(0, 0.85, 1))
 	ice_breaker_button = m2["button"]
 	netrunner_atb_gauge = m2["gauge"]
 	ice_breaker_button.pressed.connect(func():
@@ -166,7 +166,7 @@ func _construct_cockpit_dashboard_layout() -> void:
 	grid.add_child(m2["container"])
 
 	# --- MODULE 3: ENGINE CORE (Nitrous Booster) ---
-	var m3 = _create_dashboard_module("ENGINE CORE", "Nitrous Evasion Boost", Color(1, 0.8, 0))
+	var m3 = _create_dashboard_module("ENGINE CORE", "[3] Nitrous Boost", Color(1, 0.8, 0))
 	nitrous_button = m3["button"]
 	nitrous_atb_gauge = m3["gauge"]
 	nitrous_button.pressed.connect(func():
@@ -176,7 +176,7 @@ func _construct_cockpit_dashboard_layout() -> void:
 	grid.add_child(m3["container"])
 
 	# --- MODULE 4: OVERCLOCK LEVER (Limit Break) ---
-	var m4 = _create_dashboard_module("OVERCLOCK LEVER", "Neural Overclock", Color(1, 0, 0.8))
+	var m4 = _create_dashboard_module("OVERCLOCK LEVER", "[4] Neural Overclock", Color(1, 0, 0.8))
 	overclock_button = m4["button"]
 	overclock_atb_gauge = m4["gauge"]
 	overclock_button.pressed.connect(func():
@@ -184,6 +184,34 @@ func _construct_cockpit_dashboard_layout() -> void:
 			overclock_lever_engaged.emit()
 	)
 	grid.add_child(m4["container"])
+
+# ==============================================================================
+# KEYBOARD SHORTCUT LISTENER (HOTKEYS 1, 2, 3, 4)
+# ==============================================================================
+
+func _unhandled_input(event: InputEvent) -> void:
+	if not visible:
+		return
+
+	if event is InputEventKey and event.is_pressed() and not event.is_echo():
+		match event.keycode:
+			KEY_1:
+				if consume_atb_charge("gatling"):
+					print("[HOTKEY 1] Fired Gatling Cannon via key 1!")
+					gatling_attack_triggered.emit()
+			KEY_2:
+				if consume_atb_charge("ice_breaker"):
+					print("[HOTKEY 2] Fired ICE-Breaker Hack via key 2!")
+					ice_breaker_hack_triggered.emit("EMP_OVERLOAD")
+			KEY_3:
+				if consume_atb_charge("nitrous"):
+					print("[HOTKEY 3] Engaged Nitrous Boost via key 3!")
+					nitrous_boost_triggered.emit()
+			KEY_4:
+				if consume_atb_charge("overclock"):
+					print("[HOTKEY 4] Engaged Neural Overclock via key 4!")
+					overclock_lever_engaged.emit()
+
 
 # Helper to manufacture tactile UI module boxes with LED gauges
 func _create_dashboard_module(header: String, btn_title: String, led_color: Color) -> Dictionary:

@@ -171,6 +171,14 @@ func _setup_map_hud_overlay() -> void:
 	substation_blip_marker.color = Color(1.0, 0.9, 0.0) # High Voltage Yellow
 	map_overlay_panel.add_child(substation_blip_marker)
 
+	# Executive Limo Target Blip Marker (Radiant Gold / Red Pulse)
+	var limo_blip_marker: ColorRect = ColorRect.new()
+	limo_blip_marker.name = "LimoBlipMarker"
+	limo_blip_marker.size = Vector2(14, 14)
+	limo_blip_marker.color = Color(1.0, 0.8, 0.0, 1.0) # Radiant Gold Target
+	limo_blip_marker.visible = false
+	map_overlay_panel.add_child(limo_blip_marker)
+
 	# Parked Car Blip Marker (Amber Orange)
 	parked_car_blip_marker = ColorRect.new()
 	parked_car_blip_marker.name = "ParkedCarBlipMarker"
@@ -178,6 +186,7 @@ func _setup_map_hud_overlay() -> void:
 	parked_car_blip_marker.color = Color(1.0, 0.5, 0.0, 0.95) # Radiant Amber Orange
 	parked_car_blip_marker.visible = false
 	map_overlay_panel.add_child(parked_car_blip_marker)
+
 
 	# --------------------------------------------------------------------------
 	# TOP RIGHT PIP LIVE FEED BOX (COMPACT DIMENSIONS: 220x140)
@@ -270,6 +279,7 @@ func _update_poi_legend() -> void:
 	var entries: Array[Dictionary] = []
 	
 	entries.append({"name": "PLAYER LOCATION", "color": Color(1.0, 0.0, 0.8)})
+	entries.append({"name": "EXEC LIMO TARGET", "color": Color(1.0, 0.8, 0.0)})
 	entries.append({"name": "DUNCAN HQ", "color": Color(0.0, 1.0, 0.85)})
 	entries.append({"name": "MACK'S HIDEOUT", "color": Color(1.0, 0.5, 0.0)})
 	entries.append({"name": "LADY M'S LAIR", "color": Color(1.0, 0.0, 0.8)})
@@ -279,6 +289,7 @@ func _update_poi_legend() -> void:
 	entries.append({"name": "FIFE PATROL HQ", "color": Color(0.1, 0.5, 1.0)})
 	entries.append({"name": "CAWDOR LOGISTICS", "color": Color(0.9, 0.7, 0.1)})
 	entries.append({"name": "SUBSTATION 09", "color": Color(1.0, 0.9, 0.0)})
+
 	
 	if has_active_delivery:
 		entries.append({"name": "DELIVERY TARGET", "color": Color(1.0, 0.85, 0.0)})
@@ -330,8 +341,8 @@ func _process(_delta: float) -> void:
 		var tracked_pos: Vector3 = _get_active_player_position()
 
 		# Project player's 3D world position to 2D screen coordinates on satellite camera
-		var screen_pos: Vector2 = map_camera.unproject_position(tracked_pos)
-		player_blip_marker.position = screen_pos - (player_blip_marker.size / 2.0)
+		var player_unprojected_screen_position: Vector2 = map_camera.unproject_position(tracked_pos)
+		player_blip_marker.position = player_unprojected_screen_position - (player_blip_marker.size / 2.0)
 
 		# Delivery blip update
 		if is_instance_valid(delivery_blip_marker):
@@ -353,8 +364,27 @@ func _process(_delta: float) -> void:
 		_update_single_blip(bankes_blip_marker, city_gen.bankes_logistics_door_pos if is_instance_valid(city_gen) else Vector3.ZERO)
 		_update_single_blip(substation_blip_marker, city_gen.power_substation_door_pos if is_instance_valid(city_gen) else Vector3.ZERO)
 
+		# Live Limo Target Tracking Update
+		var limo_marker = map_overlay_panel.get_node_or_null("LimoBlipMarker")
+		if is_instance_valid(limo_marker):
+			var traffic_sys = $"../TrafficSystem"
+			var limo_node: Node3D = null
+			if is_instance_valid(traffic_sys):
+				for car in traffic_sys.active_traffic_cars:
+					if is_instance_valid(car) and car.get_meta("archetype", "") == "limo":
+						limo_node = car
+						break
+			if is_instance_valid(limo_node) and is_instance_valid(map_camera):
+				limo_marker.visible = true
+				var limo_target_unprojected_screen_position: Vector2 = map_camera.unproject_position(limo_node.global_position)
+				limo_marker.position = limo_target_unprojected_screen_position - (limo_marker.size / 2.0)
+			else:
+				limo_marker.visible = false
+
+
 		# Parked car blip update (visible when walking on foot)
 		if is_instance_valid(parked_car_blip_marker):
+
 			if player_car.is_on_foot:
 				parked_car_blip_marker.visible = true
 				var car_screen_pos: Vector2 = map_camera.unproject_position(player_car.global_position)
