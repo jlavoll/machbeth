@@ -200,6 +200,68 @@ func _trigger_random_decision_event() -> void:
 		"CHOP_SHOP_DROPSHIP": _trigger_decision_event_chop_shop()
 		"POLICE_CORDON_BLOCKADE": _trigger_decision_event_police_cordon()
 
+# --- Dynamic Event 1: Lady M ICE-Hack Override ---
+func _trigger_decision_event_lady_m() -> void:
+	var dialogue_sys = get_parent().get_node_or_null("DialogueSystem")
+	if not is_instance_valid(dialogue_sys): return
+	var event_tree = {
+		"speaker_display_name": "Lady M",
+		"speaker_subtitle": "MISSION CONTROL // OVERRIDE PROTOCOL",
+		"speaker_color": "#FF00CC",
+		"nodes": {
+			"start": {
+				"text": "Banquo! Mack's War-Rig is trapped under intense corporate EMP suppressive fire at Sector 4! His hull is taking heavy damage. I can execute an unauthorized ICE override on their grid to shut down their turret array — but it will inject severe neural static into Mack's stack. What should I do?",
+				"portrait_emotion": "urgent",
+				"choices": [
+					{ "text": "Execute the override! Protect Mack's chassis. [HP +35%, Paranoia +15%]", "target": "lady_m_override" },
+					{ "text": "No, stay off the grid. Let Mack fight through it. [Take Damage]", "target": "lady_m_hold" }
+				]
+			},
+			"lady_m_override": {
+				"text": "Executing ICE override... Turret array offline! Mack's hull is stabilized, but his neural stack is spiking wildly. Keep an eye on him.",
+				"portrait_emotion": "satisfied",
+				"choices": [ { "text": "[Return to Streets]", "target": "exit" } ]
+			},
+			"lady_m_hold": {
+				"text": "Understood. Holding offline protocol. Mack's taking heavy structural hits, but his mind remains intact. Re-routing telemetry.",
+				"portrait_emotion": "grave",
+				"choices": [ { "text": "[Return to Streets]", "target": "exit" } ]
+			}
+		}
+	}
+	dialogue_sys.start_dialogue_dict(event_tree)
+
+# --- Dynamic Event 2: The 3 Norns Ocular Interference ---
+func _trigger_decision_event_norns() -> void:
+	var dialogue_sys = get_parent().get_node_or_null("DialogueSystem")
+	if not is_instance_valid(dialogue_sys): return
+	var event_tree = {
+		"speaker_display_name": "The 3 Norns",
+		"speaker_subtitle": "#03-NORNS // DEEP-WEB PREDICTIVE AI",
+		"speaker_color": "#B01BFF",
+		"nodes": {
+			"start": {
+				"text": "Banquo... the threads of thread-code tremble. We are broadcasting phantom target vectors directly into Mack's ocular scope! He is firing at shadows while the enemy convoy reloads! Drive to Substation 09 immediately and sever the grid power, or watch the War-Rig crumble!",
+				"portrait_emotion": "cryptic",
+				"choices": [
+					{ "text": "I'm heading to Substation 09 now! [Emergency Mission]", "target": "norns_accept" },
+					{ "text": "Ignore the phantoms. Mack will push through.", "target": "norns_ignore" }
+				]
+			},
+			"norns_accept": {
+				"text": "Hurry, Banquo... the clock ticks at Substation 09. Cut the power link before Mack's core burns.",
+				"portrait_emotion": "satisfied",
+				"choices": [ { "text": "[Drive to Substation 09]", "target": "exit" } ]
+			},
+			"norns_ignore": {
+				"text": "A foolish choice... the shadows strike hard.",
+				"portrait_emotion": "grave",
+				"choices": [ { "text": "[Return to Streets]", "target": "exit" } ]
+			}
+		}
+	}
+	dialogue_sys.start_dialogue_dict(event_tree)
+
 # --- Dynamic Event 6: Fife Security Police Barricade Blockade ---
 func _trigger_decision_event_police_cordon() -> void:
 	var dialogue_sys = get_parent().get_node_or_null("DialogueSystem")
