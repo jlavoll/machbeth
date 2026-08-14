@@ -1236,6 +1236,9 @@ func advance_to_next_day() -> void:
 	print("[CAMPAIGN MANAGER] Rested at Safehouse. Advanced to Day ", current_day, " | Today's Special Event: ", active_daily_event.get("title", ""))
 	day_advanced.emit(current_day)
 
+	if is_instance_valid(neural_comms) and "ambient_timer" in neural_comms:
+		neural_comms.ambient_timer = -25.0 # Reset ambient chatter grace period on new day!
+
 	# Sequential Neural Comms Calls with spaced delays
 	call_deferred("_trigger_sequential_daily_calls")
 

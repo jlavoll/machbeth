@@ -65,11 +65,7 @@ func _ready() -> void:
 	_build_comms_ui()
 	comms_card_container.modulate.a = 0.0
 	comms_card_container.position.x = -320.0 # Hidden off-screen left
-
-	# Initial welcoming text after short boot delay
-	get_tree().create_timer(3.0).timeout.connect(func():
-		send_message("Neural link established, Banquo. I'm monitoring your telemetry feed.")
-	)
+	ambient_timer = -25.0 # Grace period delay so morning briefing calls finish before ambient chatter begins!
 
 func _process(delta: float) -> void:
 	# Pause ambient random chatter during Mack's Grand Battle deployments
