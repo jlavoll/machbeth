@@ -70,7 +70,35 @@ var is_deployment_ui_open: bool = false
 @onready var battle_manager = $"../BattleSystemManager"
 @onready var neural_comms = $"../NeuralNotificationSystem"
 
+var is_top_bar_user_toggled: bool = true
+var is_side_terminal_user_toggled: bool = true
+
 func _input(event: InputEvent) -> void:
+	if event is InputEventKey and event.pressed and not event.echo:
+		# 'T' Key: Toggle Top Telemetry Bar on/off during battle
+		if event.keycode == KEY_T and is_battle_in_progress:
+			is_top_bar_user_toggled = not is_top_bar_user_toggled
+			if is_instance_valid(telemetry_panel):
+				telemetry_panel.visible = is_top_bar_user_toggled
+			var neural_comms = get_parent().get_node_or_null("NeuralNotificationSystem")
+			if is_instance_valid(neural_comms) and neural_comms.has_method("send_message"):
+				var state_str: String = "ENABLED" if is_top_bar_user_toggled else "DISABLED"
+				neural_comms.send_message("TOP TELEMETRY BAR: " + state_str + " [Press 'T' to toggle]", "HUD CONFIG")
+			get_viewport().set_input_as_handled()
+			return
+
+		# 'H' Key: Toggle Right Side Telemetry Terminal on/off during battle
+		if event.keycode == KEY_H and is_battle_in_progress:
+			is_side_terminal_user_toggled = not is_side_terminal_user_toggled
+			if is_instance_valid(side_terminal_panel):
+				side_terminal_panel.visible = is_side_terminal_user_toggled
+			var neural_comms = get_parent().get_node_or_null("NeuralNotificationSystem")
+			if is_instance_valid(neural_comms) and neural_comms.has_method("send_message"):
+				var state_str: String = "ENABLED" if is_side_terminal_user_toggled else "DISABLED"
+				neural_comms.send_message("SIDE TELEMETRY TERMINAL: " + state_str + " [Press 'H' to toggle]", "HUD CONFIG")
+			get_viewport().set_input_as_handled()
+			return
+
 	if not is_deployment_ui_open:
 		return
 	if event is InputEventKey and event.pressed and not event.echo:
@@ -635,6 +663,8 @@ func _update_telemetry_hud() -> void:
 			side_terminal_panel.visible = false
 		return
 		
+	telemetry_panel.visible = is_top_bar_user_toggled
+	
 	if is_instance_valid(mack_hp_bar):
 		mack_hp_bar.max_value = mack_max_hp
 		mack_hp_bar.value = mack_current_hp
@@ -655,7 +685,7 @@ func _update_telemetry_hud() -> void:
 
 	if telemetry_lvl >= 1:
 		if is_instance_valid(side_terminal_panel):
-			side_terminal_panel.visible = true
+			side_terminal_panel.visible = is_side_terminal_user_toggled
 		
 		# Live Vitals
 		var core_temp: float = 75.0 + ((1.0 - (mack_current_hp / mack_max_hp)) * 35.0)
