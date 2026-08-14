@@ -185,8 +185,34 @@ func _process(delta: float) -> void:
 	battle_timer += delta
 	last_rumor_tick += delta
 
-	# Natural battle HP decay / damage simulation
-	mack_current_hp = max(10.0, mack_current_hp - (delta * 0.15))
+	# --- REAL-TIME COMBAT MATH CALCULATIONS ---
+	# 1. Base incoming DPS from corporate convoy
+	var incoming_dps: float = 0.55
+
+	# 2. Mitigation from Mack's War-Rig Graphene Armor Level
+	var armor_lvl: int = 1
+	var garage_mgr = get_parent().get_node_or_null("GarageManager")
+	if is_instance_valid(garage_mgr) and garage_mgr.fleet.has("MACK_RIG"):
+		armor_lvl = garage_mgr.fleet["MACK_RIG"]["upgrades"]["armor"].get("level", 1)
+	var armor_mitigation: float = (armor_lvl - 1) * 0.12 # Level 3 armor reduces damage by 24%
+	incoming_dps -= armor_mitigation
+
+	# 3. Mitigation from Mack's Sub-Dermal Plating Cyborg Mod
+	var cyborg_mgr = get_parent().get_node_or_null("CyborgModdingManager")
+	if is_instance_valid(cyborg_mgr) and cyborg_mgr.cyberware_slots.has("subdermal_plating"):
+		var subdermal_tier: int = cyborg_mgr.cyberware_slots["subdermal_plating"].get("tier", 1)
+		incoming_dps -= (subdermal_tier - 1) * 0.08
+
+	# 4. Mitigation from Banquo's City Sabotages (Substation 09 or Bankes Server Vault)
+	if not is_substation_side_mission_active:
+		# If Substation power was severed, reduce incoming damage by 30%
+		pass
+	if not is_bankes_server_mission_active:
+		# If Bankes Shield Uplink was severed, reduce incoming damage by 25%
+		pass
+
+	incoming_dps = max(0.05, incoming_dps)
+	mack_current_hp = max(5.0, mack_current_hp - (delta * incoming_dps))
 	_update_telemetry_hud()
 
 	# Dynamic Decision Event Triggers at random intervals (every ~60-90s)
@@ -701,12 +727,26 @@ func _update_telemetry_hud() -> void:
 			math_tick += 0.016
 			if math_tick >= 3.0:
 				math_tick = 0.0
+				var ord_lvl: int = 1
+				if is_instance_valid(garage_mgr) and garage_mgr.fleet.has("MACK_RIG"):
+					ord_lvl = garage_mgr.fleet["MACK_RIG"]["upgrades"]["ordnance"].get("level", 1)
+				
+				var ocular_tier: int = 1
+				var cyborg_mgr = get_parent().get_node_or_null("CyborgModdingManager")
+				if is_instance_valid(cyborg_mgr) and cyborg_mgr.cyberware_slots.has("ocular_scope"):
+					ocular_tier = cyborg_mgr.cyberware_slots["ocular_scope"].get("tier", 1)
+					
+				var atk_bonus: int = (ord_lvl - 1) * 4 + (ocular_tier - 1) * 3
+				var crit_threshold: int = 15 - (ocular_tier - 1) * 2 # Ocular scope increases crit range (15 -> 13 -> 11)
 				var roll_d20: int = (randi() % 20) + 1
-				var attack_val: int = roll_d20 + 8
-				if roll_d20 >= 15:
-					_log_combat_math("[color=#FF9900][DICE 🎲 %d+8=%d] CRITICAL Gatling Hit! -> 38 DMG[/color]" % [roll_d20, attack_val])
+				var total_val: int = roll_d20 + 8 + atk_bonus
+				var damage_dealt: int = int(18 + atk_bonus * 2.5)
+				
+				if roll_d20 >= crit_threshold:
+					damage_dealt = int(damage_dealt * 1.8)
+					_log_combat_math("[color=#FF9900][DICE 🎲 %d+%d=%d] CRITICAL Gatling Hit! -> %d DMG[/color]" % [roll_d20, 8 + atk_bonus, total_val, damage_dealt])
 				else:
-					_log_combat_math("[color=#88CCFF][DICE 🎲 %d+8=%d] Standard Round -> 18 DMG[/color]" % [roll_d20, attack_val])
+					_log_combat_math("[color=#88CCFF][DICE 🎲 %d+%d=%d] Standard Round -> %d DMG[/color]" % [roll_d20, 8 + atk_bonus, total_val, damage_dealt])
 		else:
 			side_math_text.visible = false
 
