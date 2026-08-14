@@ -246,6 +246,9 @@ func _build_porter_pit_floor() -> void:
 	# Interactive Pit Garage Fleet Terminal Console (West Bay)
 	_build_interior_desk(root_pit, Vector3(-10.0, 0.6, 0.0), Vector3(3.0, 1.2, 4.0), Color(1.0, 0.5, 0.0))
 
+	# Interactive Cyborg Surgery Chair & Neural Modding Terminal (East Bay)
+	_build_interior_desk(root_pit, Vector3(10.0, 0.6, 0.0), Vector3(3.0, 1.2, 4.0), Color(1.0, 0.0, 0.6))
+
 	# Exit Door (South Wall Center)
 	_build_exit_door(root_pit, Vector3(0.0, 1.8, 11.2))
 
@@ -906,8 +909,11 @@ func _process(_delta: float) -> void:
 	else:
 		if current_floor == HQFloor.PORTER_PIT:
 			var terminal_pos: Vector3 = porter_pit_origin + Vector3(-10.0, 0.0, 0.0)
+			var cyborg_terminal_pos: Vector3 = porter_pit_origin + Vector3(10.0, 0.0, 0.0)
 			if pos.distance_to(terminal_pos) <= 4.0:
 				prompt_text = "[E] ACCESS PIT GARAGE & FLEET MANAGER"
+			elif pos.distance_to(cyborg_terminal_pos) <= 4.0:
+				prompt_text = "[E] ACCESS MACK'S NEURAL CYBORG MODDING SUITE"
 			elif pos.distance_to(floor_exit_pos) <= 4.5:
 				prompt_text = "[E] EXIT TO CITY STREETS"
 		elif pos.distance_to(floor_exit_pos) <= 4.5:
@@ -971,10 +977,17 @@ func _unhandled_input(event: InputEvent) -> void:
 			
 			if current_floor == HQFloor.PORTER_PIT:
 				var terminal_pos: Vector3 = porter_pit_origin + Vector3(-10.0, 0.0, 0.0)
+				var cyborg_terminal_pos: Vector3 = porter_pit_origin + Vector3(10.0, 0.0, 0.0)
 				if pos.distance_to(terminal_pos) <= 4.0:
 					var garage_mgr = get_parent().get_node_or_null("GarageManager")
 					if is_instance_valid(garage_mgr):
 						garage_mgr.open_garage_ui()
+						get_viewport().set_input_as_handled()
+						return
+				elif pos.distance_to(cyborg_terminal_pos) <= 4.0:
+					var cyborg_mgr = get_parent().get_node_or_null("CyborgModdingManager")
+					if is_instance_valid(cyborg_mgr):
+						cyborg_mgr.open_cyborg_ui()
 						get_viewport().set_input_as_handled()
 						return
 			

@@ -16,8 +16,16 @@ var neural_glitch_potency: float = 0.0
 @export var passive_cooldown_rate: float = 2.0
 
 func _process(delta: float) -> void:
-	if neural_glitch_potency > 0.0:
-		neural_glitch_potency = max(0.0, neural_glitch_potency - passive_cooldown_rate * delta)
+	var baseline: float = 0.0
+	var cyborg_mgr = get_parent().get_node_or_null("CyborgModdingManager")
+	if is_instance_valid(cyborg_mgr):
+		baseline = cyborg_mgr.get_total_baseline_glitch()
+
+	if neural_glitch_potency > baseline:
+		neural_glitch_potency = max(baseline, neural_glitch_potency - passive_cooldown_rate * delta)
+		glitch_potency_changed.emit(neural_glitch_potency)
+	elif neural_glitch_potency < baseline:
+		neural_glitch_potency = baseline
 		glitch_potency_changed.emit(neural_glitch_potency)
 
 # Accumulates mental instability from heavy hacks, overclocks, or taking damage

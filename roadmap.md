@@ -42,10 +42,10 @@ This document outlines the small, incremental steps forward to build out the dua
 **Focus**: Implement the cyborg customization screen for Mack and link upgrades to the Glitch Gauge system.
 
 * **Key Actions**:
-  - Build a Cyborg Modding interface in The Pit for Mack (Neural Cores, Ocular Scopes, Sub-Dermal Plating).
-  - Connect cyberware quality to Mack's **Glitch Gauge** in `NeuralGlitchSystem.gd`.
-  - Ensure higher-tier parts increase passive HUD static and `B_ANKES_GHOST.EXE` phantom button spawns during combat.
-* **Achieved Summary**: Cyberware upgrades directly power up Mack's stats while visually driving his narrative downfall through HUD paranoia.
+  - Build a Cyborg Modding interface in The Pit for Mack (`CyborgModdingManager.gd`).
+  - Connect cyberware quality to Mack's **Glitch Gauge** floor in `NeuralGlitchSystem.gd`.
+  - Ensure higher-tier parts increase passive HUD static overlay and `B_ANKES_GHOST.EXE` phantom button spawns in `CockpitDashboardUI.gd`.
+* **Achieved Summary**: Cyberware upgrades directly power up Mack's combat stats (Overclock Limit Break damage) while visually driving his narrative downfall through HUD paranoia and phantom overlay hallucinations.
 
 ---
 

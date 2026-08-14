@@ -19,6 +19,11 @@ var windshield_viewport_frame: ReferenceRect
 var enemy_target_label: Label
 var enemy_hull_progress_bar: ProgressBar
 
+# Glitch Static & Paranoia Phantom Button
+var static_glitch_overlay: ColorRect
+var phantom_ghost_button: Button
+var ghost_button_timer: float = 0.0
+
 # System ATB LED Gauge Bars
 var gatling_atb_gauge: ProgressBar
 var netrunner_atb_gauge: ProgressBar
@@ -91,6 +96,42 @@ func _process(delta: float) -> void:
 		system_atb_charges["overclock"] = min(100.0, system_atb_charges["overclock"] + system_recharge_rates["overclock"] * delta)
 		overclock_atb_gauge.value = system_atb_charges["overclock"]
 		overclock_button.disabled = system_atb_charges["overclock"] < 100.0
+
+	# Process Static Glitch & Paranoia Hallucination
+	_update_static_glitch_and_ghost_button(delta)
+
+func _update_static_glitch_and_ghost_button(delta: float) -> void:
+	var glitch_system = get_parent().get_node_or_null("NeuralGlitchSystem")
+	if not is_instance_valid(glitch_system):
+		return
+
+	var potency: float = glitch_system.neural_glitch_potency
+	if is_instance_valid(static_glitch_overlay):
+		# Scale static overlay alpha up to 0.45 based on glitch potency (0.0 to 100.0)
+		var target_alpha: float = (potency / 100.0) * 0.45
+		static_glitch_overlay.color.a = lerp(static_glitch_overlay.color.a, target_alpha, delta * 4.0)
+
+	# High Paranoia (> 45%): Randomly spawn B_ANKES_GHOST.EXE phantom button
+	if potency > 45.0:
+		ghost_button_timer += delta
+		if ghost_button_timer >= 3.5:
+			ghost_button_timer = 0.0
+			_trigger_phantom_ghost_button()
+	elif is_instance_valid(phantom_ghost_button):
+		phantom_ghost_button.visible = false
+
+func _trigger_phantom_ghost_button() -> void:
+	if not is_instance_valid(phantom_ghost_button):
+		return
+	var rng = RandomNumberGenerator.new()
+	rng.randomize()
+	if rng.randf() > 0.4:
+		# Random position across dashboard
+		var rx: float = rng.randf_range(100.0, 700.0)
+		var ry: float = rng.randf_range(350.0, 550.0)
+		phantom_ghost_button.position = Vector2(rx, ry)
+		phantom_ghost_button.visible = true
+		print("[HUD PARANOIA] B_ANKES_GHOST.EXE phantom button manifested on dashboard!")
 
 func _construct_cockpit_dashboard_layout() -> void:
 	# Main Root Overlay Control
@@ -184,6 +225,35 @@ func _construct_cockpit_dashboard_layout() -> void:
 			overclock_lever_engaged.emit()
 	)
 	grid.add_child(m4["container"])
+
+	# --------------------------------------------------------------------------
+	# 3. STATIC GLITCH OVERLAY & B_ANKES_GHOST.EXE PHANTOM BUTTON
+	# --------------------------------------------------------------------------
+	static_glitch_overlay = ColorRect.new()
+	static_glitch_overlay.set_anchors_preset(Control.PRESET_FULL_RECT)
+	static_glitch_overlay.color = Color(1.0, 0.0, 0.4, 0.0) # Red/Magenta Static Tint (alpha dynamic)
+	static_glitch_overlay.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	cockpit_overlay_panel.add_child(static_glitch_overlay)
+
+	phantom_ghost_button = Button.new()
+	phantom_ghost_button.name = "PhantomGhostButton"
+	phantom_ghost_button.text = "⚠️ B_ANKES_GHOST.EXE [OVERRIDE]"
+	phantom_ghost_button.custom_minimum_size = Vector2(220, 42)
+	phantom_ghost_button.visible = false
+	var ghost_style = StyleBoxFlat.new()
+	ghost_style.bg_color = Color(0.8, 0.0, 0.2, 0.9)
+	ghost_style.border_width_left = 2
+	ghost_style.border_color = Color(1.0, 0.85, 0.0)
+	phantom_ghost_button.add_theme_stylebox_override("normal", ghost_style)
+	phantom_ghost_button.add_theme_color_override("font_color", Color(1.0, 1.0, 1.0))
+	phantom_ghost_button.pressed.connect(func():
+		phantom_ghost_button.visible = false
+		var glitch_sys = get_parent().get_node_or_null("NeuralGlitchSystem")
+		if is_instance_valid(glitch_sys):
+			glitch_sys.inject_neural_instability(20.0)
+			print("[PARANOIA] Clicked phantom Bankes button! Increased Glitch Potency by +20%!")
+	)
+	cockpit_overlay_panel.add_child(phantom_ghost_button)
 
 # ==============================================================================
 # KEYBOARD SHORTCUT LISTENER (HOTKEYS 1, 2, 3, 4)

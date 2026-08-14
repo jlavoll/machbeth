@@ -259,9 +259,19 @@ func _on_player_overclock() -> void:
 
 	_spawn_projectile_effect(Color(1.0, 0.0, 0.8), 0.08, 0.35) # Massive Magenta Overclock beam
 
-	var damage = 70.0
-	active_hostile_profile.current_hull_integrity = max(0.0, active_hostile_profile.current_hull_integrity - damage)
-	print("[COMBAT] NEURAL OVERCLOCK LIMIT BREAK! Dealt ", damage, " critical damage!")
+	var base_damage: float = 70.0
+	var cyborg_mgr = get_parent().get_node_or_null("CyborgModdingManager")
+	if is_instance_valid(cyborg_mgr):
+		var core_tier: int = cyborg_mgr.cyberware_slots["neural_core"]["tier"]
+		base_damage += (core_tier - 1) * 25.0
+
+	active_hostile_profile.current_hull_integrity = max(0.0, active_hostile_profile.current_hull_integrity - base_damage)
+	print("[COMBAT] NEURAL OVERCLOCK LIMIT BREAK! Dealt ", base_damage, " critical damage!")
+	
+	# Inject neural glitch instability on Limit Break use
+	var glitch_sys = get_parent().get_node_or_null("NeuralGlitchSystem")
+	if is_instance_valid(glitch_sys):
+		glitch_sys.inject_neural_instability(25.0)
 	
 	cockpit_ui.set_target_hostile_info(
 		active_hostile_profile.hostile_designation,
