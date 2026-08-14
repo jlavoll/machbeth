@@ -1053,7 +1053,7 @@ func _update_concert_crowd(delta: float) -> void:
 	var time: float = Time.get_ticks_msec() / 1000.0
 	
 	# Fetch Preacher state from StageCyberBand if RELIGIOUS_RALLY is active
-	var preacher_head_color: Color = Color.ZERO
+	var preacher_head_color: Color = Color(0, 0, 0, 0)
 	var preacher_jump: float = 0.0
 	var preacher_tilt: float = 0.0
 	var is_religious_active: bool = false
@@ -1082,7 +1082,7 @@ func _update_concert_crowd(delta: float) -> void:
 			fan.rotation_degrees = Vector3(crowd_tilt, fan.rotation_degrees.y, 0.0)
 
 			# Mimick Preacher's head color shift across the entire crowd!
-			if preacher_head_color != Color.ZERO:
+			if preacher_head_color != Color(0, 0, 0, 0):
 				var head_node = fan.get_node_or_null("HeadMesh")
 				if is_instance_valid(head_node) and is_instance_valid(head_node.material_override):
 					var h_mat = head_node.material_override as StandardMaterial3D
