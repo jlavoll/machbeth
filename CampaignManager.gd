@@ -541,7 +541,7 @@ func _on_decision_choice_selected(_choice_index: int, target_node_id: String) ->
 		"norns_accept":
 			is_substation_side_mission_active = true
 			side_mission_active = true
-			side_mission_name = "CUT SUBSTATION 09 POWER GRID"
+			active_side_mission_name = "CUT SUBSTATION 09 POWER GRID"
 			side_mission_time_left = 60.0 # 60 Seconds timer
 			if is_instance_valid(neural_comms) and neural_comms.has_method("send_message"):
 				neural_comms.send_message("EMERGENCY OBJECTIVE: Drive to Substation 09 in 60s to save Mack!", "TACTICAL ALERT")
@@ -551,7 +551,7 @@ func _on_decision_choice_selected(_choice_index: int, target_node_id: String) ->
 		"bankes_server_accept":
 			is_bankes_server_mission_active = true
 			side_mission_active = true
-			side_mission_name = "SEVER BANKES LOGISTICS SHIELD UPLINK"
+			active_side_mission_name = "SEVER BANKES LOGISTICS SHIELD UPLINK"
 			side_mission_time_left = 60.0 # 60 Seconds timer
 			if is_instance_valid(neural_comms) and neural_comms.has_method("send_message"):
 				neural_comms.send_message("EMERGENCY OBJECTIVE: Enter Bankes HQ in 60s & shut down server vault!", "TACTICAL ALERT")
