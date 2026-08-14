@@ -1440,10 +1440,10 @@ func _spawn_cyber_park(center: Vector3, b_size: Vector2, neon_colors: Array) -> 
 	stage_node.add_child(stage_body)
 
 	# Check if PARK_CONCERT or SHAKESPEARE_PARK event is currently active today
-	var active_event_id: String = ""
+	var active_event_id: String = "PARK_CONCERT" # Default to PARK_CONCERT on initial city build!
 	var campaign_mgr = get_parent().get_node_or_null("CampaignManager")
-	if is_instance_valid(campaign_mgr):
-		active_event_id = campaign_mgr.active_daily_event.get("id", "")
+	if is_instance_valid(campaign_mgr) and campaign_mgr.active_daily_event.has("id"):
+		active_event_id = campaign_mgr.active_daily_event.get("id", "PARK_CONCERT")
 
 	var is_stage_event_today: bool = (active_event_id == "PARK_CONCERT" or active_event_id == "SHAKESPEARE_PARK")
 	var is_shakespeare_today: bool = (active_event_id == "SHAKESPEARE_PARK")

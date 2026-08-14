@@ -962,9 +962,9 @@ func _spawn_line_dance_group(center: Vector3, count: int) -> void:
 
 func _spawn_concert_crowd() -> void:
 	var campaign_mgr = get_parent().get_node_or_null("CampaignManager")
-	var active_event_id: String = ""
-	if is_instance_valid(campaign_mgr) and campaign_mgr.get("active_daily_event") != null:
-		active_event_id = campaign_mgr.active_daily_event.get("id", "")
+	var active_event_id: String = "PARK_CONCERT" # Default to PARK_CONCERT!
+	if is_instance_valid(campaign_mgr) and campaign_mgr.active_daily_event.has("id"):
+		active_event_id = campaign_mgr.active_daily_event.get("id", "PARK_CONCERT")
 
 	# ONLY spawn concert crowd when PARK_CONCERT is active today!
 	if active_event_id != "PARK_CONCERT":
