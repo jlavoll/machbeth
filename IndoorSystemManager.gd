@@ -934,6 +934,12 @@ func _process(_delta: float) -> void:
 				prompt_text = "[E] ACCESS WAR-TABLE // DEPLOY MACK TO GRAND HIT"
 			elif pos.distance_to(floor_exit_pos) <= 4.5:
 				prompt_text = "[E] EXIT TO CITY STREETS"
+		elif current_floor == HQFloor.BANKES_LOGISTICS:
+			var bankes_server_pos: Vector3 = bankes_logistics_origin + Vector3(0.0, 0.0, -2.0)
+			if pos.distance_to(bankes_server_pos) <= 4.0:
+				prompt_text = "[E] SEVER BANKES LOGISTICS SHIELD UPLINK"
+			elif pos.distance_to(floor_exit_pos) <= 4.5:
+				prompt_text = "[E] EXIT TO CITY STREETS"
 		elif current_floor == HQFloor.SUBSTATION:
 			var sub_breaker_pos: Vector3 = substation_origin + Vector3(0.0, 0.0, -6.0)
 			if pos.distance_to(sub_breaker_pos) <= 4.0:
@@ -1031,6 +1037,27 @@ func _unhandled_input(event: InputEvent) -> void:
 						get_viewport().set_input_as_handled()
 						return
 			
+			if current_floor == HQFloor.BANKES_LOGISTICS:
+				var bankes_server_pos: Vector3 = bankes_logistics_origin + Vector3(0.0, 0.0, -2.0)
+				if pos.distance_to(bankes_server_pos) <= 4.0:
+					var campaign_mgr = get_parent().get_node_or_null("CampaignManager")
+					if is_instance_valid(campaign_mgr):
+						if campaign_mgr.is_bankes_server_mission_active:
+							campaign_mgr.is_bankes_server_mission_active = false
+							campaign_mgr.mack_current_hp = min(campaign_mgr.mack_max_hp, campaign_mgr.mack_current_hp + 45.0)
+							campaign_mgr.mack_current_action = "Bankes Shield Uplink severed! Gatling output restored (+45 HP)."
+							
+							var quest_mgr = get_parent().get_node_or_null("QuestManager")
+							if is_instance_valid(quest_mgr):
+								quest_mgr.player_credits += 800
+							
+							var neural_comms = get_parent().get_node_or_null("NeuralNotificationSystem")
+							if is_instance_valid(neural_comms) and neural_comms.has_method("send_message"):
+								neural_comms.send_message("BANKES SHIELD UPLINK SEVERED! Convoy shielding offline! +800 Credits awarded.", "EMERGENCY MISSION COMPLETE")
+							
+							get_viewport().set_input_as_handled()
+							return
+
 			if current_floor == HQFloor.SUBSTATION:
 				var sub_breaker_pos: Vector3 = substation_origin + Vector3(0.0, 0.0, -6.0)
 				if pos.distance_to(sub_breaker_pos) <= 4.0:

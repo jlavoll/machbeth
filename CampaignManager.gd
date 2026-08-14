@@ -163,15 +163,187 @@ func _process(delta: float) -> void:
 	mack_current_hp = max(10.0, mack_current_hp - (delta * 0.15))
 	_update_telemetry_hud()
 
-	# Dynamic Decision Event #1 at ~75 seconds (Lady M ICE Hack Override)
-	if battle_timer >= 75.0 and not decision_1_triggered:
+	# Dynamic Decision Event Triggers at random intervals (every ~60-90s)
+	if battle_timer >= 60.0 and not decision_1_triggered:
 		decision_1_triggered = true
-		_trigger_decision_event_lady_m()
+		_trigger_random_decision_event()
 
-	# Dynamic Decision Event #2 at ~180 seconds (The 3 Norns Server Interference)
-	if battle_timer >= 180.0 and not decision_2_triggered:
+	if battle_timer >= 150.0 and not decision_2_triggered:
 		decision_2_triggered = true
-		_trigger_decision_event_norns()
+		_trigger_random_decision_event()
+
+	if battle_timer >= 230.0 and not decision_3_triggered:
+		decision_3_triggered = true
+		_trigger_random_decision_event()
+
+# Pool of dynamic decision triggers
+var decision_event_pool: Array[String] = [
+	"LADY_M_HACK",
+	"NORNS_PHANTOMS",
+	"BANKES_SERVER_SHUTDOWN",
+	"FIFE_REINFORCEMENT_INTERCEPT",
+	"CHOP_SHOP_DROPSHIP"
+]
+
+func _trigger_random_decision_event() -> void:
+	if decision_event_pool.is_empty():
+		return
+	var rng = RandomNumberGenerator.new()
+	rng.randomize()
+	var event_id: String = decision_event_pool.pick_random()
+	decision_event_pool.erase(event_id)
+	
+	match event_id:
+		"LADY_M_HACK": _trigger_decision_event_lady_m()
+		"NORNS_PHANTOMS": _trigger_decision_event_norns()
+		"BANKES_SERVER_SHUTDOWN": _trigger_decision_event_bankes_server()
+		"FIFE_REINFORCEMENT_INTERCEPT": _trigger_decision_event_fife_intercept()
+		"CHOP_SHOP_DROPSHIP": _trigger_decision_event_chop_shop()
+
+# --- Dynamic Event 3: Bankes Logistics Server Shutdown ---
+func _trigger_decision_event_bankes_server() -> void:
+	var dialogue_sys = get_parent().get_node_or_null("DialogueSystem")
+	if not is_instance_valid(dialogue_sys): return
+	var event_tree = {
+		"speaker_display_name": "Lady M",
+		"speaker_subtitle": "MISSION CONTROL // TELEMETRY ALERT",
+		"speaker_color": "#FF00CC",
+		"nodes": {
+			"start": {
+				"text": "Banquo! The enemy convoy is receiving real-time tactical shielding updates from Bankes Logistics Server Vault! Mack's Gatling output is being completely absorbed. Drive to Bankes Logistics HQ immediately to sever their server link!",
+				"portrait_emotion": "urgent",
+				"choices": [
+					{ "text": "I'm on it! Heading to Bankes Logistics. [Server Mission]", "target": "bankes_server_accept" },
+					{ "text": "Can't make it. Tell Mack to focus fire.", "target": "bankes_server_ignore" }
+				]
+			},
+			"bankes_server_accept": {
+				"text": "Go! Interact with the server terminal inside Bankes Logistics to shut down their shield uplink!",
+				"portrait_emotion": "satisfied",
+				"choices": [ { "text": "[Drive to Bankes HQ]", "target": "exit" } ]
+			},
+			"bankes_server_ignore": {
+				"text": "Their shielding is holding... Mack's ammo reserves are depleting rapidly.",
+				"portrait_emotion": "grave",
+				"choices": [ { "text": "[Return to Streets]", "target": "exit" } ]
+			}
+		}
+	}
+	dialogue_sys.start_dialogue_dict(event_tree)
+
+# --- Dynamic Event 4: Fife Security Reinforcement Intercept ---
+func _trigger_decision_event_fife_intercept() -> void:
+	var dialogue_sys = get_parent().get_node_or_null("DialogueSystem")
+	if not is_instance_valid(dialogue_sys): return
+	var event_tree = {
+		"speaker_display_name": "Porter",
+		"speaker_subtitle": "THE PIT // RADAR SCANNER",
+		"speaker_color": "#FF6B35",
+		"nodes": {
+			"start": {
+				"text": "Mack's in trouble! Fife Security just dispatched a heavy armor reinforcement squad from Fife HQ! If they link up with the main convoy, Mack's War-Rig is toast. Should I pay off a local gang to ambush them, or will you intercept?",
+				"portrait_emotion": "warning",
+				"choices": [
+					{ "text": "Pay Neon Syndicate 400 Credits to ambush them. [Pay 400 C]", "target": "fife_pay_gang" },
+					{ "text": "I'll drive and intercept the reinforcement limo myself!", "target": "fife_intercept_self" },
+					{ "text": "Let them link up. Mack can take them.", "target": "fife_ignore" }
+				]
+			},
+			"fife_pay_gang": {
+				"text": "Credits sent! Neon Syndicate hit-squad is setting up spikes at Sector 3. Fife reinforcements delayed!",
+				"portrait_emotion": "satisfied",
+				"choices": [ { "text": "[Return to Streets]", "target": "exit" } ]
+			},
+			"fife_intercept_self": {
+				"text": "Good! Look for the red target blip on your overmap and side-swipe that reinforcement car!",
+				"portrait_emotion": "intense",
+				"choices": [ { "text": "[Hunter Mode Engaged]", "target": "exit" } ]
+			},
+			"fife_ignore": {
+				"text": "Reinforcements connected... Mack's taking double fire on the central highway!",
+				"portrait_emotion": "grave",
+				"choices": [ { "text": "[Return to Streets]", "target": "exit" } ]
+			}
+		}
+	}
+	dialogue_sys.start_dialogue_dict(event_tree)
+
+# --- Dynamic Event 5: Chop Shop Emergency Repair Drop ---
+func _trigger_decision_event_chop_shop() -> void:
+	var dialogue_sys = get_parent().get_node_or_null("DialogueSystem")
+	if not is_instance_valid(dialogue_sys): return
+	var event_tree = {
+		"speaker_display_name": "Chop Shop Mechanic",
+		"speaker_subtitle": "GARAGE RECOVERY UNIT",
+		"speaker_color": "#33FF57",
+		"nodes": {
+			"start": {
+				"text": "Hey Banquo! I've got an automated drone dropship packed with repair nanites ready at the Chop Shop Garage. We can launch it to repair Mack mid-battle, but it requires 300 Credits for fuel & nanite canister prep. Launch it?",
+				"portrait_emotion": "excited",
+				"choices": [
+					{ "text": "Launch nanite dropship! [Pay 300 C, Mack HP +50]", "target": "chop_drop_accept" },
+					{ "text": "Save the credits. Mack's armor will hold.", "target": "chop_drop_decline" }
+				]
+			},
+			"chop_drop_accept": {
+				"text": "Nanite dropship launched! Re-supplying Mack's War-Rig on the central highway now!",
+				"portrait_emotion": "satisfied",
+				"choices": [ { "text": "[Return to Streets]", "target": "exit" } ]
+			},
+			"chop_drop_decline": {
+				"text": "Roger that. Holding nanite drone in bay.",
+				"portrait_emotion": "neutral",
+				"choices": [ { "text": "[Return to Streets]", "target": "exit" } ]
+			}
+		}
+	}
+	dialogue_sys.start_dialogue_dict(event_tree)
+
+var is_bankes_server_mission_active: bool = false
+
+func _on_decision_choice_selected(_choice_index: int, target_node_id: String) -> void:
+	match target_node_id:
+		"lady_m_override":
+			mack_current_hp = min(mack_max_hp, mack_current_hp + 35.0)
+			mack_current_action = "ICE Override active! Hull repaired (+35 HP)."
+			var glitch_sys = get_parent().get_node_or_null("NeuralGlitchSystem")
+			if is_instance_valid(glitch_sys):
+				glitch_sys.inject_neural_instability(15.0)
+		"lady_m_hold":
+			mack_current_hp = max(10.0, mack_current_hp - 20.0)
+			mack_current_action = "Holding ground. Hull damaged (-20 HP)."
+		"norns_accept":
+			is_substation_side_mission_active = true
+			if is_instance_valid(neural_comms) and neural_comms.has_method("send_message"):
+				neural_comms.send_message("EMERGENCY OBJECTIVE: Drive to Substation 09 and interact with power grid to save Mack!", "TACTICAL ALERT")
+		"norns_ignore":
+			mack_current_hp = max(10.0, mack_current_hp - 25.0)
+			mack_current_action = "Ocular phantoms active. Heavy damage (-25 HP)."
+		"bankes_server_accept":
+			is_bankes_server_mission_active = true
+			if is_instance_valid(neural_comms) and neural_comms.has_method("send_message"):
+				neural_comms.send_message("EMERGENCY OBJECTIVE: Enter Bankes Logistics HQ and shut down the server vault!", "TACTICAL ALERT")
+		"bankes_server_ignore":
+			mack_current_hp = max(10.0, mack_current_hp - 30.0)
+			mack_current_action = "Shielding link active. Heavy damage (-30 HP)."
+		"fife_pay_gang":
+			if is_instance_valid(quest_manager) and quest_manager.player_credits >= 400:
+				quest_manager.player_credits -= 400
+				mack_current_hp = min(mack_max_hp, mack_current_hp + 20.0)
+				mack_current_action = "Syndicate gang ambushed reinforcements! (+20 HP)"
+			else:
+				mack_current_hp = max(10.0, mack_current_hp - 25.0)
+		"fife_intercept_self":
+			if is_instance_valid(neural_comms) and neural_comms.has_method("send_message"):
+				neural_comms.send_message("INTERCEPT OBJECTIVE: Hunt down the Fife Reinforcement limo on the city grid!", "TACTICAL ALERT")
+		"fife_ignore":
+			mack_current_hp = max(10.0, mack_current_hp - 30.0)
+			mack_current_action = "Fife reinforcements connected! (-30 HP)"
+		"chop_drop_accept":
+			if is_instance_valid(quest_manager) and quest_manager.player_credits >= 300:
+				quest_manager.player_credits -= 300
+				mack_current_hp = min(mack_max_hp, mack_current_hp + 50.0)
+				mack_current_action = "Nanite dropship deployed! War-Rig repaired (+50 HP)."
 
 	# Dispatch rumor every 55s
 	if last_rumor_tick >= 55.0:
