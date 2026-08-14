@@ -1259,127 +1259,127 @@ func _spawn_cyber_park(center: Vector3, b_size: Vector2, neon_colors: Array, par
 	if park_type == "MONUMENT":
 		park_statue_pos = center + Vector3(0.0, 0.0, 0.0)
 
-			# Pool of Prominent Historical Figures & Lore Backstories
-			var statue_pool: Array[Dictionary] = [
-				{
-					"name": "King James VI of Scotland & I of England",
-					"title": "MONUMENT OF KING JAMES VI & I // MONARCH OF DUNCAN TOWER",
-					"text": "Inscription: 'Patron of the Royal Cyber-Guards. Secretly grants combat allowances to proven warlords, but harbors a dark agenda to drive Mack's stack into terminal thermal paranoia...'"
-				},
-				{
-					"name": "CEO Duncan Senior",
-					"title": "MONUMENT OF CEO DUNCAN SR. // FOUNDER OF DUNCAN DYNAMICS",
-					"text": "Inscription: 'Architect of the Corporate Grid. Built the central tower and established executive outrider patrols across Glamis Highway.'"
-				},
-				{
-					"name": "Thane of Glamis",
-					"title": "MONUMENT OF THE THANE OF GLAMIS // HIGHLIGHT OF HIGHWAY CLEARANCE",
-					"text": "Inscription: 'Hero of the First Rebel Clearance. Commemorating the victory over Sweno's iron war-rigs.'"
-				},
-				{
-					"name": "General Banquo The Undefeated",
-					"title": "MONUMENT OF GENERAL BANQUO // TACTICAL OVERLORD OF FIFE",
-					"text": "Inscription: 'Master strategist of telemetry and orbital surveillance. None born of woman shall break his defense grid.'"
-				}
-			]
-			park_statue_identity = statue_pool[rng.randi() % statue_pool.size()]
+		# Pool of Prominent Historical Figures & Lore Backstories
+		var statue_pool: Array[Dictionary] = [
+			{
+				"name": "King James VI of Scotland & I of England",
+				"title": "MONUMENT OF KING JAMES VI & I // MONARCH OF DUNCAN TOWER",
+				"text": "Inscription: 'Patron of the Royal Cyber-Guards. Secretly grants combat allowances to proven warlords, but harbors a dark agenda to drive Mack's stack into terminal thermal paranoia...'"
+			},
+			{
+				"name": "CEO Duncan Senior",
+				"title": "MONUMENT OF CEO DUNCAN SR. // FOUNDER OF DUNCAN DYNAMICS",
+				"text": "Inscription: 'Architect of the Corporate Grid. Built the central tower and established executive outrider patrols across Glamis Highway.'"
+			},
+			{
+				"name": "Thane of Glamis",
+				"title": "MONUMENT OF THE THANE OF GLAMIS // HIGHLIGHT OF HIGHWAY CLEARANCE",
+				"text": "Inscription: 'Hero of the First Rebel Clearance. Commemorating the victory over Sweno's iron war-rigs.'"
+			},
+			{
+				"name": "General Banquo The Undefeated",
+				"title": "MONUMENT OF GENERAL BANQUO // TACTICAL OVERLORD OF FIFE",
+				"text": "Inscription: 'Master strategist of telemetry and orbital surveillance. None born of woman shall break his defense grid.'"
+			}
+		]
+		park_statue_identity = statue_pool[rng.randi() % statue_pool.size()]
 
-			var statue_root = Node3D.new()
-			statue_root.name = "ParkMonumentStatue"
-			statue_root.position = park_statue_pos
+		var statue_root = Node3D.new()
+		statue_root.name = "ParkMonumentStatue"
+		statue_root.position = park_statue_pos
 
-			# Marble Pedestal Base
-			var ped_body = StaticBody3D.new()
-			var ped_col = CollisionShape3D.new()
-			var ped_shape = BoxShape3D.new()
-			ped_shape.size = Vector3(4.0, 1.8, 4.0)
-			ped_col.shape = ped_shape
-			ped_col.position = Vector3(0.0, 0.9, 0.0)
-			ped_body.add_child(ped_col)
+		# Marble Pedestal Base
+		var ped_body = StaticBody3D.new()
+		var ped_col = CollisionShape3D.new()
+		var ped_shape = BoxShape3D.new()
+		ped_shape.size = Vector3(4.0, 1.8, 4.0)
+		ped_col.shape = ped_shape
+		ped_col.position = Vector3(0.0, 0.9, 0.0)
+		ped_body.add_child(ped_col)
 
-			var ped_mesh = MeshInstance3D.new()
-			var p_box = BoxMesh.new()
-			p_box.size = Vector3(4.0, 1.8, 4.0)
-			ped_mesh.mesh = p_box
-			ped_mesh.position = Vector3(0.0, 0.9, 0.0)
-			var ped_mat = StandardMaterial3D.new()
-			ped_mat.albedo_color = Color(0.15, 0.15, 0.18) # Dark Granite/Marble
-			ped_mat.metallic = 0.3
-			ped_mat.roughness = 0.4
-			ped_mesh.material_override = ped_mat
-			ped_body.add_child(ped_mesh)
-			statue_root.add_child(ped_body)
+		var ped_mesh = MeshInstance3D.new()
+		var p_box = BoxMesh.new()
+		p_box.size = Vector3(4.0, 1.8, 4.0)
+		ped_mesh.mesh = p_box
+		ped_mesh.position = Vector3(0.0, 0.9, 0.0)
+		var ped_mat = StandardMaterial3D.new()
+		ped_mat.albedo_color = Color(0.15, 0.15, 0.18) # Dark Granite/Marble
+		ped_mat.metallic = 0.3
+		ped_mat.roughness = 0.4
+		ped_mesh.material_override = ped_mat
+		ped_body.add_child(ped_mesh)
+		statue_root.add_child(ped_body)
 
-			# GIANT METALLIC STICK FIGURE STATUE (Height ~7.5m above pedestal, NON-GLOWING!)
-			var statue_mat = StandardMaterial3D.new()
-			statue_mat.albedo_color = Color(0.22, 0.24, 0.28) # Dark Cast Iron / Bronze Metal
-			statue_mat.metallic = 0.95
-			statue_mat.roughness = 0.25
-			statue_mat.emission_enabled = false # NO GLOW ON HEAD OR BODY!
+		# GIANT METALLIC STICK FIGURE STATUE (Height ~7.5m above pedestal, NON-GLOWING!)
+		var statue_mat = StandardMaterial3D.new()
+		statue_mat.albedo_color = Color(0.22, 0.24, 0.28) # Dark Cast Iron / Bronze Metal
+		statue_mat.metallic = 0.95
+		statue_mat.roughness = 0.25
+		statue_mat.emission_enabled = false # NO GLOW ON HEAD OR BODY!
 
-			# Stick Figure Torso (Thick vertical rod)
-			var torso = MeshInstance3D.new()
-			var torso_mesh = CylinderMesh.new()
-			torso_mesh.top_radius = 0.2
-			torso_mesh.bottom_radius = 0.2
-			torso_mesh.height = 3.5
-			torso.mesh = torso_mesh
-			torso.position = Vector3(0.0, 3.55, 0.0)
-			torso.material_override = statue_mat
-			statue_root.add_child(torso)
+		# Stick Figure Torso (Thick vertical rod)
+		var torso = MeshInstance3D.new()
+		var torso_mesh = CylinderMesh.new()
+		torso_mesh.top_radius = 0.2
+		torso_mesh.bottom_radius = 0.2
+		torso_mesh.height = 3.5
+		torso.mesh = torso_mesh
+		torso.position = Vector3(0.0, 3.55, 0.0)
+		torso.material_override = statue_mat
+		statue_root.add_child(torso)
 
-			# Stick Figure Non-Glowing Head (Metallic Sphere)
-			var head = MeshInstance3D.new()
-			var head_mesh = SphereMesh.new()
-			head_mesh.radius = 0.55
-			head_mesh.height = 1.1
-			head.mesh = head_mesh
-			head.position = Vector3(0.0, 5.85, 0.0)
-			head.material_override = statue_mat # Metallic non-glowing head!
-			statue_root.add_child(head)
+		# Stick Figure Non-Glowing Head (Metallic Sphere)
+		var head = MeshInstance3D.new()
+		var head_mesh = SphereMesh.new()
+		head_mesh.radius = 0.55
+		head_mesh.height = 1.1
+		head.mesh = head_mesh
+		head.position = Vector3(0.0, 5.85, 0.0)
+		head.material_override = statue_mat # Metallic non-glowing head!
+		statue_root.add_child(head)
 
-			# Stick Figure Arms (Horizontal rod across shoulders)
-			var arms = MeshInstance3D.new()
-			var arm_mesh = CylinderMesh.new()
-			arm_mesh.top_radius = 0.14
-			arm_mesh.bottom_radius = 0.14
-			arm_mesh.height = 3.2
-			arms.mesh = arm_mesh
-			arms.position = Vector3(0.0, 4.8, 0.0)
-			arms.rotation_degrees = Vector3(0.0, 0.0, 90.0)
-			arms.material_override = statue_mat
-			statue_root.add_child(arms)
+		# Stick Figure Arms (Horizontal rod across shoulders)
+		var arms = MeshInstance3D.new()
+		var arm_mesh = CylinderMesh.new()
+		arm_mesh.top_radius = 0.14
+		arm_mesh.bottom_radius = 0.14
+		arm_mesh.height = 3.2
+		arms.mesh = arm_mesh
+		arms.position = Vector3(0.0, 4.8, 0.0)
+		arms.rotation_degrees = Vector3(0.0, 0.0, 90.0)
+		arms.material_override = statue_mat
+		statue_root.add_child(arms)
 
-			# Stick Figure Left Leg
-			var leg_l = MeshInstance3D.new()
-			var leg_mesh = CylinderMesh.new()
-			leg_mesh.top_radius = 0.14
-			leg_mesh.bottom_radius = 0.14
-			leg_mesh.height = 2.4
-			leg_l.mesh = leg_mesh
-			leg_l.position = Vector3(-0.6, 2.2, 0.0)
-			leg_l.rotation_degrees = Vector3(0.0, 0.0, 20.0)
-			leg_l.material_override = statue_mat
-			statue_root.add_child(leg_l)
+		# Stick Figure Left Leg
+		var leg_l = MeshInstance3D.new()
+		var leg_mesh = CylinderMesh.new()
+		leg_mesh.top_radius = 0.14
+		leg_mesh.bottom_radius = 0.14
+		leg_mesh.height = 2.4
+		leg_l.mesh = leg_mesh
+		leg_l.position = Vector3(-0.6, 2.2, 0.0)
+		leg_l.rotation_degrees = Vector3(0.0, 0.0, 20.0)
+		leg_l.material_override = statue_mat
+		statue_root.add_child(leg_l)
 
-			# Stick Figure Right Leg
-			var leg_r = MeshInstance3D.new()
-			leg_r.mesh = leg_mesh
-			leg_r.position = Vector3(0.6, 2.2, 0.0)
-			leg_r.rotation_degrees = Vector3(0.0, 0.0, -20.0)
-			leg_r.material_override = statue_mat
-			statue_root.add_child(leg_r)
+		# Stick Figure Right Leg
+		var leg_r = MeshInstance3D.new()
+		leg_r.mesh = leg_mesh
+		leg_r.position = Vector3(0.6, 2.2, 0.0)
+		leg_r.rotation_degrees = Vector3(0.0, 0.0, -20.0)
+		leg_r.material_override = statue_mat
+		statue_root.add_child(leg_r)
 
-			# Plaque Label
-			var plaque_lbl = Label3D.new()
-			plaque_lbl.text = "🏛️ %s\n[PRESS 'E' TO READ INSCRIPTION]" % park_statue_identity.get("name", "CITY MONUMENT")
-			plaque_lbl.position = Vector3(0.0, 2.2, 2.1)
-			plaque_lbl.font_size = 20
-			plaque_lbl.pixel_size = 0.004
-			plaque_lbl.modulate = Color(1.0, 0.85, 0.0)
-			statue_root.add_child(plaque_lbl)
+		# Plaque Label
+		var plaque_lbl = Label3D.new()
+		plaque_lbl.text = "🏛️ %s\n[PRESS 'E' TO READ INSCRIPTION]" % park_statue_identity.get("name", "CITY MONUMENT")
+		plaque_lbl.position = Vector3(0.0, 2.2, 2.1)
+		plaque_lbl.font_size = 20
+		plaque_lbl.pixel_size = 0.004
+		plaque_lbl.modulate = Color(1.0, 0.85, 0.0)
+		statue_root.add_child(plaque_lbl)
 
-			add_child(statue_root)
+		add_child(statue_root)
 
 	# --------------------------------------------------------------------------
 	# PARK TYPE B: CONCERT STAGE PARK (Stage + Light Rig + 3D Live Band)
