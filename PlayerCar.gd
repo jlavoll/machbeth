@@ -45,6 +45,8 @@ var _weather_ambience: Node = null
 var is_towing_war_rig: bool = false
 var tow_cable_mesh: ImmediateMesh = null
 var tow_cable_node: MeshInstance3D = null
+var _towing_hud_layer: CanvasLayer = null
+var _towing_hud_label: Label = null
 
 # ==============================================================================
 # VISUAL BODY DYNAMICS (LEANING, BANKING & PITCH)
@@ -164,6 +166,7 @@ func _ready() -> void:
 		camera.fov = ultra_min_fov + 5.0 * zoom_step
 	_update_camera_transform()
 	_setup_3d_headlights()
+	_build_towing_hud()
 	# Cache tail-light material for brake-light emission updates
 	if is_instance_valid(tail_light_mesh):
 		_tail_mat = tail_light_mesh.get_surface_override_material(0) as StandardMaterial3D
@@ -544,25 +547,72 @@ func _attach_tow_cable() -> void:
 	if is_instance_valid(neural_comms) and neural_comms.has_method("send_message"):
 		neural_comms.send_message("⚙️ TOW CABLE HITCHED! Tow Mack's War-Rig across the city grid to Porter's Pit Garage for emergency overhaul!", "TOWING RECOVERY")
 
+func _build_towing_hud() -> void:
+	_towing_hud_layer = CanvasLayer.new()
+	_towing_hud_layer.name = "TowingHUDPromptLayer"
+	_towing_hud_layer.layer = 25
+	add_child(_towing_hud_layer)
+
+	var panel = PanelContainer.new()
+	panel.name = "PromptPanel"
+	panel.set_anchors_preset(Control.PRESET_BOTTOM_WIDE)
+	panel.anchor_top = 1.0
+	panel.anchor_bottom = 1.0
+	panel.offset_left = 280
+	panel.offset_top = -110
+	panel.offset_right = -280
+	panel.offset_bottom = -60
+
+	var style = StyleBoxFlat.new()
+	style.bg_color = Color(0.02, 0.04, 0.08, 0.92)
+	style.border_width_left = 2
+	style.border_width_top = 2
+	style.border_width_right = 2
+	style.border_width_bottom = 2
+	style.border_color = Color(1.0, 0.5, 0.0) # Radiant Amber Border
+	style.set_content_margin_all(10)
+	panel.add_theme_stylebox_override("panel", style)
+	_towing_hud_layer.add_child(panel)
+
+	_towing_hud_label = Label.new()
+	_towing_hud_label.text = "[E] HITCH TOW CABLE TO MACK'S WAR-RIG"
+	_towing_hud_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	_towing_hud_label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+	_towing_hud_label.add_theme_color_override("font_color", Color(1.0, 0.85, 0.0))
+	_towing_hud_label.add_theme_font_size_override("font_size", 16)
+	panel.add_child(_towing_hud_label)
+
+	_towing_hud_layer.visible = false
+
 func _update_towing_physics(delta: float) -> void:
 	var campaign_mgr = get_parent().get_node_or_null("CampaignManager")
 	if not is_instance_valid(campaign_mgr) or not campaign_mgr.is_norns_recovery_active:
 		if is_towing_war_rig:
 			_detach_tow_cable()
+		if is_instance_valid(_towing_hud_layer):
+			_towing_hud_layer.visible = false
 		return
 
-	# Show HUD prompt when near wreck if not yet towed
+	# Distance to smoldering War-Rig wreck
 	var wreck_pos: Vector3 = campaign_mgr.norns_recovery_drop_pos
 	var dist_to_wreck: float = global_position.distance_to(wreck_pos)
 
 	if not is_towing_war_rig:
-		if dist_to_wreck <= 12.0:
-			var neural_comms = get_parent().get_node_or_null("NeuralNotificationSystem")
-			if is_instance_valid(neural_comms) and neural_comms.has_method("send_message"):
-				neural_comms.send_message("PRESS [E] TO HITCH TOW CABLE TO WAR-RIG", "WAR-RIG RECOVERY")
+		if dist_to_wreck <= 16.0 and not is_on_foot:
+			if is_instance_valid(_towing_hud_layer) and is_instance_valid(_towing_hud_label):
+				_towing_hud_label.text = "⚙️ RECOVERY SITE REACHED // PRESS [E] TO HITCH TOW CABLE"
+				_towing_hud_layer.visible = true
+		else:
+			if is_instance_valid(_towing_hud_layer):
+				_towing_hud_layer.visible = false
 		return
 
-	# TOWING ACTIVE: Pull smoldering War-Rig mesh node behind player car at 8m distance
+	# TOWING ACTIVE HUD STATUS:
+	if is_instance_valid(_towing_hud_layer) and is_instance_valid(_towing_hud_label):
+		_towing_hud_label.text = "🚜 TOWING MACK'S WAR-RIG // DESTINATION: PORTER'S PIT GARAGE"
+		_towing_hud_layer.visible = true
+
+	# Pull smoldering War-Rig mesh node behind player car at 8.5m distance
 	var rig_node = campaign_mgr.norns_recovery_node
 	if is_instance_valid(rig_node):
 		var target_follow_pos: Vector3 = global_position + (global_transform.basis.z * 8.5)
