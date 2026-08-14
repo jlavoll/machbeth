@@ -1,0 +1,46 @@
+{
+	"speaker_display_name": "Mack",
+	"speaker_subtitle": "NEURAL-ID: MACBETH_WAR_RIG_01 | High Commander",
+	"speaker_color": "#FF3300",
+	"nodes": {
+		"start": {
+			"text": "Banquo. You're back. Good... the street telemetry you fed me kept the War-Rig fed. But listen to me — the grid isn't silent tonight. Every time I power up the neural stack, I hear data-fluid dripping. Did Duncan's servers have a leak, or is it just the ICE?",
+			"portrait_emotion": "intense",
+			"choices": [
+				{ "text": "It's just the ICE, Mack. Focus on the next convoy.", "target": "convoy_talk" },
+				{ "text": "You look terrible, Mack. Have you rested?", "target": "madness_talk" },
+				{ "text": "I'll be out on the streets. [Leave]", "target": "exit" }
+			]
+		},
+		"convoy_talk": {
+			"text": "Focus? I've never been more focused! Macduff thinks he can split his battalion across four entry vectors. He thinks distributed routing will hide him from my War-Rig. I'll crush them all in the central lane. One lane, Banquo. That's all I need.",
+			"portrait_emotion": "manic",
+			"choices": [
+				{ "text": "The War-Table is set when you're ready to deploy.", "target": "ready_to_fight" },
+				{ "text": "Who was Bankes to you, Mack?", "target": "bankes_talk" }
+			]
+		},
+		"madness_talk": {
+			"text": "Rest?! There is no rest while Duncan's ghost-code lingers on the overmap! Lady M says the throne is ours, but every time I look at the cockpit HUD, Bankes' name flashes red across my scope! He's dead, Banquo! I saw the wreckage burn! SO WHY IS HE STILL PINGING MY NEURAL CORE?!",
+			"portrait_emotion": "paranoid",
+			"choices": [
+				{ "text": "Breathe, Mack. It's just a phantom signal from the cyberware.", "target": "convoy_talk" },
+				{ "text": "I need to go. [Leave]", "target": "exit" }
+			]
+		},
+		"bankes_talk": {
+			"text": "Bankes was a fool who thought loyalty to Duncan meant something in a city made of scrap and silicon. He died in the highway split. And if his ghost-code tries to stop the War-Rig... I'll burn his neural signature out of the sky too!",
+			"portrait_emotion": "furious",
+			"choices": [
+				{ "text": "Stay sharp, Mack.", "target": "exit" }
+			]
+		},
+		"ready_to_fight": {
+			"text": "I'm always ready. Deploy me from the War-Table at The Pit when the signal is green. Then watch the highway burn.",
+			"portrait_emotion": "determined",
+			"choices": [
+				{ "text": "[Leave]", "target": "exit" }
+			]
+		}
+	}
+}

@@ -166,6 +166,9 @@ func _build_hideout_floor() -> void:
 	_build_interior_desk(root_hideout, Vector3(0.0, 0.6, -4.0), Vector3(4.0, 1.2, 1.6), Color(1.0, 0.5, 0.0))
 	_build_interior_pillar(root_hideout, Vector3(-6.0, 1.5, -5.0), Vector3(1.2, 3.0, 1.2), Color(1.0, 0.5, 0.0))
 
+	# Spawn Mack NPC Warlord
+	_spawn_npc_character(root_hideout, Vector3(0.0, 0.0, -5.5), Color(1.0, 0.3, 0.0), "Mack", Vector3(0.0, 0.0, 0.0))
+
 	# Exit Door (South Wall Center)
 	_build_exit_door(root_hideout, Vector3(0.0, 1.8, 8.2))
 
@@ -910,7 +913,13 @@ func _process(_delta: float) -> void:
 			else:
 				prompt_text = "[E] CLOSE SECURITY DOOR"
 	else:
-		if current_floor == HQFloor.PORTER_PIT:
+		if current_floor == HQFloor.MACK_HIDEOUT:
+			var mack_pos: Vector3 = mack_hideout_origin + Vector3(0.0, 0.0, -5.5)
+			if pos.distance_to(mack_pos) <= 4.0:
+				prompt_text = "[E] TALK TO COMMANDER MACK"
+			elif pos.distance_to(floor_exit_pos) <= 4.5:
+				prompt_text = "[E] EXIT TO CITY STREETS"
+		elif current_floor == HQFloor.PORTER_PIT:
 			var terminal_pos: Vector3 = porter_pit_origin + Vector3(-10.0, 0.0, 0.0)
 			var cyborg_terminal_pos: Vector3 = porter_pit_origin + Vector3(10.0, 0.0, 0.0)
 			var wartable_pos: Vector3 = porter_pit_origin + Vector3(0.0, 0.0, 4.0)
@@ -980,6 +989,15 @@ func _unhandled_input(event: InputEvent) -> void:
 			var current_origin: Vector3 = _get_origin_for_floor(current_floor)
 			var exit_target_z: float = 8.2 if current_floor == HQFloor.MACK_HIDEOUT else (9.2 if current_floor == HQFloor.LADY_M_LAIR else 11.2)
 			var floor_exit_pos: Vector3 = current_origin + Vector3(0.0, 0.0, exit_target_z)
+			
+			if current_floor == HQFloor.MACK_HIDEOUT:
+				var mack_pos: Vector3 = mack_hideout_origin + Vector3(0.0, 0.0, -5.5)
+				if pos.distance_to(mack_pos) <= 4.0:
+					var dialogue_sys = get_parent().get_node_or_null("DialogueSystem")
+					if is_instance_valid(dialogue_sys):
+						dialogue_sys.start_dialogue("res://scripts/mack_dialogue.json")
+						get_viewport().set_input_as_handled()
+						return
 			
 			if current_floor == HQFloor.PORTER_PIT:
 				var terminal_pos: Vector3 = porter_pit_origin + Vector3(-10.0, 0.0, 0.0)

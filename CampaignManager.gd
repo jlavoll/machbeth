@@ -108,44 +108,90 @@ func close_deployment_ui() -> void:
 		
 	deployment_ui_toggled.emit(false)
 
+# Autonomous Battle Simulation State (300 Seconds / 5 Minutes)
+var is_battle_in_progress: bool = false
+var battle_timer: float = 0.0
+var battle_duration: float = 300.0 # 5 Minutes epic battle duration
+var last_rumor_tick: float = 0.0
+
+# Dynamic rumor feed messages sent every 45-60 seconds during battle
+var rumor_dispatches: Array[String] = [
+	"RUMOR // HIGHWAY FEED: Mack's War-Rig spotted breaching outer corporate barrier!",
+	"RUMOR // CITIZEN DISPATCH: Heavy Ordnance Gatling fire heard roaring in Sector 4!",
+	"RUMOR // NETRUNNER INTELLIGENCE: Mack's neural stack is spiking... but Fife Security is retreating!",
+	"RUMOR // TRAFFIC GRID: Corporate armor units split across highway gates. Mack holding the central chokepoint!",
+	"RUMOR // LADY M: Enemy vanguard hull integrity dropping below 30%! Victory is imminent!"
+]
+var rumor_index: int = 0
+
+# Summary Report UI
+var _summary_panel: PanelContainer
+var _summary_title_label: Label
+var _summary_body_label: Label
+
+func _process(delta: float) -> void:
+	if not is_battle_in_progress:
+		return
+
+	battle_timer += delta
+	last_rumor_tick += delta
+
+	# Dispatch a new rumor every 55 seconds during battle
+	if last_rumor_tick >= 55.0:
+		last_rumor_tick = 0.0
+		_broadcast_next_rumor()
+
+	# Complete battle after 300 seconds
+	if battle_timer >= battle_duration:
+		is_battle_in_progress = false
+		_conclude_autonomous_battle(true)
+
+func _broadcast_next_rumor() -> void:
+	if rumor_index < rumor_dispatches.size():
+		var msg: String = rumor_dispatches[rumor_index]
+		rumor_index = (rumor_index + 1) % rumor_dispatches.size()
+		if is_instance_valid(neural_comms) and neural_comms.has_method("send_message"):
+			neural_comms.send_message(msg, "TACTICAL TELEMETRY")
+
 func launch_grand_deployment() -> void:
+	if is_battle_in_progress:
+		print("[CAMPAIGN MANAGER] Battle already in progress!")
+		return
+
 	close_deployment_ui()
+	
+	is_battle_in_progress = true
+	battle_timer = 0.0
+	last_rumor_tick = 0.0
+	rumor_index = 0
 	
 	var current_data: Dictionary = act_details.get(current_act, {})
 	var convoy_name: String = current_data.get("target_convoy", "Corporate Vanguard")
-	var hp: float = current_data.get("enemy_hp", 300.0)
-	var reward: int = current_data.get("reward_credits", 2000)
 	
-	print("[CAMPAIGN MANAGER] Launching Mack's War-Rig deployment for: ", convoy_name)
+	print("[CAMPAIGN MANAGER] Launching autonomous 5-minute Grand Battle for: ", convoy_name)
 	
-	# Send Neural Comms announcement
+	# Send initial Neural Comms announcement
 	if is_instance_valid(neural_comms) and neural_comms.has_method("send_message"):
-		neural_comms.send_message("WAR-RIG LAUNCHED! Mack deployed to central highway for " + convoy_name, "LADY M // TACTICAL COMMAND")
-	
-	# Trigger combat via BattleSystemManager
-	if is_instance_valid(battle_manager):
-		var target_profile = {
-			"designation": convoy_name,
-			"hp": hp,
-			"color": Color(1.0, 0.2, 0.0),
-			"rewards": {"credits": reward, "scrap": 100}
-		}
-		
-		# Exit indoor interior so combat renders in city
-		var indoor_mgr = get_parent().get_node_or_null("IndoorSystemManager")
-		if is_instance_valid(indoor_mgr) and indoor_mgr.is_inside_building:
-			indoor_mgr.exit_building_interior()
-		
-		if battle_manager.has_signal("targeted_combat_finished"):
-			if not battle_manager.targeted_combat_finished.is_connected(_on_grand_battle_finished):
-				battle_manager.targeted_combat_finished.connect(_on_grand_battle_finished, CONNECT_ONE_SHOT)
-		
-		battle_manager._on_targeted_combat_requested(target_profile)
+		neural_comms.send_message("WAR-RIG DISPATCHED! Mack deployed to central highway for " + convoy_name + ". Estimated engagement time: 5 MINS.", "LADY M // MISSION CONTROL")
 
-func _on_grand_battle_finished(target_profile: Dictionary, success: bool) -> void:
-	if success:
-		print("[CAMPAIGN MANAGER] Grand Battle Victory! Advancing Campaign Act...")
-		_advance_campaign_act()
+func _conclude_autonomous_battle(success: bool) -> void:
+	if not success:
+		return
+
+	var current_data: Dictionary = act_details.get(current_act, {})
+	var reward_c: int = current_data.get("reward_credits", 2500)
+	
+	# Award credits to Banquo
+	if is_instance_valid(quest_manager):
+		quest_manager.player_credits += reward_c
+
+	# Inject +20% Glitch/Paranoia into Mack's stack
+	var glitch_sys = get_parent().get_node_or_null("NeuralGlitchSystem")
+	if is_instance_valid(glitch_sys):
+		glitch_sys.inject_neural_instability(20.0)
+
+	_advance_campaign_act()
+	_show_after_action_summary(reward_c)
 
 func _advance_campaign_act() -> void:
 	match current_act:
@@ -153,7 +199,6 @@ func _advance_campaign_act() -> void:
 			current_act = CampaignAct.ACT_2_BANQUO_INTERCEPT
 		CampaignAct.ACT_2_BANQUO_INTERCEPT:
 			current_act = CampaignAct.ACT_3_BIRNAM_PURGE
-			# Claim Central & North sectors for Mack
 			sector_control[1] = "MACK_LOYALISTS"
 			sector_control[4] = "MACK_LOYALISTS"
 		CampaignAct.ACT_3_BIRNAM_PURGE:
@@ -161,17 +206,16 @@ func _advance_campaign_act() -> void:
 			sector_control[0] = "MACK_LOYALISTS"
 			sector_control[8] = "MACK_LOYALISTS"
 		CampaignAct.ACT_4_DUNSINANE_SIEGE:
-			# Total Map Dominance
 			for i in range(sector_control.size()):
 				sector_control[i] = "MACK_LOYALISTS"
 	
 	var act_info: Dictionary = act_details.get(current_act, {})
 	var title: String = act_info.get("title", "NEW ACT")
-	
 	act_advanced.emit(int(current_act), title)
-	
+
+func _show_after_action_summary(reward_credits: int) -> void:
 	if is_instance_valid(neural_comms) and neural_comms.has_method("send_message"):
-		neural_comms.send_message("CAMPAIGN ADVANCED: " + title + " — District control updated!", "B_ANKES_GHOST.EXE")
+		neural_comms.send_message("VICTORY! Mack's War-Rig crushed the corporate convoy! +%d Credits transferred to vault." % reward_credits, "TACTICAL REPORT")
 
 # ==============================================================================
 # PROCEDURAL DEPLOYMENT UI BUILDER
@@ -360,7 +404,15 @@ func _update_ui_contents() -> void:
 	var hp: float = act_info.get("enemy_hp", 200.0)
 	var reward: int = act_info.get("reward_credits", 1000)
 	
-	_convoy_info_label.text = "TARGET: %s\nCONVOY HULL: %.0f HP\nREWARD: %d CYBER-CREDITS" % [target_name, hp, reward]
+	if is_battle_in_progress:
+		var mins_left: float = (battle_duration - battle_timer) / 60.0
+		_convoy_info_label.text = "TARGET: %s\nCONVOY HULL: %.0f HP\nSTATUS: ENGAGEMENT IN PROGRESS (%.1f MINS REMAINING)" % [target_name, hp, mins_left]
+		_launch_btn.text = " ⏳ BATTLE IN PROGRESS (%.1f MINS) " % mins_left
+		_launch_btn.disabled = true
+	else:
+		_convoy_info_label.text = "TARGET: %s\nCONVOY HULL: %.0f HP\nREWARD: %d CYBER-CREDITS" % [target_name, hp, reward]
+		_launch_btn.text = " 🚀 DEPLOY MACK'S WAR-RIG TO GRAND HIT "
+		_launch_btn.disabled = false
 
 	# Update 9-Sector Grid Colors & Faction Names
 	for i in range(9):
