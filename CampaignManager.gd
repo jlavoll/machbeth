@@ -270,32 +270,37 @@ func _update_battle_phase() -> void:
 	var old_phase = current_battle_phase
 	if battle_timer < 75.0:
 		current_battle_phase = BattlePhase.PHASE_1_ARRED_CARS
-		mack_current_action = "PHASE I: Engaging Corporate Armored Cars..."
-		active_enemy_units = [
-			{"name": "Cawdor Interceptor Alpha", "type": "🚙 ARMORED CAR", "hp": 100, "weapon": "Twin 20mm Cannon", "icon": "🚙"},
-			{"name": "Cawdor Interceptor Beta", "type": "🚙 ARMORED CAR", "hp": 100, "weapon": "Spike Ram", "icon": "🚙"}
-		]
+		if old_phase != current_battle_phase or active_enemy_units.is_empty():
+			if battle_timer < 2.0: # Initial spawn
+				mack_current_action = "PHASE I: Engaging Corporate Armored Cars..."
+				active_enemy_units = [
+					{"name": "Cawdor Interceptor Alpha", "type": "🚙 ARMORED CAR", "hp": 100, "weapon": "Twin 20mm Cannon", "icon": "🚙"},
+					{"name": "Cawdor Interceptor Beta", "type": "🚙 ARMORED CAR", "hp": 100, "weapon": "Spike Ram", "icon": "🚙"}
+				]
 	elif battle_timer < 160.0:
 		current_battle_phase = BattlePhase.PHASE_2_FOOT_SOLDIERS
-		mack_current_action = "PHASE II: Sweeping Corporate Foot-Soldier Barricade..."
-		active_enemy_units = [
-			{"name": "Fife Exo-Trooper Squad A", "type": "🎖️ HEAVY INFANTRY", "hp": 140, "weapon": "Plasma Rifle Array", "icon": "🎖️"},
-			{"name": "Fife Exo-Trooper Squad B", "type": "🎖️ HEAVY INFANTRY", "hp": 140, "weapon": "EMP Mortar", "icon": "🎖️"}
-		]
+		if old_phase != current_battle_phase:
+			mack_current_action = "PHASE II: Sweeping Corporate Foot-Soldier Barricade..."
+			active_enemy_units = [
+				{"name": "Fife Exo-Trooper Squad A", "type": "🎖️ HEAVY INFANTRY", "hp": 140, "weapon": "Plasma Rifle Array", "icon": "🎖️"},
+				{"name": "Fife Exo-Trooper Squad B", "type": "🎖️ HEAVY INFANTRY", "hp": 140, "weapon": "EMP Mortar", "icon": "🎖️"}
+			]
 	elif battle_timer < 240.0:
 		current_battle_phase = BattlePhase.PHASE_3_DRONE_SWARM
-		mack_current_action = "PHASE III: Cleaving Attack Drone Swarm..."
-		active_enemy_units = [
-			{"name": "Norns AI Hunter Drone #01", "type": "🛸 ATTACK DRONE", "hp": 80, "weapon": "Laser Cutter", "icon": "🛸"},
-			{"name": "Norns AI Hunter Drone #02", "type": "🛸 ATTACK DRONE", "hp": 80, "weapon": "Disruptor Beam", "icon": "🛸"},
-			{"name": "Norns AI Hunter Drone #03", "type": "🛸 ATTACK DRONE", "hp": 80, "weapon": "Nanite Swarm", "icon": "🛸"}
-		]
+		if old_phase != current_battle_phase:
+			mack_current_action = "PHASE III: Cleaving Attack Drone Swarm..."
+			active_enemy_units = [
+				{"name": "Norns AI Hunter Drone #01", "type": "🛸 ATTACK DRONE", "hp": 80, "weapon": "Laser Cutter", "icon": "🛸"},
+				{"name": "Norns AI Hunter Drone #02", "type": "🛸 ATTACK DRONE", "hp": 80, "weapon": "Disruptor Beam", "icon": "🛸"},
+				{"name": "Norns AI Hunter Drone #03", "type": "🛸 ATTACK DRONE", "hp": 80, "weapon": "Nanite Swarm", "icon": "🛸"}
+			]
 	else:
 		current_battle_phase = BattlePhase.PHASE_4_GUNSHIP_BOSS
-		mack_current_action = "FINAL PHASE: Duel against Corporate Attack Helicopter!"
-		active_enemy_units = [
-			{"name": "Duncan Heavy Gunship Apex", "type": "🚁 ATTACK HELICOPTER BOSS", "hp": 450, "weapon": "Hellfire Ordnance Rockets", "icon": "🚁"}
-		]
+		if old_phase != current_battle_phase:
+			mack_current_action = "FINAL PHASE: Duel against Corporate Attack Helicopter!"
+			active_enemy_units = [
+				{"name": "Duncan Heavy Gunship Apex", "type": "🚁 ATTACK HELICOPTER BOSS", "hp": 450, "weapon": "Hellfire Ordnance Rockets", "icon": "🚁"}
+			]
 
 	if old_phase != current_battle_phase:
 		if is_instance_valid(neural_comms) and neural_comms.has_method("send_message"):
@@ -891,7 +896,7 @@ func _update_telemetry_hud() -> void:
 					ocular_tier = cyborg_mgr.cyberware_slots["ocular_scope"].get("tier", 1)
 
 				if is_player_turn:
-					# --- MACK ATTACK ROLL ---
+					# --- MACK REAL ATTACK ROLL & ENEMY HP DEDUCTION ---
 					var atk_bonus: int = (ord_lvl - 1) * 6 + (ocular_tier - 1) * 4
 					var crit_threshold: int = 15 - (ocular_tier - 1) * 2 # Crit range expands with ocular scope
 					var roll_d20: int = (randi() % 20) + 1
@@ -900,23 +905,35 @@ func _update_telemetry_hud() -> void:
 
 					if roll_d20 >= crit_threshold:
 						damage_dealt = int(damage_dealt * 1.85)
-						_log_combat_math("[color=#FFCC00][MACK ATK ⚔️] d20(%d)+%d=%d [CRIT!] -> %d DMG[/color] (Ordnance L%d)" % [roll_d20, 8 + atk_bonus, total_val, damage_dealt, ord_lvl])
+
+					if not active_enemy_units.is_empty():
+						var target_enemy = active_enemy_units[0]
+						target_enemy["hp"] = max(0, target_enemy["hp"] - damage_dealt)
+						if roll_d20 >= crit_threshold:
+							_log_combat_math("[color=#FFCC00][MACK ATK ⚔️] d20(%d)+%d=%d [CRIT!] -> %d DMG to %s! (HP: %d)[/color]" % [roll_d20, 8 + atk_bonus, total_val, damage_dealt, target_enemy["name"], target_enemy["hp"]])
+						else:
+							_log_combat_math("[color=#00E5FF][MACK ATK ⚔️] d20(%d)+%d=%d Hit -> %d DMG to %s! (HP: %d)[/color]" % [roll_d20, 8 + atk_bonus, total_val, damage_dealt, target_enemy["name"], target_enemy["hp"]])
+						
+						if target_enemy["hp"] <= 0:
+							_log_combat_math("[color=#33FF57]💥 DESTROYED! %s neutralized by Mack's Gatling Fire![/color]" % target_enemy["name"])
+							active_enemy_units.remove_at(0)
 					else:
-						_log_combat_math("[color=#00E5FF][MACK ATK ⚔️] d20(%d)+%d=%d Hit -> %d DMG[/color] (Ordnance L%d)" % [roll_d20, 8 + atk_bonus, total_val, damage_dealt, ord_lvl])
+						# Downtime: All wave enemies destroyed early! Mack slowly recovers hull integrity!
+						mack_current_hp = min(mack_max_hp, mack_current_hp + 3.5)
+						mack_current_action = "WAVE CLEARED! Mack's nanite systems repairing hull (+3.5 HP)..."
+						_log_combat_math("[color=#00FF88]🌿 DOWNTIME RECOVERY: Wave cleared early! Nanites restoring War-Rig hull (+3.5 HP)[/color]")
 				else:
 					# --- ENEMY ATTACK ROLL & ARMOR ABSORPTION ---
-					var active_unit_name: String = "Corporate Target"
 					if not active_enemy_units.is_empty():
-						active_unit_name = active_enemy_units.pick_random().get("name", "Enemy Unit")
+						var active_enemy = active_enemy_units.pick_random()
+						var enemy_roll: int = (randi() % 20) + 1
+						var enemy_raw_dmg: int = 24 + (randi() % 10)
+						var armor_absorbed: int = int(enemy_raw_dmg * ((armor_lvl - 1) * 0.15 + 0.10))
+						var net_dmg: int = max(4, enemy_raw_dmg - armor_absorbed)
 
-					var enemy_roll: int = (randi() % 20) + 1
-					var enemy_raw_dmg: int = 24 + (randi() % 10)
-					var armor_absorbed: int = int(enemy_raw_dmg * ((armor_lvl - 1) * 0.15 + 0.10))
-					var net_dmg: int = max(4, enemy_raw_dmg - armor_absorbed)
-
-					_log_combat_math("[color=#FF5555][ENEMY ATK 💥] %s d20(%d) -> %d DMG [/color][color=#00FF88](Armor L%d Absorbed -%d HP! Net: %d)[/color]" % [
-						active_unit_name, enemy_roll, enemy_raw_dmg, armor_lvl, armor_absorbed, net_dmg
-					])
+						_log_combat_math("[color=#FF5555][ENEMY ATK 💥] %s d20(%d) -> %d DMG [/color][color=#00FF88](Armor L%d Absorbed -%d HP! Net: %d)[/color]" % [
+							active_enemy["name"], enemy_roll, enemy_raw_dmg, armor_lvl, armor_absorbed, net_dmg
+						])
 		else:
 			side_math_text.visible = false
 

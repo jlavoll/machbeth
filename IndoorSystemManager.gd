@@ -253,8 +253,10 @@ func _build_porter_pit_floor() -> void:
 	scr1_label.name = "PitMonitorVitalsLabel"
 	scr1_label.position = Vector3(-9.0, 3.2, -11.35)
 	scr1_label.text = "💻 TELEMETRY VITALS\nMACK HP: 100 / 100\nCORE TEMP: 75.0°C\nENGINE RPM: 4200"
-	scr1_label.font_size = 32
-	scr1_label.pixel_size = 0.005
+	scr1_label.font_size = 22
+	scr1_label.pixel_size = 0.004
+	scr1_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	scr1_label.width = 1750.0
 	scr1_label.modulate = Color(0.0, 1.0, 1.0)
 	scr1_label.outline_render_priority = 1
 	root_pit.add_child(scr1_label)
@@ -265,8 +267,10 @@ func _build_porter_pit_floor() -> void:
 	scr2_label.name = "PitMonitorTacticalLabel"
 	scr2_label.position = Vector3(0.0, 3.4, -11.35)
 	scr2_label.text = "🎥 LIVE TACTICAL VIDEO FEED\nPHASE I: HIGHWAY ENGAGEMENT\n[CAM UPLINK ACTIVE]"
-	scr2_label.font_size = 36
-	scr2_label.pixel_size = 0.005
+	scr2_label.font_size = 24
+	scr2_label.pixel_size = 0.004
+	scr2_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	scr2_label.width = 2200.0
 	scr2_label.modulate = Color(1.0, 0.5, 0.0)
 	scr2_label.outline_render_priority = 1
 	root_pit.add_child(scr2_label)
@@ -277,8 +281,10 @@ func _build_porter_pit_floor() -> void:
 	scr3_label.name = "PitMonitorMathLabel"
 	scr3_label.position = Vector3(9.0, 3.2, -11.35)
 	scr3_label.text = "🎲 COMBAT MATH MATRIX\n[MACK ATK] d20(16)+8=24 -> 38 DMG\n[ENEMY ATK] d20(12) -> 24 DMG\nArmor Absorbed: -8 HP"
-	scr3_label.font_size = 28
-	scr3_label.pixel_size = 0.005
+	scr3_label.font_size = 20
+	scr3_label.pixel_size = 0.004
+	scr3_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	scr3_label.width = 1750.0
 	scr3_label.modulate = Color(1.0, 0.85, 0.0)
 	scr3_label.outline_render_priority = 1
 	root_pit.add_child(scr3_label)
