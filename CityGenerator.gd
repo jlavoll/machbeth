@@ -48,7 +48,7 @@ var hq_building_pos: Vector3 = Vector3.ZERO
 var hq_door_pos: Vector3 = Vector3.ZERO
 var hq_door_node: Node3D = null
 
-var mack_hideout_door_pos: Vector3 = Vector3.ZERO
+var banquo_safehouse_door_pos: Vector3 = Vector3.ZERO
 var lady_m_lair_door_pos: Vector3 = Vector3.ZERO
 var chop_shop_door_pos: Vector3 = Vector3.ZERO
 
@@ -101,7 +101,7 @@ func generate_city_from_seed(target_seed: int) -> void:
 	hq_building_pos = Vector3.ZERO
 	hq_door_pos = Vector3.ZERO
 	hq_door_node = null
-	mack_hideout_door_pos = Vector3.ZERO
+	banquo_safehouse_door_pos = Vector3.ZERO
 	lady_m_lair_door_pos = Vector3.ZERO
 	chop_shop_door_pos = Vector3.ZERO
 	porter_pit_door_pos = Vector3.ZERO
@@ -702,8 +702,8 @@ func _create_block_cluster(center: Vector3, size: Vector2, neon_colors: Array) -
 			# West-Center Sector (Mid-Left): Bankes Logistics Hub
 			elif bankes_logistics_door_pos == Vector3.ZERO and bx < -50.0 and abs(bz) <= 50.0:
 				b_type = "BANKES_LOGISTICS"
-			# South-East Quadrant (Bottom-Right): Mack's Safehouse / Home
-			elif mack_hideout_door_pos == Vector3.ZERO and bx > 50.0 and bz > 50.0:
+			# South-East Quadrant (Bottom-Right): Banquo's Safehouse / Home
+			elif banquo_safehouse_door_pos == Vector3.ZERO and bx > 50.0 and bz > 50.0:
 				b_type = "HIDEOUT"
 			# Central Core (Mid-Center): Chop Shop Garage
 			elif chop_shop_door_pos == Vector3.ZERO and abs(bx) <= 50.0 and abs(bz) <= 50.0:
@@ -905,7 +905,7 @@ func _spawn_building(pos: Vector3, b_size: Vector3, neon_colors: Array, b_type: 
 			hq_door_pos = door_world_pos
 			hq_door_node = door_container
 		elif b_type == "HIDEOUT":
-			mack_hideout_door_pos = door_world_pos
+			banquo_safehouse_door_pos = door_world_pos
 		elif b_type == "LADY_M":
 			lady_m_lair_door_pos = door_world_pos
 		elif b_type == "CHOP_SHOP":
@@ -933,11 +933,11 @@ func _ensure_all_special_buildings_placed(neon_colors: Array) -> void:
 		{"type": "HQ", "placed": hq_building_pos != Vector3.ZERO, "target": Vector3(0.0, 0.0, -180.0)},
 		{"type": "NORNS_AI", "placed": norns_ai_door_pos != Vector3.ZERO, "target": Vector3(180.0, 0.0, -180.0)},
 		{"type": "BANKES_LOGISTICS", "placed": bankes_logistics_door_pos != Vector3.ZERO, "target": Vector3(-180.0, 0.0, 0.0)},
-		{"type": "HIDEOUT", "placed": mack_hideout_door_pos != Vector3.ZERO, "target": Vector3(0.0, 0.0, 0.0)},
+		{"type": "HIDEOUT", "placed": banquo_safehouse_door_pos != Vector3.ZERO, "target": Vector3(220.0, 0.0, 220.0)}, # South-East Corner
 		{"type": "FIFE_HQ", "placed": fife_hq_door_pos != Vector3.ZERO, "target": Vector3(180.0, 0.0, 0.0)},
 		{"type": "PORTER_PIT", "placed": porter_pit_door_pos != Vector3.ZERO, "target": Vector3(-180.0, 0.0, 180.0)},
 		{"type": "SUBSTATION", "placed": power_substation_door_pos != Vector3.ZERO, "target": Vector3(0.0, 0.0, 180.0)},
-		{"type": "CHOP_SHOP", "placed": chop_shop_door_pos != Vector3.ZERO, "target": Vector3(180.0, 0.0, 180.0)}
+		{"type": "CHOP_SHOP", "placed": chop_shop_door_pos != Vector3.ZERO, "target": Vector3(0.0, 0.0, 0.0)}
 	]
 
 	for spec in special_specs:

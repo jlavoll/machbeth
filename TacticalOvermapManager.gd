@@ -363,7 +363,7 @@ func _process(_delta: float) -> void:
 
 		# Duncan Dynamics HQ blip update
 		_update_single_blip(hq_blip_marker, city_gen.hq_door_pos if is_instance_valid(city_gen) else Vector3.ZERO)
-		_update_single_blip(hideout_blip_marker, city_gen.mack_hideout_door_pos if is_instance_valid(city_gen) else Vector3.ZERO)
+		_update_single_blip(hideout_blip_marker, city_gen.banquo_safehouse_door_pos if is_instance_valid(city_gen) else Vector3.ZERO)
 		_update_single_blip(lady_m_blip_marker, city_gen.lady_m_lair_door_pos if is_instance_valid(city_gen) else Vector3.ZERO)
 		_update_single_blip(chop_shop_blip_marker, city_gen.chop_shop_door_pos if is_instance_valid(city_gen) else Vector3.ZERO)
 		_update_single_blip(pit_blip_marker, city_gen.porter_pit_door_pos if is_instance_valid(city_gen) else Vector3.ZERO)
