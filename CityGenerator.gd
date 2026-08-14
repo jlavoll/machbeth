@@ -1479,6 +1479,81 @@ func _spawn_cyber_park(center: Vector3, b_size: Vector2, neon_colors: Array) -> 
 		spot.spot_attenuation = 0.8
 		stage_node.add_child(spot)
 
+	# --------------------------------------------------------------------------
+	# LIVE 3D BAND & LEAD SINGER ON STAGE (DURING CONCERT / EVENT)
+	# --------------------------------------------------------------------------
+	if is_stage_event_today:
+		var band_node = Node3D.new()
+		band_node.name = "StageCyberBand"
+		band_node.position = Vector3(1.0, 1.2, 0.0) # Height on top of raised stage
+
+		# Band Members Setup: Lead Singer, Guitarist, Bassist, Synth Drummer
+		var band_members: Array[Dictionary] = [
+			{"name": "Lead Singer", "pos": Vector3(1.5, 0.0, 0.0), "color": Color(1.0, 0.0, 0.8), "mic": true},
+			{"name": "Cyber Guitarist", "pos": Vector3(-0.5, 0.0, -3.0), "color": Color(0.0, 0.85, 1.0), "mic": false},
+			{"name": "Bassist", "pos": Vector3(-0.5, 0.0, 3.0), "color": Color(1.0, 0.85, 0.0), "mic": false},
+			{"name": "Synth Drummer", "pos": Vector3(-2.2, 0.0, 0.0), "color": Color(0.2, 1.0, 0.4), "mic": false}
+		]
+
+		for member in band_members:
+			var char_body = Node3D.new()
+			char_body.name = member["name"]
+			char_body.position = member["pos"]
+
+			var g_color: Color = member["color"]
+			var char_mat = StandardMaterial3D.new()
+			char_mat.albedo_color = Color(0.05, 0.05, 0.08)
+
+			var glow_mat = StandardMaterial3D.new()
+			glow_mat.albedo_color = g_color
+			glow_mat.emission_enabled = true
+			glow_mat.emission = g_color
+			glow_mat.emission_energy_multiplier = 3.5
+
+			# Torso Capsule
+			var body_inst = MeshInstance3D.new()
+			var b_capsule = CapsuleMesh.new()
+			b_capsule.radius = 0.22
+			b_capsule.height = 1.2
+			body_inst.mesh = b_capsule
+			body_inst.position = Vector3(0.0, 0.6, 0.0)
+			body_inst.material_override = char_mat
+			char_body.add_child(body_inst)
+
+			# Glowing Neon Cyber Head Sphere
+			var head_inst = MeshInstance3D.new()
+			var h_sphere = SphereMesh.new()
+			h_sphere.radius = 0.25
+			h_sphere.height = 0.5
+			head_inst.mesh = h_sphere
+			head_inst.position = Vector3(0.0, 1.4, 0.0)
+			head_inst.material_override = glow_mat
+			char_body.add_child(head_inst)
+
+			# Instrument / Mic Stand Accessory
+			if member["mic"]:
+				var mic_stand = MeshInstance3D.new()
+				var m_rod = CylinderMesh.new()
+				m_rod.top_radius = 0.04
+				m_rod.bottom_radius = 0.04
+				m_rod.height = 1.4
+				mic_stand.mesh = m_rod
+				mic_stand.position = Vector3(0.4, 0.7, 0.0)
+				mic_stand.material_override = glow_mat
+				char_body.add_child(mic_stand)
+			else:
+				var inst_mesh = MeshInstance3D.new()
+				var i_box = BoxMesh.new()
+				i_box.size = Vector3(0.18, 0.4, 1.1)
+				inst_mesh.mesh = i_box
+				inst_mesh.position = Vector3(0.2, 0.7, 0.0)
+				inst_mesh.material_override = glow_mat
+				char_body.add_child(inst_mesh)
+
+			band_node.add_child(char_body)
+
+		stage_node.add_child(band_node)
+
 # Spawns a dark asphalt Parking Lot with glowing painted parking bay lines
 func _spawn_parking_lot(center: Vector3, b_size: Vector2, neon_colors: Array) -> void:
 	# Track lot bounding box rectangle

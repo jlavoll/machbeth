@@ -284,10 +284,8 @@ func _ready() -> void:
 	call_deferred("_start_day_1")
 
 func _start_day_1() -> void:
-	# Roll initial Daily Special City Event for Day 1
-	var rng = RandomNumberGenerator.new()
-	rng.randomize()
-	active_daily_event = special_city_events[rng.randi() % special_city_events.size()]
+	# Force Day 1 event to always be the Cyber-Punk Concert!
+	active_daily_event = special_city_events[0] # PARK_CONCERT
 	
 	# Trigger sequential top-left HUD comms calls for Day 1 start!
 	_trigger_sequential_daily_calls()
