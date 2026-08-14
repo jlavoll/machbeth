@@ -307,37 +307,46 @@ func _update_stage_lights_and_band_animation(delta: float) -> void:
 	var band_node = stage_node.get_node_or_null("StageCyberBand")
 	if is_instance_valid(band_node):
 		if active_event_id == "RELIGIOUS_RALLY":
-			# CHARISMATIC PREACHER ROUTINE ENGINE:
-			# Preacher cycles through 4 ritual phases every ~8 seconds:
-			# Phase 0: Double Jump Sermon (2 quick vertical jumps)
-			# Phase 1: Holy Color Shift (Head shifts between Gold, Cyan, Magenta, Emerald)
-			# Phase 2: Arms-Up Swaying Blessing
-			# Phase 3: Rapid Bow & Prostration
-			var routine_time: float = fmod(_stage_anim_time, 8.0)
-			var routine_phase: int = int(routine_time / 2.0)
-			
+			# CALL-AND-RESPONSE RITUAL CYCLE (5.0s Total Cycle):
+			# [0.0s - 1.8s] PREACHER ACTS (2 double jumps / prostration bow / color flare)
+			# [1.8s - 2.5s] PREACHER & CROWD PAUSE IN STILL REVERENCE
+			# [2.5s - 4.5s] CROWD MIMICKS PREACHER'S ACTION IN UNISON
+			# [4.5s - 5.0s] RESET PAUSE
+			var cycle_time: float = fmod(_stage_anim_time, 5.0)
 			var preacher_node = band_node.get_node_or_null("Cyber Preacher")
-			var preacher_head_color: Color = Color(1.0, 0.85, 0.0) # Default Amber Gold
+			
+			var routine_type: int = int(_stage_anim_time / 5.0) % 3 # 0: Double Jump, 1: Color Flare & Bow, 2: Swaying Blessing
+			var preacher_head_color: Color = Color(1.0, 0.85, 0.0) # Default Gold
 			var preacher_jump_offset: float = 0.0
 			var preacher_sway_z: float = 0.0
 			var preacher_tilt_x: float = 0.0
 
-			match routine_phase:
-				0: # Phase 0: Double Jump Ritual (2 fast jumps!)
-					var jump_sub: float = fmod(routine_time, 1.0)
-					preacher_jump_offset = abs(sin(jump_sub * PI)) * 0.65 # High 0.65m jump!
-					preacher_head_color = Color(1.0, 0.85, 0.0)
-				1: # Phase 1: Holy Glow Color Cycle (Gold -> Cyan -> Magenta -> Green)
-					var color_step: int = int((_stage_anim_time * 2.0)) % 4
-					var holy_colors: Array[Color] = [Color(1.0, 0.85, 0.0), Color(0.0, 0.85, 1.0), Color(1.0, 0.0, 0.8), Color(0.2, 1.0, 0.4)]
-					preacher_head_color = holy_colors[color_step]
-					preacher_jump_offset = 0.05
-				2: # Phase 2: Arms-Up Swaying Blessing
-					preacher_sway_z = sin(_stage_anim_time * 4.0) * 0.35
-					preacher_head_color = Color(0.0, 0.85, 1.0) # Radiant Cyan
-				3: # Phase 3: Prostration Bow
-					preacher_tilt_x = sin(_stage_anim_time * 3.0) * 25.0
-					preacher_head_color = Color(1.0, 0.0, 0.8) # Radiant Magenta
+			var active_action_jump: float = 0.0
+			var active_action_sway: float = 0.0
+			var active_action_tilt: float = 0.0
+
+			# Calculate active move based on current routine type
+			match routine_type:
+				0: # Move A: 2 High Jumps
+					active_action_jump = abs(sin(cycle_time * 6.0)) * 0.65
+					preacher_head_color = Color(1.0, 0.85, 0.0) # Gold
+				1: # Move B: Deep Prostration Bow & Magenta Glow
+					active_action_tilt = sin(cycle_time * 4.0) * 30.0
+					preacher_head_color = Color(1.0, 0.0, 0.8) # Hot Magenta
+				2: # Move C: Swaying Blessing & Cyan Glow
+					active_action_sway = sin(cycle_time * 5.0) * 0.4
+					preacher_head_color = Color(0.0, 0.85, 1.0) # Cyan
+
+			if cycle_time < 1.8:
+				# --- PHASE 1: PREACHER ACTS FIRST ---
+				preacher_jump_offset = active_action_jump
+				preacher_sway_z = active_action_sway
+				preacher_tilt_x = active_action_tilt
+			else:
+				# Preacher pauses after doing the move!
+				preacher_jump_offset = 0.0
+				preacher_sway_z = 0.0
+				preacher_tilt_x = 0.0
 
 			# Apply position, rotation & head color to Preacher
 			if is_instance_valid(preacher_node):
@@ -352,18 +361,20 @@ func _update_stage_lights_and_band_animation(delta: float) -> void:
 						h_mat.albedo_color = preacher_head_color
 						h_mat.emission = preacher_head_color
 
-			# Store current preacher state in band node metadata for the crowd to mimick!
-			band_node.set_meta("preacher_head_color", preacher_head_color)
-			band_node.set_meta("preacher_jump_offset", preacher_jump_offset)
-			band_node.set_meta("preacher_sway_z", preacher_sway_z)
-			band_node.set_meta("preacher_tilt_x", preacher_tilt_x)
+			# Pass state to metadata for crowd copying
+			band_node.set_meta("cycle_time", cycle_time)
+			band_node.set_meta("routine_type", routine_type)
+			band_node.set_meta("action_color", preacher_head_color)
+			band_node.set_meta("active_action_jump", active_action_jump)
+			band_node.set_meta("active_action_sway", active_action_sway)
+			band_node.set_meta("active_action_tilt", active_action_tilt)
 
-			# Quiet Disciples stay still/quiet behind preacher, bowing slightly in reverence
+			# Quiet Disciples stay still/quiet behind preacher
 			for member in band_node.get_children():
 				if member != preacher_node and member is Node3D:
 					var base_p: Vector3 = member.get_meta("base_pos", member.position)
-					member.position = base_p + Vector3(0.0, sin(_stage_anim_time * 1.5) * 0.05, 0.0)
-					member.rotation_degrees = Vector3(sin(_stage_anim_time * 2.0) * 5.0, 0.0, 0.0)
+					member.position = base_p + Vector3(0.0, sin(_stage_anim_time * 1.5) * 0.04, 0.0)
+					member.rotation_degrees = Vector3(sin(_stage_anim_time * 2.0) * 4.0, 0.0, 0.0)
 
 		else:
 			# Standard Cyber-Punk Rock Band Bounce

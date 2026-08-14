@@ -1074,21 +1074,45 @@ func _update_concert_crowd(delta: float) -> void:
 		var idx: int = fan.get_meta("fan_idx", 0)
 
 		if is_religious_active:
-			# DEVOUT RELIGIOUS CROWD: Mimicks the Charismatic Preacher's jumps, bows & head color!
-			var crowd_jump: float = preacher_jump * 0.85 # Synchronized devout jump!
-			var crowd_tilt: float = preacher_tilt * 0.75 # Synchronized bow / prostration!
-			
-			fan.position = Vector3(base_p.x, base_p.y + crowd_jump, base_p.z)
+			# CALL-AND-RESPONSE TIMING ENGINE:
+			# [0.0s - 1.8s] Preacher acts on stage while Crowd watches attentively & stays still!
+			# [1.8s - 2.5s] Brief pause in still reverence!
+			# [2.5s - 4.5s] Crowd mimicks Preacher's exact move in unison!
+			# [4.5s - 5.0s] Reset pause!
+			var cycle_time: float = band_node.get_meta("cycle_time", 0.0)
+			var action_color: Color = band_node.get_meta("action_color", Color(1.0, 0.85, 0.0))
+			var active_action_jump: float = band_node.get_meta("active_action_jump", 0.0)
+			var active_action_sway: float = band_node.get_meta("active_action_sway", 0.0)
+			var active_action_tilt: float = band_node.get_meta("active_action_tilt", 0.0)
+
+			var crowd_jump: float = 0.0
+			var crowd_sway: float = 0.0
+			var crowd_tilt: float = 0.0
+			var crowd_color: Color = Color(0.12, 0.12, 0.18) # Quiet default state
+
+			if cycle_time >= 2.5 and cycle_time <= 4.5:
+				# --- CROWD MIMICKS PREACHER'S ACTION IN UNISON ---
+				crowd_jump = active_action_jump * 0.85
+				crowd_sway = active_action_sway * 0.85
+				crowd_tilt = active_action_tilt * 0.75
+				crowd_color = action_color
+			else:
+				# Crowd stays still during Preacher's solo & second pause
+				crowd_jump = 0.0
+				crowd_sway = 0.0
+				crowd_tilt = 0.0
+				crowd_color = Color(0.12, 0.12, 0.18) # Resting amber/gray glow
+
+			fan.position = Vector3(base_p.x, base_p.y + crowd_jump, base_p.z + crowd_sway)
 			fan.rotation_degrees = Vector3(crowd_tilt, fan.rotation_degrees.y, 0.0)
 
-			# Mimick Preacher's head color shift across the entire crowd!
-			if preacher_head_color != Color(0, 0, 0, 0):
-				var head_node = fan.get_node_or_null("HeadMesh")
-				if is_instance_valid(head_node) and is_instance_valid(head_node.material_override):
-					var h_mat = head_node.material_override as StandardMaterial3D
-					if is_instance_valid(h_mat):
-						h_mat.albedo_color = preacher_head_color
-						h_mat.emission = preacher_head_color
+			# Apply head glow color
+			var head_node = fan.get_node_or_null("HeadMesh")
+			if is_instance_valid(head_node) and is_instance_valid(head_node.material_override):
+				var h_mat = head_node.material_override as StandardMaterial3D
+				if is_instance_valid(h_mat):
+					h_mat.albedo_color = crowd_color
+					h_mat.emission = crowd_color
 		else:
 			# Hyped concert jumping, arm waving, and headbanging!
 			var jump_y: float = abs(sin(time * 10.0 + idx * 0.4)) * 0.28
