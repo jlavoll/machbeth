@@ -962,12 +962,15 @@ func _spawn_concert_crowd() -> void:
 
 	var city_gen = get_parent().get_node_or_null("CityGenerator")
 	var stage_pos: Vector3 = Vector3(-80.0, 0.0, 0.0) # Default
-	if is_instance_valid(city_gen) and city_gen.get("active_park_boxes") != null and city_gen.active_park_boxes.size() > 0:
-		# Use Second Park box (index 1) if available, which holds the Stage!
-		var p_idx: int = 1 if city_gen.active_park_boxes.size() > 1 else 0
-		var park_rect: Rect2 = city_gen.active_park_boxes[p_idx]
-		var park_center = Vector3(park_rect.position.x + park_rect.size.x / 2.0, 0.0, park_rect.position.y + park_rect.size.y / 2.0)
-		stage_pos = park_center + Vector3(-park_rect.size.x * 0.35, 0.0, 0.0)
+	if is_instance_valid(city_gen):
+		var actual_stage = city_gen.find_child("CyberParkConcertStage", true, false)
+		if is_instance_valid(actual_stage):
+			stage_pos = actual_stage.global_position
+		elif city_gen.get("active_park_boxes") != null and city_gen.active_park_boxes.size() > 0:
+			var p_idx: int = 1 if city_gen.active_park_boxes.size() > 1 else 0
+			var park_rect: Rect2 = city_gen.active_park_boxes[p_idx]
+			var park_center = Vector3(park_rect.position.x + park_rect.size.x / 2.0, 0.0, park_rect.position.y + park_rect.size.y / 2.0)
+			stage_pos = park_center + Vector3(-park_rect.size.x * 0.35, 0.0, 0.0)
 
 	# Crowd Audience Zone: In front of the concert stage facing West towards the performers!
 	# Stage platform is at stage_pos + Vector3(4.0, 0, 0)
