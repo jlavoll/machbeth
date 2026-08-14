@@ -70,9 +70,6 @@ var is_deployment_ui_open: bool = false
 @onready var battle_manager = $"../BattleSystemManager"
 @onready var neural_comms = $"../NeuralNotificationSystem"
 
-func _ready() -> void:
-	_build_deployment_ui()
-
 func _input(event: InputEvent) -> void:
 	if not is_deployment_ui_open:
 		return
