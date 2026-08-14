@@ -163,6 +163,14 @@ var mack_max_hp: float = 100.0
 var mack_current_action: String = "Engaging convoy vanguard..."
 var mack_next_action: String = "Flanking central highway chokepoint..."
 
+# Live Combat Statistics & Harvest Metrics (Nerd Summary Sheet Data)
+var stat_highest_damage_dealt: int = 0
+var stat_total_crits_landed: int = 0
+var stat_enemies_destroyed: int = 0
+var stat_total_rounds_fired: int = 0
+var stat_tech_harvested_count: int = 0
+var stat_story_clues_found: Array[String] = []
+
 # Event Flags
 var decision_1_triggered: bool = false
 var decision_2_triggered: bool = false
@@ -897,6 +905,7 @@ func _update_telemetry_hud() -> void:
 
 				if is_player_turn:
 					# --- MACK REAL ATTACK ROLL & ENEMY HP DEDUCTION ---
+					stat_total_rounds_fired += 1
 					var atk_bonus: int = (ord_lvl - 1) * 6 + (ocular_tier - 1) * 4
 					var crit_threshold: int = 15 - (ocular_tier - 1) * 2 # Crit range expands with ocular scope
 					var roll_d20: int = (randi() % 20) + 1
@@ -905,6 +914,9 @@ func _update_telemetry_hud() -> void:
 
 					if roll_d20 >= crit_threshold:
 						damage_dealt = int(damage_dealt * 1.85)
+						stat_total_crits_landed += 1
+
+					stat_highest_damage_dealt = max(stat_highest_damage_dealt, damage_dealt)
 
 					if not active_enemy_units.is_empty():
 						var target_enemy = active_enemy_units[0]
@@ -915,6 +927,8 @@ func _update_telemetry_hud() -> void:
 							_log_combat_math("[color=#00E5FF][MACK ATK ⚔️] d20(%d)+%d=%d Hit -> %d DMG to %s! (HP: %d)[/color]" % [roll_d20, 8 + atk_bonus, total_val, damage_dealt, target_enemy["name"], target_enemy["hp"]])
 						
 						if target_enemy["hp"] <= 0:
+							stat_enemies_destroyed += 1
+							stat_tech_harvested_count += (1 + randi() % 2)
 							_log_combat_math("[color=#33FF57]💥 DESTROYED! %s neutralized by Mack's Gatling Fire![/color]" % target_enemy["name"])
 							active_enemy_units.remove_at(0)
 					else:
@@ -960,6 +974,17 @@ func launch_grand_deployment() -> void:
 	decision_2_triggered = false
 	decision_3_triggered = false
 	is_substation_side_mission_active = false
+	
+	# Reset Combat Stats & Story Clues for new engagement
+	stat_highest_damage_dealt = 0
+	stat_total_crits_landed = 0
+	stat_enemies_destroyed = 0
+	stat_total_rounds_fired = 0
+	stat_tech_harvested_count = 0
+	stat_story_clues_found = [
+		"Cawdor Executive Encrypted Data Drive #0" + str(int(current_act) + 1),
+		"Fife Logistics Manifest Fragment (Sector " + str(randi() % 9 + 1) + ")"
+	]
 	
 	# Fetch Mack stats from GarageManager if available
 	var garage_mgr = get_parent().get_node_or_null("GarageManager")
@@ -1027,14 +1052,104 @@ func _advance_campaign_act() -> void:
 	act_advanced.emit(int(current_act), title)
 
 func _show_after_action_summary(reward_credits: int, bonus_scrap: int = 100, hp_ratio: float = 0.5) -> void:
-	var quality_desc: String = "OVERKILL VAPORIZATION (Minimal Salvage)"
+	var quality_desc: String = "OVERKILL VAPORIZATION (Minimal Salvage 0.8x)"
 	if hp_ratio <= 0.35:
-		quality_desc = "DESPERATE NARROW VICTORY! (PRISTINE SALVAGE RETRIEVED! 🌟)"
+		quality_desc = "DESPERATE NARROW VICTORY! (PRISTINE SALVAGE RETRIEVED 2.2x 🌟)"
 	elif hp_ratio <= 0.70:
-		quality_desc = "HARD-FOUGHT VICTORY (High-Grade Salvage)"
+		quality_desc = "HARD-FOUGHT VICTORY (High-Grade Salvage 1.5x)"
 
 	if is_instance_valid(neural_comms) and neural_comms.has_method("send_message"):
 		neural_comms.send_message("VICTORY! Mack's War-Rig completed engagement. [%s] +%d Credits & +%d Scrap salvaged!" % [quality_desc, reward_credits, bonus_scrap], "AFTER-ACTION SALVAGE REPORT")
+
+	_build_after_action_modal(reward_credits, bonus_scrap, quality_desc, hp_ratio)
+
+func _build_after_action_modal(credits_earned: int, scrap_earned: int, quality_str: String, final_hp_ratio: float) -> void:
+	var summary_layer = CanvasLayer.new()
+	summary_layer.name = "AfterActionSummaryLayer"
+	summary_layer.layer = 30
+	add_child(summary_layer)
+
+	var bg_dim = ColorRect.new()
+	bg_dim.set_anchors_preset(Control.PRESET_FULL_RECT)
+	bg_dim.color = Color(0.01, 0.03, 0.06, 0.92)
+	summary_layer.add_child(bg_dim)
+
+	var margin = MarginContainer.new()
+	margin.set_anchors_preset(Control.PRESET_CENTER)
+	margin.custom_minimum_size = Vector2(720, 520)
+	summary_layer.add_child(margin)
+
+	var panel = PanelContainer.new()
+	var p_style = StyleBoxFlat.new()
+	p_style.bg_color = Color(0.02, 0.05, 0.09, 0.96)
+	p_style.border_width_left = 3
+	p_style.border_width_top = 3
+	p_style.border_width_right = 3
+	p_style.border_width_bottom = 3
+	p_style.border_color = Color(1.0, 0.35, 0.0) # Rust Orange Border
+	p_style.content_margin_left = 20
+	p_style.content_margin_right = 20
+	p_style.content_margin_top = 20
+	p_style.content_margin_bottom = 20
+	panel.add_theme_stylebox_override("panel", p_style)
+	margin.add_child(panel)
+
+	var vbox = VBoxContainer.new()
+	vbox.add_theme_constant_override("separation", 12)
+	panel.add_child(vbox)
+
+	var hdr = Label.new()
+	hdr.text = "📊 MACK'S AFTER-ACTION TACTICAL SUMMARY SHEET"
+	hdr.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	hdr.add_theme_font_size_override("font_size", 16)
+	hdr.add_theme_color_override("font_color", Color(1.0, 0.35, 0.0))
+	vbox.add_child(hdr)
+
+	var sub_hdr = Label.new()
+	sub_hdr.text = "OPERATIONAL OUTCOME: " + quality_str
+	sub_hdr.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	sub_hdr.add_theme_font_size_override("font_size", 12)
+	sub_hdr.add_theme_color_override("font_color", Color(0.0, 0.85, 1.0))
+	vbox.add_child(sub_hdr)
+
+	var sep = HSeparator.new()
+	vbox.add_child(sep)
+
+	var txt = RichTextLabel.new()
+	txt.custom_minimum_size = Vector2(0, 320)
+	txt.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	txt.bbcode_enabled = true
+	vbox.add_child(txt)
+
+	var clues_str: String = "• [color=#FFCC00]Cawdor Executive Encrypted Memory Key #01[/color]"
+	if stat_story_clues_found.size() > 0:
+		clues_str = "• " + "\n• ".join(stat_story_clues_found)
+
+	txt.text = """[color=#00FF88]💰 SALVAGE & FINANCIAL RETURNS:[/color]
+ • Total Cyber-Credits Earned: [color=#FFCC00]%d C[/color] (Base Payout + Inverse Salvage Multiplier)
+ • Cyber-Scrap Material Salvaged: [color=#FFCC00]%d Scrap[/color]
+ • Harvested Tech Components: [color=#88CCFF]%d Advanced Modules[/color]
+
+[color=#FF5555]⚔️ COMBAT ENGAGEMENT STATS:[/color]
+ • Enemy Units Neutralized: [color=#FF9900]%d Hostiles[/color]
+ • Total Gatling Rounds Fired: [color=#88CCFF]%d Rounds[/color]
+ • Critical Hits Landed: [color=#FFCC00]%d Crits[/color]
+ • Highest Single-Round Damage: [color=#FF3333]%d DMG[/color]
+ • Final War-Rig Hull Integrity: [color=#00FF88]%.0f / 100 HP (%.0f%%)[/color]
+
+[color=#AA00FF]🔍 RECOVERED STORY INTEL & CLUES:[/color]
+ %s""" % [
+		credits_earned, scrap_earned, stat_tech_harvested_count,
+		stat_enemies_destroyed, stat_total_rounds_fired, stat_total_crits_landed,
+		stat_highest_damage_dealt, mack_current_hp, final_hp_ratio * 100.0,
+		clues_str
+	]
+
+	var close_btn = Button.new()
+	close_btn.text = " 💾 CLOSE SUMMARY SHEET & RETURN TO GARAGE "
+	close_btn.custom_minimum_size = Vector2(0, 42)
+	close_btn.pressed.connect(func(): summary_layer.queue_free())
+	vbox.add_child(close_btn)
 
 # ==============================================================================
 # PROCEDURAL DEPLOYMENT UI BUILDER
