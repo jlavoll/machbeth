@@ -55,7 +55,7 @@ func _setup_volumetric_neon_fog() -> void:
 		env.glow_blend_mode = Environment.GLOW_BLEND_MODE_ADDITIVE
 
 		# --- ACES FILMIC COLOR GRADING & TONEMAPPING ---
-		env.tonemap_mode = Environment.TONE_MAP_ACES
+		env.tonemap_mode = Environment.TONEMAP_ACES
 		env.tonemap_exposure = 1.15
 		env.tonemap_white = 6.0
 		
