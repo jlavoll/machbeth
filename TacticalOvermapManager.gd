@@ -287,9 +287,9 @@ func _update_poi_legend() -> void:
 	var entries: Array[Dictionary] = []
 	
 	entries.append({"name": "PLAYER LOCATION", "color": Color(1.0, 0.0, 0.8)})
+	entries.append({"name": "SAFEHOUSE / HOME", "color": Color(1.0, 0.5, 0.0)})
 	entries.append({"name": "EXEC LIMO TARGET", "color": Color(1.0, 0.8, 0.0)})
 	entries.append({"name": "DUNCAN HQ", "color": Color(0.0, 1.0, 0.85)})
-	entries.append({"name": "MACK'S HIDEOUT", "color": Color(1.0, 0.5, 0.0)})
 	entries.append({"name": "LADY M'S LAIR", "color": Color(1.0, 0.0, 0.8)})
 	entries.append({"name": "CHOP SHOP GARAGE", "color": Color(0.2, 1.0, 0.3)})
 	entries.append({"name": "PORTER'S PIT", "color": Color(1.0, 0.3, 0.0)})
