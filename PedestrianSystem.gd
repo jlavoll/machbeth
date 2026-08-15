@@ -960,14 +960,17 @@ func _spawn_line_dance_group(center: Vector3, count: int) -> void:
 
 func _spawn_concert_crowd() -> void:
 	var campaign_mgr = get_parent().get_node_or_null("CampaignManager")
-	var active_event_id: String = "RELIGIOUS_RALLY" # Default to RELIGIOUS_RALLY!
+	var active_event_id: String = "PARK_CONCERT"
 	if is_instance_valid(campaign_mgr) and campaign_mgr.active_daily_event.has("id"):
-		active_event_id = campaign_mgr.active_daily_event.get("id", "RELIGIOUS_RALLY")
+		active_event_id = campaign_mgr.active_daily_event.get("id", "PARK_CONCERT")
 
-	# Spawn crowd when PARK_CONCERT, RELIGIOUS_RALLY, or SHAKESPEARE_PARK is active today!
-	if active_event_id != "PARK_CONCERT" and active_event_id != "RELIGIOUS_RALLY" and active_event_id != "SHAKESPEARE_PARK":
+	# Check if today's event is a registered stage event
+	if not ParkStageEventManager.is_stage_event(active_event_id):
 		return
 
+	var event_cfg: Dictionary = ParkStageEventManager.get_event_config(active_event_id)
+	var aud_cfg: Dictionary = event_cfg.get("audience", {})
+	
 	var city_gen = get_parent().get_node_or_null("CityGenerator")
 	var stage_pos: Vector3 = Vector3(-80.0, 0.0, 0.0) # Default
 	if is_instance_valid(city_gen):
@@ -980,9 +983,11 @@ func _spawn_concert_crowd() -> void:
 			var park_center = Vector3(park_rect.position.x + park_rect.size.x / 2.0, 0.0, park_rect.position.y + park_rect.size.y / 2.0)
 			stage_pos = park_center + Vector3(-park_rect.size.x * 0.35, 0.0, 0.0)
 
-	# Crowd Audience Zone: In front of the concert stage facing West towards the performers!
-	# Small intimate audience (8-14 patrons) for Shakespeare in the Park vs dense crowd for concerts/rallies
-	var crowd_count: int = rng.randi_range(8, 14) if active_event_id == "SHAKESPEARE_PARK" else rng.randi_range(28, 42)
+	# Audience count driven by event registry
+	var c_min: int = aud_cfg.get("count_min", 28)
+	var c_max: int = aud_cfg.get("count_max", 42)
+	var crowd_count: int = rng.randi_range(c_min, c_max)
+	
 	var crowd_colors: Array[Color] = [
 		Color(1.0, 0.0, 0.8),  # Cyber Pink
 		Color(0.0, 0.85, 1.0), # Neon Cyan
@@ -990,6 +995,8 @@ func _spawn_concert_crowd() -> void:
 		Color(0.7, 0.1, 1.0),  # Synth Purple
 		Color(0.1, 1.0, 0.4)   # Laser Green
 	]
+
+	var acc_type: String = aud_cfg.get("accessory", "VISOR")
 
 	for i in range(crowd_count):
 		# Spread crowd across audience plaza (8m to 25m in front of stage edge)
@@ -1021,15 +1028,15 @@ func _spawn_concert_crowd() -> void:
 		head_inst.material_override = h_mat
 		crowd_guy.add_child(head_inst)
 
-		if active_event_id == "RELIGIOUS_RALLY":
-			# Glowing Holy Halo/Crown for Devout Religious Crowd!
+		if acc_type == "HALO":
+			# Glowing Holy Halo/Crown for Devout Religious Crowd
 			var halo = MeshInstance3D.new()
 			halo.mesh = crown_mesh_template
 			halo.position = Vector3(0.0, 1.62, 0.0)
 			halo.material_override = h_mat
 			crowd_guy.add_child(halo)
-		else:
-			# Neon Cyber-Shades / Glow Visor for Concert Goers!
+		elif acc_type == "VISOR":
+			# Neon Cyber-Shades / Glow Visor for Concert Goers
 			var visor = MeshInstance3D.new()
 			var v_box = BoxMesh.new()
 			v_box.size = Vector3(0.26, 0.08, 0.16)
