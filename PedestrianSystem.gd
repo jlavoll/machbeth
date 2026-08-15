@@ -1077,8 +1077,9 @@ func _update_concert_crowd(delta: float) -> void:
 			continue
 		var base_p: Vector3 = fan.get_meta("base_pos", fan.position)
 		var idx: int = fan.get_meta("fan_idx", 0)
+		var fan_event_id: String = fan.get_meta("event_id", "PARK_CONCERT")
 
-		if is_religious_active:
+		if fan_event_id == "RELIGIOUS_RALLY" and is_instance_valid(performers_node):
 			# CALL-AND-RESPONSE TIMING ENGINE:
 			# [0.0s - 1.8s] Preacher acts on stage while Crowd watches attentively & stays still!
 			# [1.8s - 2.5s] Brief pause in still reverence!
@@ -1118,19 +1119,18 @@ func _update_concert_crowd(delta: float) -> void:
 				if is_instance_valid(h_mat):
 					h_mat.albedo_color = crowd_color
 					h_mat.emission = crowd_color
+
+		elif fan_event_id == "SHAKESPEARE_PARK":
+			# Cultured Theater Patrons: Subtle polite head nods & gentle swaying
+			var nod_x: float = sin(time * 2.0 + idx * 0.5) * 4.0
+			var sway_z: float = sin(time * 1.2 + idx * 0.8) * 0.04
+			fan.position = Vector3(base_p.x, base_p.y, base_p.z + sway_z)
+			fan.rotation_degrees = Vector3(nod_x, fan.rotation_degrees.y, 0.0)
 		else:
-			var event_id: String = fan.get_meta("event_id", "PARK_CONCERT")
-			if event_id == "SHAKESPEARE_PARK":
-				# Cultured Theater Patrons: Subtle polite head nods & gentle swaying
-				var nod_x: float = sin(time * 2.0 + idx * 0.5) * 4.0
-				var sway_z: float = sin(time * 1.2 + idx * 0.8) * 0.04
-				fan.position = Vector3(base_p.x, base_p.y, base_p.z + sway_z)
-				fan.rotation_degrees = Vector3(nod_x, fan.rotation_degrees.y, 0.0)
-			else:
-				# Hyped concert jumping, arm waving, and headbanging!
-				var jump_y: float = abs(sin(time * 10.0 + idx * 0.4)) * 0.28
-				var sway_z: float = sin(time * 5.0 + idx * 0.7) * 0.12
-				fan.position = Vector3(base_p.x, base_p.y + jump_y, base_p.z + sway_z)
+			# Hyped concert jumping, arm waving, and headbanging!
+			var jump_y: float = abs(sin(time * 10.0 + idx * 0.4)) * 0.28
+			var sway_z: float = sin(time * 5.0 + idx * 0.7) * 0.12
+			fan.position = Vector3(base_p.x, base_p.y + jump_y, base_p.z + sway_z)
 
 # Procedural dance routine updates for all park dancers with car dodge & safe return logic
 func _update_park_dancers(delta: float) -> void:
