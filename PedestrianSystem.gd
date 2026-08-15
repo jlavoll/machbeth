@@ -959,16 +959,17 @@ func _spawn_line_dance_group(center: Vector3, count: int) -> void:
 		dancer.rotation_degrees = Vector3(0, 0, 0) # Facing forward together
 
 func _spawn_concert_crowd() -> void:
+	var stage_event_mgr_script = preload("res://ParkStageEventManager.gd")
 	var campaign_mgr = get_parent().get_node_or_null("CampaignManager")
 	var active_event_id: String = "PARK_CONCERT"
 	if is_instance_valid(campaign_mgr) and campaign_mgr.active_daily_event.has("id"):
 		active_event_id = campaign_mgr.active_daily_event.get("id", "PARK_CONCERT")
 
 	# Check if today's event is a registered stage event
-	if not ParkStageEventManager.is_stage_event(active_event_id):
+	if not stage_event_mgr_script.is_stage_event(active_event_id):
 		return
 
-	var event_cfg: Dictionary = ParkStageEventManager.get_event_config(active_event_id)
+	var event_cfg: Dictionary = stage_event_mgr_script.get_event_config(active_event_id)
 	var aud_cfg: Dictionary = event_cfg.get("audience", {})
 	
 	var city_gen = get_parent().get_node_or_null("CityGenerator")

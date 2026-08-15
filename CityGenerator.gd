@@ -1430,13 +1430,14 @@ func _spawn_cyber_park(center: Vector3, b_size: Vector2, neon_colors: Array, par
 		stage_node.add_child(stage_body)
 
 		# Check active event today via centralized ParkStageEventManager
+		var stage_event_mgr_script = preload("res://ParkStageEventManager.gd")
 		var active_event_id: String = "PARK_CONCERT"
 		var campaign_mgr = get_parent().get_node_or_null("CampaignManager")
 		if is_instance_valid(campaign_mgr) and campaign_mgr.active_daily_event.has("id"):
 			active_event_id = campaign_mgr.active_daily_event.get("id", "PARK_CONCERT")
 
-		var event_cfg: Dictionary = ParkStageEventManager.get_event_config(active_event_id)
-		var is_stage_event_today: bool = ParkStageEventManager.is_stage_event(active_event_id)
+		var event_cfg: Dictionary = stage_event_mgr_script.get_event_config(active_event_id)
+		var is_stage_event_today: bool = stage_event_mgr_script.is_stage_event(active_event_id)
 		var is_shakespeare_today: bool = (active_event_id == "SHAKESPEARE_PARK")
 
 		# Par Can Vertical Truss Posts (North and South ends of stage)
