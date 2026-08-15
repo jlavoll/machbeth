@@ -131,7 +131,7 @@ var is_deployment_ui_open: bool = false
 @onready var battle_manager = $"../BattleSystemManager"
 @onready var neural_comms = $"../NeuralNotificationSystem"
 
-var is_top_bar_user_toggled: bool = true
+var is_top_bar_user_toggled: bool = false
 var is_side_terminal_user_toggled: bool = true
 var is_scanner_terminal_user_toggled: bool = true
 
@@ -142,29 +142,8 @@ var side_mission_active: bool = false
 
 func _input(event: InputEvent) -> void:
 	if event is InputEventKey and event.pressed and not event.echo:
-		# 'T' Key: Toggle Top Telemetry Bar on/off during battle
-		if event.keycode == KEY_T and is_battle_in_progress:
-			is_top_bar_user_toggled = not is_top_bar_user_toggled
-			if is_instance_valid(telemetry_panel):
-				telemetry_panel.visible = is_top_bar_user_toggled
-			get_viewport().set_input_as_handled()
-			return
-
-		# 'H' Key: Toggle Right Side Telemetry Terminal on/off during battle
-		if event.keycode == KEY_H and is_battle_in_progress:
-			is_side_terminal_user_toggled = not is_side_terminal_user_toggled
-			if is_instance_valid(side_terminal_panel):
-				side_terminal_panel.visible = is_side_terminal_user_toggled
-			get_viewport().set_input_as_handled()
-			return
-
-		# 'J' Key: Toggle New Dedicated Enemy Threat Scanner Terminal on/off
-		if event.keycode == KEY_J and is_battle_in_progress:
-			is_scanner_terminal_user_toggled = not is_scanner_terminal_user_toggled
-			if is_instance_valid(scanner_terminal_panel):
-				scanner_terminal_panel.visible = is_scanner_terminal_user_toggled
-			get_viewport().set_input_as_handled()
-			return
+		# Legacy T/H/J standalone HUD keys are muted — 'U' is now the single unified battle screen console.
+		pass
 
 	if not is_deployment_ui_open:
 		return
@@ -352,8 +331,14 @@ func _process(delta: float) -> void:
 		incoming_dps -= (subdermal_tier - 1) * 0.07
 
 	incoming_dps = max(0.05, incoming_dps)
-	mack_current_hp = max(5.0, mack_current_hp - (delta * incoming_dps))
+	mack_current_hp = max(0.0, mack_current_hp - (delta * incoming_dps))
 	_update_telemetry_hud()
+
+	# Check for Mack War-Rig destruction (HP <= 0) -> Three Witches Resurrection Event
+	if mack_current_hp <= 0.0 and is_battle_in_progress:
+		is_battle_in_progress = false
+		_trigger_three_witches_resurrection()
+		return
 
 	# Dynamic Decision Event Triggers at random intervals (every ~60-90s)
 	if battle_timer >= 60.0 and not decision_1_triggered:
@@ -373,6 +358,28 @@ func _process(delta: float) -> void:
 	if boss_destroyed or battle_timer >= battle_duration:
 		is_battle_in_progress = false
 		_conclude_autonomous_battle(boss_destroyed)
+
+func _trigger_three_witches_resurrection() -> void:
+	# Mute UI panels on destruction
+	if is_instance_valid(telemetry_panel): telemetry_panel.visible = false
+	if is_instance_valid(side_terminal_panel): side_terminal_panel.visible = false
+	if is_instance_valid(scanner_terminal_panel): scanner_terminal_panel.visible = false
+	
+	# Initial destruction message
+	if is_instance_valid(neural_comms) and neural_comms.has_method("send_message"):
+		neural_comms.send_message("💥 WAR-RIG CRITICAL FAILURE: Mack's hull compromised! Signal lost...", "HULL DESTRUCTION")
+		
+	# Three Witches Intervention Sequence (t = 2.5s)
+	get_tree().create_timer(2.5).timeout.connect(func():
+		if is_instance_valid(neural_comms) and neural_comms.has_method("send_message"):
+			neural_comms.send_message("🔮 THREE WITCHES UPLINK: 'Fair is foul, and foul is fair... Hover through the fog and filthy air. Rise, Thane of Glamis!'", "NORNS / THREE WITCHES NEURAL INTERVENTION")
+	)
+	
+	# Resurrection & Drop-Off at North Gate City Edge (t = 6s)
+	get_tree().create_timer(6.0).timeout.connect(func():
+		mack_current_hp = 30.0 # Resurrected at 12% HP threshold
+		_spawn_norns_recovery_quest()
+	)
 
 func _on_side_mission_expired() -> void:
 	mack_current_hp = max(5.0, mack_current_hp - 35.0)
@@ -848,6 +855,8 @@ func _build_telemetry_hud() -> void:
 
 	side_terminal_panel = PanelContainer.new()
 	side_terminal_panel.visible = false
+	is_side_terminal_user_toggled = false
+	is_scanner_terminal_user_toggled = false
 	var side_style = StyleBoxFlat.new()
 	side_style.bg_color = Color(0.01, 0.03, 0.06, 0.94)
 	side_style.border_width_left = 2
@@ -867,7 +876,7 @@ func _build_telemetry_hud() -> void:
 	side_terminal_panel.add_child(vbox)
 
 	var term_hdr = Label.new()
-	term_hdr.text = "💻 BATTLE TELEMETRY TERMINAL"
+	term_hdr.text = "💻 BATTLE TELEMETRY TERMINAL [J]"
 	term_hdr.add_theme_font_size_override("font_size", 12)
 	term_hdr.add_theme_color_override("font_color", Color(0.0, 0.85, 1.0))
 	vbox.add_child(term_hdr)
@@ -909,7 +918,7 @@ func _build_telemetry_hud() -> void:
 	scanner_terminal_panel.add_child(scan_vbox)
 
 	var scanner_hdr = Label.new()
-	scanner_hdr.text = "📡 ACTIVE ENEMY THREAT SCANNER [J]"
+	scanner_hdr.text = "📡 ACTIVE ENEMY THREAT SCANNER [H]"
 	scanner_hdr.add_theme_font_size_override("font_size", 11)
 	scanner_hdr.add_theme_color_override("font_color", Color(1.0, 0.35, 0.0))
 	scan_vbox.add_child(scanner_hdr)
@@ -949,9 +958,9 @@ func _on_launch_repair_drone_pressed() -> void:
 		_log_combat_math("[color=#FF3333][DRONE ERROR] Insufficient Cyber-Credits! Need 150 C.[/color]")
 
 func _log_combat_math(text: String) -> void:
-	math_log_lines.append(text)
-	if math_log_lines.size() > 30:
-		math_log_lines.remove_at(0)
+	math_log_lines.insert(0, text) # Prepend newest log line to top (Line 0)
+	if math_log_lines.size() > 35:
+		math_log_lines.pop_back()
 	if is_instance_valid(side_math_text):
 		side_math_text.text = "\n".join(math_log_lines)
 
@@ -992,6 +1001,19 @@ func log_attack_telemetry_breakdown(attacker_name: String, target_name: String, 
 			else:
 				result_line = "[color=#FF6666]   💥 RESULT: HIT! Dealt %d DMG to War-Rig Hull! (Mack HP: %d)[/color]" % [damage_dealt, remaining_hp]
 	_log_combat_math(result_line)
+	
+	# Trigger floating damage popups on Battle Telemetry Radar Overlay (U key)
+	if is_hit and damage_dealt > 0:
+		var telemetry_ui = get_parent().get_node_or_null("BattleTelemetryRadarUI")
+		if is_instance_valid(telemetry_ui) and telemetry_ui.has_method("spawn_damage_popup"):
+			# Find target enemy index if player attacked enemy
+			var enemy_idx: int = 0
+			if is_player_attacker:
+				for i in range(active_enemy_units.size()):
+					if active_enemy_units[i].get("name", "") == target_name:
+						enemy_idx = i
+						break
+			telemetry_ui.spawn_damage_popup(damage_dealt, not is_player_attacker, enemy_idx)
 
 var math_tick: float = 0.0
 
@@ -1025,7 +1047,46 @@ func _update_telemetry_hud() -> void:
 		if is_instance_valid(mack_timer_label):
 			mack_timer_label.text = "%02d:%02d" % [mins, secs]
 
-	# Check Telemetry Upgrade level from GarageManager
+	# Live Vitals Core Temp & RPM Calculation
+	var core_temp: float = 75.0 + ((1.0 - (mack_current_hp / mack_max_hp)) * 35.0)
+	var rpm: int = 4000 + randi() % 800
+
+	# Synchronize 3D Screen Matrix inside The Pit Garage
+	var pit_root = get_parent().get_node_or_null("IndoorSystemManager/PorterPitRoot")
+	if is_instance_valid(pit_root):
+		var scr1 = pit_root.get_node_or_null("PitMonitorVitalsLabel")
+		if is_instance_valid(scr1):
+			scr1.text = "💻 TELEMETRY VITALS\nMACK HP: %.0f / %.0f\nCORE TEMP: %.1f°C\nENGINE RPM: %d" % [mack_current_hp, mack_max_hp, core_temp, rpm]
+		
+		var scr2 = pit_root.get_node_or_null("PitMonitorTacticalLabel")
+		if is_instance_valid(scr2):
+			# Render a 2D ASCII Vector Radar Grid for the Pit Wall Display
+			var radar_ascii: String = "📡 PIT WALL BATTLEFIELD RADAR [UPLINK ACTIVE]\n"
+			radar_ascii += "  +--------------------------------------+\n"
+			radar_ascii += "  |               ( N )                  |\n"
+			
+			var enemy_ascii_list: String = ""
+			for i in range(active_enemy_units.size()):
+				var e = active_enemy_units[i]
+				var e_name = e.get("name", "Hostile")
+				var e_hp = e.get("hp", 100)
+				var e_max = e.get("max_hp", 100)
+				enemy_ascii_list += "  | 🔻 Target 0%d: %-18s [%d/%d HP] |\n" % [i + 1, e_name, e_hp, e_max]
+				
+			if enemy_ascii_list.is_empty():
+				enemy_ascii_list = "  |        [SECTOR CLEAR - NO THREATS]   |\n"
+				
+			radar_ascii += enemy_ascii_list
+			radar_ascii += "  |               🚜 MACK                |\n"
+			radar_ascii += "  |      WAR-RIG HP: %3.0f / %3.0f HP      |\n" % [mack_current_hp, mack_max_hp]
+			radar_ascii += "  +--------------------------------------+"
+			scr2.text = radar_ascii
+
+		var scr3 = pit_root.get_node_or_null("PitMonitorMathLabel")
+		if is_instance_valid(scr3):
+			scr3.text = "🎲 COMBAT MATH MATRIX\n" + ("\n".join(math_log_lines.slice(-3)))
+
+	# Check Telemetry Upgrade level from GarageManager for HUD overlays
 	var telemetry_lvl: int = 0
 	var garage_mgr = get_parent().get_node_or_null("GarageManager")
 	if is_instance_valid(garage_mgr) and garage_mgr.fleet.has("BANQUO_CAR"):
@@ -1035,26 +1096,10 @@ func _update_telemetry_hud() -> void:
 		if is_instance_valid(side_terminal_panel):
 			side_terminal_panel.visible = is_side_terminal_user_toggled
 		
-		# Live Vitals
-		var core_temp: float = 75.0 + ((1.0 - (mack_current_hp / mack_max_hp)) * 35.0)
-		var rpm: int = 4000 + randi() % 800
 		if is_instance_valid(side_vitals_label):
 			side_vitals_label.text = "CORE TEMP: %.1f°C | HULL: %.0f/%.0f\nENGINE RPM: %d | GATLING AMMO: %.0f%%" % [
 				core_temp, mack_current_hp, mack_max_hp, rpm, (mack_current_hp / mack_max_hp) * 100.0
 			]
-
-		# Synchronize 3D Screen Matrix inside The Pit Garage
-		var pit_root = get_parent().get_node_or_null("IndoorSystemManager/PorterPitRoot")
-		if is_instance_valid(pit_root):
-			var scr1 = pit_root.get_node_or_null("PitMonitorVitalsLabel")
-			if is_instance_valid(scr1):
-				scr1.text = "💻 TELEMETRY VITALS\nMACK HP: %.0f / %.0f\nCORE TEMP: %.1f°C\nENGINE RPM: %d" % [mack_current_hp, mack_max_hp, core_temp, rpm]
-			var scr2 = pit_root.get_node_or_null("PitMonitorTacticalLabel")
-			if is_instance_valid(scr2):
-				scr2.text = "🎥 LIVE TACTICAL VIDEO FEED\n" + mack_current_action + "\n[CAM UPLINK ACTIVE]"
-			var scr3 = pit_root.get_node_or_null("PitMonitorMathLabel")
-			if is_instance_valid(scr3):
-				scr3.text = "🎲 COMBAT MATH MATRIX\n" + ("\n".join(math_log_lines.slice(-3)))
 
 		# Live Enemy Threat Scanner
 		if is_instance_valid(side_enemy_scanner_label):
@@ -1180,7 +1225,29 @@ func launch_grand_deployment() -> void:
 
 	grand_battles_today += 1
 	close_deployment_ui()
-	
+
+	var location_name = "Glamis Badlands Highway"
+	if current_act == CampaignAct.ACT_3_BIRNAM_PURGE:
+		location_name = "Sub-Level Tunnels"
+	elif current_act == CampaignAct.ACT_4_DUNSINANE_SIEGE:
+		location_name = "Dunsinane Perimeter Wall"
+
+	# Comms Call 1: Lady M Deployment Dispatch (t = 0s)
+	if is_instance_valid(neural_comms) and neural_comms.has_method("send_message"):
+		neural_comms.send_message("Lady M: 'Mack's War-Rig is launching from sublevel 3! Heading to " + location_name + "...'", "LADY M // MISSION CONTROL")
+
+	# Comms Call 2: Mack Approaching Vector (t = 5s)
+	get_tree().create_timer(5.0).timeout.connect(func():
+		if is_instance_valid(neural_comms) and neural_comms.has_method("send_message"):
+			neural_comms.send_message("Mack: 'Engines overclocked. Approaching " + location_name + " combat perimeter...'", "MACK // WAR-RIG EXECUTOR")
+	)
+
+	# Delayed Combat Start (t = 20s)
+	get_tree().create_timer(20.0).timeout.connect(func():
+		_start_actual_combat_engagement(location_name)
+	)
+
+func _start_actual_combat_engagement(location_name: String) -> void:
 	is_battle_in_progress = true
 	battle_timer = 0.0
 	last_rumor_tick = 0.0
@@ -1189,7 +1256,7 @@ func launch_grand_deployment() -> void:
 	decision_2_triggered = false
 	decision_3_triggered = false
 	is_substation_side_mission_active = false
-	
+
 	# Reset Combat Stats & Story Clues for new engagement
 	stat_highest_damage_dealt = 0
 	stat_total_crits_landed = 0
@@ -1200,7 +1267,7 @@ func launch_grand_deployment() -> void:
 		"Cawdor Executive Encrypted Data Drive #0" + str(int(current_act) + 1),
 		"Fife Logistics Manifest Fragment (Sector " + str(randi() % 9 + 1) + ")"
 	]
-	
+
 	# Fetch Mack stats and Engine Cooling Level from GarageManager
 	var mack_engine_lvl: int = 1
 	var garage_mgr = get_parent().get_node_or_null("GarageManager")
@@ -1210,26 +1277,22 @@ func launch_grand_deployment() -> void:
 	else:
 		mack_max_hp = 250.0
 
-	# Story Point: Engine Thermal Limit (L1 = 300s / 5 MINS, L2 = 420s / 7 MINS, L3 = 540s / 9 MINS)
 	battle_duration = 300.0 + float((mack_engine_lvl - 1) * 120)
-
 	mack_current_hp = mack_max_hp
-	mack_current_action = "Breaching highway entry vector..."
-	
+	mack_current_action = "Breaching " + location_name + " entry vector..."
+
 	var current_data: Dictionary = act_details.get(current_act, {})
 	var convoy_name: String = current_data.get("target_convoy", "Corporate Vanguard")
-	var mins_limit: int = int(battle_duration / 60.0)
-	
-	print("[CAMPAIGN MANAGER] Launching autonomous Grand Battle for: ", convoy_name, " (Max Thermal Limit: ", mins_limit, " mins)")
+
+	print("[CAMPAIGN MANAGER] Hostile engagement started at ", location_name, " for: ", convoy_name)
 	_update_telemetry_hud()
-	
-	# Mack and his War-Rig leave home to enter battle!
+
 	var city_gen = get_parent().get_node_or_null("CityGenerator")
 	if is_instance_valid(city_gen) and is_instance_valid(city_gen.mack_parked_rig_node):
 		city_gen.mack_parked_rig_node.visible = false
-	
+
 	if is_instance_valid(neural_comms) and neural_comms.has_method("send_message"):
-		neural_comms.send_message("WAR-RIG DISPATCHED! Mack deployed to central highway for %s. [ENGINE COOLER L%d: %d MIN MAX THERMAL LIMIT]" % [convoy_name, mack_engine_lvl, mins_limit], "LADY M // MISSION CONTROL")
+		neural_comms.send_message("Lady M: 'HOSTILE CONTACT CONFIRMED! Mack has engaged enemy convoy at " + location_name + "! Press U for live Telemetry Satellite Radar feed!'", "COMBAT ENGAGEMENT STARTED")
 
 func _conclude_autonomous_battle(success: bool) -> void:
 	var current_data: Dictionary = act_details.get(current_act, {})

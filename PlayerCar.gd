@@ -370,22 +370,15 @@ func _unhandled_input(event: InputEvent) -> void:
 		if event.keycode == KEY_E and not is_on_foot and not _reenter_guard:
 			var campaign_mgr = get_parent().get_node_or_null("CampaignManager")
 			if is_instance_valid(campaign_mgr) and campaign_mgr.is_norns_recovery_active and is_instance_valid(campaign_mgr.norns_recovery_node):
-				var dist_to_wreck: float = global_position.distance_to(campaign_mgr.norns_recovery_drop_pos)
-				if dist_to_wreck <= 12.0 and not is_towing_war_rig:
+				var wreck_pos: Vector3 = campaign_mgr.norns_recovery_node.global_position
+				var dist_to_wreck: float = global_position.distance_to(wreck_pos)
+				if dist_to_wreck <= 25.0 and not is_towing_war_rig:
 					_attach_tow_cable()
 					get_viewport().set_input_as_handled()
 					return
 			_exit_to_on_foot()
 
-		# 'T' key — DEV TEST: instantly opens Porter dialogue while on foot (no Area3D needed)
-		if event.keycode == KEY_T and is_on_foot and is_instance_valid(on_foot_node):
-			var dialogue_sys = get_parent().get_node_or_null("DialogueSystem")
-			if dialogue_sys:
-				on_foot_node._nearby_dialogue_source = "res://scripts/porter_at_the_pit.json"
-				dialogue_sys.start_dialogue("res://scripts/porter_at_the_pit.json")
-				print("[DEV] T key: opened Porter dialogue for testing.")
-
-	# Clear the reenter guard one frame after it was set
+		# Clear the reenter guard one frame after it was set
 	if _reenter_guard:
 		_reenter_guard = false
 
@@ -586,7 +579,7 @@ func _build_towing_hud() -> void:
 
 func _update_towing_physics(delta: float) -> void:
 	var campaign_mgr = get_parent().get_node_or_null("CampaignManager")
-	if not is_instance_valid(campaign_mgr) or not campaign_mgr.is_norns_recovery_active:
+	if not is_instance_valid(campaign_mgr) or not ("is_norns_recovery_active" in campaign_mgr) or not campaign_mgr.is_norns_recovery_active:
 		if is_towing_war_rig:
 			_detach_tow_cable()
 		if is_instance_valid(_towing_hud_layer):

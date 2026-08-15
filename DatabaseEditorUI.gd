@@ -101,10 +101,10 @@ func _build_ui_hierarchy() -> void:
 	var outer_margin = MarginContainer.new()
 	outer_margin.set_anchors_preset(Control.PRESET_FULL_RECT)
 	outer_margin.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	outer_margin.add_theme_constant_override("margin_left", 70)
-	outer_margin.add_theme_constant_override("margin_right", 70)
-	outer_margin.add_theme_constant_override("margin_top", 45)
-	outer_margin.add_theme_constant_override("margin_bottom", 45)
+	outer_margin.add_theme_constant_override("margin_left", 0)
+	outer_margin.add_theme_constant_override("margin_right", 0)
+	outer_margin.add_theme_constant_override("margin_top", 0)
+	outer_margin.add_theme_constant_override("margin_bottom", 0)
 	add_child(outer_margin)
 
 	root_overlay_panel = PanelContainer.new()
@@ -115,15 +115,19 @@ func _build_ui_hierarchy() -> void:
 	p_style.border_width_right = 3
 	p_style.border_width_bottom = 3
 	p_style.border_color = Color(0.0, 0.85, 1.0) # Cyber Cyan Border
-	p_style.content_margin_left = 18
-	p_style.content_margin_right = 18
-	p_style.content_margin_top = 18
-	p_style.content_margin_bottom = 18
+	p_style.content_margin_left = 10
+	p_style.content_margin_right = 10
+	p_style.content_margin_top = 8
+	p_style.content_margin_bottom = 8
 	root_overlay_panel.add_theme_stylebox_override("panel", p_style)
+	
+	var custom_theme = Theme.new()
+	custom_theme.default_font_size = 12
+	root_overlay_panel.theme = custom_theme
 	outer_margin.add_child(root_overlay_panel)
 
 	var main_vbox = VBoxContainer.new()
-	main_vbox.add_theme_constant_override("separation", 10)
+	main_vbox.add_theme_constant_override("separation", 6)
 	root_overlay_panel.add_child(main_vbox)
 
 	# Header Bar

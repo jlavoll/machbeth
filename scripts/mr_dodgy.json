@@ -1,55 +1,55 @@
 {
-	"speaker_display_name": "MR. DODGY",
-	"speaker_subtitle": "SHADY PARK LOCAL",
-	"speaker_color": "#FF5500",
 	"nodes": {
-		"start": {
-			"text": "Hey... got a light, stranger? Or maybe a few credits to spare?",
+		"city_secrets": {
 			"choices": [
 				{
-					"text": "\"Who are you?\"",
-					"target": "who_are_you"
-				},
-				{
-					"text": "\"What are you doing hanging under this lamp?\"",
-					"target": "hanging_around"
-				},
-				{
-					"text": "\"Sorry, I've got to go.\"",
-					"target": "exit"
+					"target": "exit",
+					"text": "\"Thanks for the tip. Goodbye.\""
 				}
-			]
-		},
-		"who_are_you": {
-			"text": "Name's Dodgy. I keep an eye on the park... and the park keeps an eye on me. Quiet corner, if you don't mind the neon smoke.",
-			"choices": [
-				{
-					"text": "\"What do you know about this city?\"",
-					"target": "city_secrets"
-				},
-				{
-					"text": "\"Take care, Dodgy.\"",
-					"target": "exit"
-				}
-			]
+			],
+			"text": "Secrets? Plenty. Watch out for the parking lot boys in red and purple... and don't drive into the canal unless you like swimming with synth-eels."
 		},
 		"hanging_around": {
-			"text": "Best shadow in the district. The light keeps the corporate drones away, and the dancers over there keep the music loud enough to drown out bad thoughts.",
 			"choices": [
 				{
-					"text": "\"Fair enough. Stay safe.\"",
-					"target": "exit"
+					"target": "exit",
+					"text": "\"Fair enough. Stay safe.\""
 				}
-			]
+			],
+			"text": "Best shadow in the district. The light keeps the corporate drones away, and the dancers over there keep the music loud enough to drown out bad thoughts."
 		},
-		"city_secrets": {
-			"text": "Secrets? Plenty. Watch out for the parking lot boys in red and purple... and don't drive into the canal unless you like swimming with synth-eels.",
+		"start": {
 			"choices": [
 				{
-					"text": "\"Thanks for the tip. Goodbye.\"",
-					"target": "exit"
+					"target": "who_are_you",
+					"text": "\"Who are you?\""
+				},
+				{
+					"target": "hanging_around",
+					"text": "\"What are you doing hanging under this lamp?\""
+				},
+				{
+					"target": "exit",
+					"text": "\"Sorry, I've got to go.\""
 				}
-			]
+			],
+			"text": "Hey there stranger, come talk to an old man?"
+		},
+		"who_are_you": {
+			"choices": [
+				{
+					"target": "city_secrets",
+					"text": "\"What do you know about this city?\""
+				},
+				{
+					"target": "exit",
+					"text": "\"Take care, Dodgy.\""
+				}
+			],
+			"text": "Name's Dodgy. I keep an eye on the park... and the park keeps an eye on me. Quiet corner, if you don't mind the neon smoke."
 		}
-	}
+	},
+	"speaker_color": "#FF5500",
+	"speaker_display_name": "MR. DODGY",
+	"speaker_subtitle": "SHADY PARK LOCAL"
 }

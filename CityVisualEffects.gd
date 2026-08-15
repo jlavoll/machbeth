@@ -307,7 +307,7 @@ func _update_stage_lights_and_band_animation(delta: float) -> void:
 	# Check active event ID
 	var campaign_mgr = get_parent().get_node_or_null("CampaignManager")
 	var active_event_id: String = "RELIGIOUS_RALLY"
-	if is_instance_valid(campaign_mgr) and campaign_mgr.active_daily_event.has("id"):
+	if is_instance_valid(campaign_mgr) and "active_daily_event" in campaign_mgr and campaign_mgr.active_daily_event is Dictionary and campaign_mgr.active_daily_event.has("id"):
 		active_event_id = campaign_mgr.active_daily_event.get("id", "RELIGIOUS_RALLY")
 
 	# Animate Stage Performers (Cyber Band vs Charismatic Preacher + Quiet Disciples)
