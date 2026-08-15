@@ -280,14 +280,12 @@ func _ready() -> void:
 	call_deferred("_start_day_1")
 
 func _start_day_1() -> void:
-	# Force Day 1 event to be Shakespeare in the Park for testing!
-	# Search for SHAKESPEARE_PARK event dict in special_city_events
-	for evt in special_city_events:
-		if evt.get("id", "") == "SHAKESPEARE_PARK":
-			active_daily_event = evt
-			break
-	if active_daily_event.is_empty():
-		active_daily_event = special_city_events[0]
+	# Randomize active special city event for Day 1!
+	var rng = RandomNumberGenerator.new()
+	rng.randomize()
+	active_daily_event = special_city_events[rng.randi() % special_city_events.size()]
+	
+	print("[CAMPAIGN MANAGER] Day 1 initialized | Active Daily Event: ", active_daily_event.get("title", ""))
 	
 	# Trigger sequential top-left HUD comms calls for Day 1 start!
 	_trigger_sequential_daily_calls()
