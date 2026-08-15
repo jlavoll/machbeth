@@ -388,37 +388,66 @@ func _update_battle_phase() -> void:
 			if battle_timer < 2.0: # Initial spawn
 				mack_current_action = "PHASE I: Engaging Corporate Armored Cars..."
 				active_enemy_units = [
-					{"name": "Cawdor Interceptor Alpha", "type": "🚙 ARMORED CAR", "hp": 100, "weapon": "Twin 20mm Cannon", "icon": "🚙"},
-					{"name": "Cawdor Interceptor Beta", "type": "🚙 ARMORED CAR", "hp": 100, "weapon": "Spike Ram", "icon": "🚙"}
+					_fetch_enemy_from_json("cawdor_interceptor_alpha"),
+					_fetch_enemy_from_json("cawdor_interceptor_beta")
 				]
 	elif battle_timer < 160.0:
 		current_battle_phase = BattlePhase.PHASE_2_FOOT_SOLDIERS
 		if old_phase != current_battle_phase:
 			mack_current_action = "PHASE II: Sweeping Corporate Foot-Soldier Barricade..."
 			active_enemy_units = [
-				{"name": "Fife Exo-Trooper Squad A", "type": "🎖️ HEAVY INFANTRY", "hp": 140, "weapon": "Plasma Rifle Array", "icon": "🎖️"},
-				{"name": "Fife Exo-Trooper Squad B", "type": "🎖️ HEAVY INFANTRY", "hp": 140, "weapon": "EMP Mortar", "icon": "🎖️"}
+				_fetch_enemy_from_json("fife_exo_trooper_a"),
+				_fetch_enemy_from_json("fife_exo_trooper_b")
 			]
 	elif battle_timer < 240.0:
 		current_battle_phase = BattlePhase.PHASE_3_DRONE_SWARM
 		if old_phase != current_battle_phase:
 			mack_current_action = "PHASE III: Cleaving Attack Drone Swarm..."
 			active_enemy_units = [
-				{"name": "Norns AI Hunter Drone #01", "type": "🛸 ATTACK DRONE", "hp": 80, "weapon": "Laser Cutter", "icon": "🛸"},
-				{"name": "Norns AI Hunter Drone #02", "type": "🛸 ATTACK DRONE", "hp": 80, "weapon": "Disruptor Beam", "icon": "🛸"},
-				{"name": "Norns AI Hunter Drone #03", "type": "🛸 ATTACK DRONE", "hp": 80, "weapon": "Nanite Swarm", "icon": "🛸"}
+				_fetch_enemy_from_json("norns_hunter_drone_01"),
+				_fetch_enemy_from_json("norns_hunter_drone_02"),
+				_fetch_enemy_from_json("norns_hunter_drone_03")
 			]
 	else:
 		current_battle_phase = BattlePhase.PHASE_4_GUNSHIP_BOSS
 		if old_phase != current_battle_phase:
 			mack_current_action = "FINAL PHASE: Duel against Corporate Attack Helicopter!"
 			active_enemy_units = [
-				{"name": "Duncan Heavy Gunship Apex", "type": "🚁 ATTACK HELICOPTER BOSS", "hp": 450, "weapon": "Hellfire Ordnance Rockets", "icon": "🚁"}
+				_fetch_enemy_from_json("duncan_gunship_apex")
 			]
 
 	if old_phase != current_battle_phase:
 		if is_instance_valid(neural_comms) and neural_comms.has_method("send_message"):
 			neural_comms.send_message("BATTLE PHASE TRANSITION: " + mack_current_action, "TACTICAL TELEMETRY")
+
+func _fetch_enemy_from_json(enemy_id: String) -> Dictionary:
+	var EnemiesScript = load("res://Enemies.gd")
+	var raw = EnemiesScript.get_enemy_data(enemy_id)
+	if raw.is_empty():
+		return {"name": "Unknown Hostile", "type": "🚙 ARMORED CAR", "hp": 100, "max_hp": 100, "ac": 12, "dmg": "18-24 Kinetic", "weapon": "Plasma Cannon", "weapon_slots": 2, "upgrade_slots": 2, "threat": "STANDARD", "weakness": "Kinetic Fire", "icon": "🚙"}
+	
+	var weapon_name: String = "Plasma Cannon"
+	var dmg_range: String = "18-24 Kinetic"
+	if raw.has("equipped_weapons") and not raw["equipped_weapons"].is_empty():
+		var w_data = EnemiesScript.get_weapon_data(raw["equipped_weapons"][0])
+		if not w_data.is_empty():
+			weapon_name = w_data.get("name", weapon_name)
+			dmg_range = "%d-%d %s" % [w_data.get("damage_min", 18), w_data.get("damage_max", 24), w_data.get("weapon_type", "Kinetic")]
+			
+	return {
+		"name": raw.get("name", "Hostile Target"),
+		"type": raw.get("type", "🚙 ARMORED CAR"),
+		"hp": raw.get("hp", 100),
+		"max_hp": raw.get("max_hp", 100),
+		"ac": raw.get("armor_class", 12),
+		"dmg": dmg_range,
+		"weapon": weapon_name,
+		"weapon_slots": raw.get("weapon_slots", 2),
+		"upgrade_slots": raw.get("upgrade_slots", 2),
+		"threat": raw.get("threat", "STANDARD"),
+		"weakness": raw.get("weakness", "Kinetic Fire"),
+		"icon": raw.get("icon", "🚙")
+	}
 
 # Pool of dynamic decision triggers
 var decision_event_pool: Array[String] = [
@@ -886,7 +915,7 @@ func _build_telemetry_hud() -> void:
 	scan_vbox.add_child(scanner_hdr)
 
 	side_enemy_scanner_label = RichTextLabel.new()
-	side_enemy_scanner_label.custom_minimum_size = Vector2(0, 180)
+	side_enemy_scanner_label.custom_minimum_size = Vector2(0, 220)
 	side_enemy_scanner_label.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	side_enemy_scanner_label.bbcode_enabled = true
 	side_enemy_scanner_label.add_theme_font_size_override("normal_font_size", 10)
@@ -921,10 +950,48 @@ func _on_launch_repair_drone_pressed() -> void:
 
 func _log_combat_math(text: String) -> void:
 	math_log_lines.append(text)
-	if math_log_lines.size() > 20:
+	if math_log_lines.size() > 30:
 		math_log_lines.remove_at(0)
 	if is_instance_valid(side_math_text):
 		side_math_text.text = "\n".join(math_log_lines)
+
+func log_attack_telemetry_breakdown(attacker_name: String, target_name: String, weapon_type: String, roll_d20: int, bonus: int, target_def: int, is_hit: bool, is_crit: bool, damage_dealt: int, armor_absorbed: int, remaining_hp: int, is_player_attacker: bool) -> void:
+	var total_roll: int = roll_d20 + bonus
+	
+	# Line 1: Action & Weapon Type
+	var action_line: String = ""
+	if is_player_attacker:
+		action_line = "[color=#00E5FF]⚔️ %s attacks %s with %s![/color]" % [attacker_name, target_name, weapon_type]
+	else:
+		action_line = "[color=#FF5555]💥 %s attacks %s with %s![/color]" % [attacker_name, target_name, weapon_type]
+	_log_combat_math(action_line)
+	
+	# Line 2: Dice Roll & Stats Breakdown
+	var roll_line: String = ""
+	if is_player_attacker:
+		roll_line = "[color=#88CCFF]   🎯 ROLL: d20(%d) + Bonus(%d) = %d vs Target Def(%d)[/color]" % [roll_d20, bonus, total_roll, target_def]
+	else:
+		roll_line = "[color=#FFAAAA]   🎯 ROLL: d20(%d) + Atk(%d) = %d vs Mack Evasion(%d)[/color]" % [roll_d20, bonus, total_roll, target_def]
+	_log_combat_math(roll_line)
+	
+	# Line 3: Result (Hit / Crit / Miss / Damage & Armor Absorption)
+	var result_line: String = ""
+	if not is_hit:
+		if is_player_attacker:
+			result_line = "[color=#AAAAAA]   💨 RESULT: MISSED! %s evaded line of fire![/color]" % target_name
+		else:
+			result_line = "[color=#00FF88]   🛡️ RESULT: MISSED! Mack's evasive maneuvering dodged attack![/color]"
+	elif is_crit:
+		result_line = "[color=#FFCC00]   ⚡ RESULT: CRITICAL HIT! Dealt %d DMG to %s! (%s HP: %d)[/color]" % [damage_dealt, target_name, target_name, remaining_hp]
+	else:
+		if is_player_attacker:
+			result_line = "[color=#00FF88]   ⚡ RESULT: HIT! Dealt %d DMG to %s! (%s HP: %d)[/color]" % [damage_dealt, target_name, target_name, remaining_hp]
+		else:
+			if armor_absorbed > 0:
+				result_line = "[color=#FF6666]   💥 RESULT: HIT! Dealt %d Raw DMG (Graphene Armor -%d HP absorbed! Net: %d DMG)[/color]" % [damage_dealt + armor_absorbed, armor_absorbed, damage_dealt]
+			else:
+				result_line = "[color=#FF6666]   💥 RESULT: HIT! Dealt %d DMG to War-Rig Hull! (Mack HP: %d)[/color]" % [damage_dealt, remaining_hp]
+	_log_combat_math(result_line)
 
 var math_tick: float = 0.0
 
@@ -993,9 +1060,18 @@ func _update_telemetry_hud() -> void:
 		if is_instance_valid(side_enemy_scanner_label):
 			var scan_text: String = ""
 			for enemy in active_enemy_units:
-				scan_text += "[color=#FFCC00]%s %s[/color]\n[color=#88CCFF]   Weapon: %s | Hull: %d HP[/color]\n" % [
-					enemy["icon"], enemy["name"], enemy["weapon"], enemy["hp"]
-				]
+				var cur_hp: int = enemy.get("hp", 100)
+				var max_hp: int = enemy.get("max_hp", 100)
+				var hp_pct: float = (float(cur_hp) / max(1.0, float(max_hp))) * 100.0
+				var ac: int = enemy.get("ac", 12)
+				var dmg_str: String = enemy.get("dmg", "18-24 Kinetic")
+				var threat: String = enemy.get("threat", "STANDARD")
+				var weakness: String = enemy.get("weakness", "Kinetic Fire")
+
+				scan_text += "[color=#FFCC00]%s %s[/color] [color=#FF8800][%s][/color]\n" % [enemy["icon"], enemy["name"], threat]
+				scan_text += "[color=#88CCFF]  ⚔️ Weapon System:[/color] %s (%s)\n" % [enemy["weapon"], dmg_str]
+				scan_text += "[color=#00FF88]  🛡️ Armor Class (AC):[/color] %d  [color=#FFD700]| Weakness:[/color] %s\n" % [ac, weakness]
+				scan_text += "[color=#FF5555]  ❤️ Hull Integrity:[/color] %d / %d HP (%.0f%%)\n\n" % [cur_hp, max_hp, hp_pct]
 			side_enemy_scanner_label.text = scan_text
 
 		# Level 2: Detailed Dual-Roll Combat Math Feed (Mack Attacks vs Enemy Offense & Graphene Absorption)
@@ -1024,26 +1100,36 @@ func _update_telemetry_hud() -> void:
 					var crit_threshold: int = 15 - (ocular_tier - 1) * 2 # Crit range expands with ocular scope
 					var roll_d20: int = (randi() % 20) + 1
 					var total_val: int = roll_d20 + 8 + atk_bonus
-					var damage_dealt: int = int((18 + atk_bonus * 2.8) + (randi() % 6))
+					
+					# Determine Mack's Weapon Name based on Ordnance Upgrade Level
+					var mack_weapon: String = "Heavy Dual Gatling Cannon"
+					if ord_lvl == 2:
+						mack_weapon = "Heavy EMP Autocannon"
+					elif ord_lvl >= 3:
+						mack_weapon = "Military Ordnance Plasma Pods"
+						
+					var is_hit: bool = (roll_d20 > 2) # Misses on natural 1-2
+					var is_crit: bool = (roll_d20 >= crit_threshold and is_hit)
+					var damage_dealt: int = 0
 
-					if roll_d20 >= crit_threshold:
-						damage_dealt = int(damage_dealt * 1.85)
-						stat_total_crits_landed += 1
-
-					stat_highest_damage_dealt = max(stat_highest_damage_dealt, damage_dealt)
+					if is_hit:
+						damage_dealt = int((18 + atk_bonus * 2.8) + (randi() % 6))
+						if is_crit:
+							damage_dealt = int(damage_dealt * 1.85)
+							stat_total_crits_landed += 1
+						stat_highest_damage_dealt = max(stat_highest_damage_dealt, damage_dealt)
 
 					if not active_enemy_units.is_empty():
 						var target_enemy = active_enemy_units[0]
-						target_enemy["hp"] = max(0, target_enemy["hp"] - damage_dealt)
-						if roll_d20 >= crit_threshold:
-							_log_combat_math("[color=#FFCC00][MACK ATK ⚔️] d20(%d)+%d=%d [CRIT!] -> %d DMG to %s! (HP: %d)[/color]" % [roll_d20, 8 + atk_bonus, total_val, damage_dealt, target_enemy["name"], target_enemy["hp"]])
-						else:
-							_log_combat_math("[color=#00E5FF][MACK ATK ⚔️] d20(%d)+%d=%d Hit -> %d DMG to %s! (HP: %d)[/color]" % [roll_d20, 8 + atk_bonus, total_val, damage_dealt, target_enemy["name"], target_enemy["hp"]])
+						if is_hit:
+							target_enemy["hp"] = max(0, target_enemy["hp"] - damage_dealt)
+						
+						log_attack_telemetry_breakdown("Mack", target_enemy["name"], mack_weapon, roll_d20, 8 + atk_bonus, 12, is_hit, is_crit, damage_dealt, 0, target_enemy["hp"], true)
 						
 						if target_enemy["hp"] <= 0:
 							stat_enemies_destroyed += 1
 							stat_tech_harvested_count += (1 + randi() % 2)
-							_log_combat_math("[color=#33FF57]💥 DESTROYED! %s neutralized by Mack's Gatling Fire![/color]" % target_enemy["name"])
+							_log_combat_math("[color=#33FF57]   💀 DESTROYED! %s neutralized by Mack's %s![/color]" % [target_enemy["name"], mack_weapon])
 							active_enemy_units.remove_at(0)
 					else:
 						# Downtime: All wave enemies destroyed early! Mack slowly recovers hull integrity!
@@ -1055,13 +1141,20 @@ func _update_telemetry_hud() -> void:
 					if not active_enemy_units.is_empty():
 						var active_enemy = active_enemy_units.pick_random()
 						var enemy_roll: int = (randi() % 20) + 1
+						var is_hit: bool = (enemy_roll > 3) # Misses on d20 <= 3
 						var enemy_raw_dmg: int = 24 + (randi() % 10)
 						var armor_absorbed: int = int(enemy_raw_dmg * ((armor_lvl - 1) * 0.15 + 0.10))
 						var net_dmg: int = max(4, enemy_raw_dmg - armor_absorbed)
 
-						_log_combat_math("[color=#FF5555][ENEMY ATK 💥] %s d20(%d) -> %d DMG [/color][color=#00FF88](Armor L%d Absorbed -%d HP! Net: %d)[/color]" % [
-							active_enemy["name"], enemy_roll, enemy_raw_dmg, armor_lvl, armor_absorbed, net_dmg
-						])
+						if not is_hit:
+							net_dmg = 0
+							armor_absorbed = 0
+						else:
+							mack_current_hp = max(0.0, mack_current_hp - net_dmg)
+
+						var enemy_weapon: String = active_enemy.get("weapon", "Plasma Cannon")
+
+						log_attack_telemetry_breakdown(active_enemy["name"], "Mack's War-Rig", enemy_weapon, enemy_roll, 4, 14, is_hit, false, net_dmg, armor_absorbed, int(mack_current_hp), false)
 		else:
 			side_math_text.visible = false
 

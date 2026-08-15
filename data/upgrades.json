@@ -1,0 +1,97 @@
+{
+  "upgrades": {
+	"graphene_armor_l1": {
+	  "id": "graphene_armor_l1",
+	  "name": "Graphene Armor Weave L1",
+	  "category": "armor",
+	  "required_slots": 1,
+	  "cost": 250,
+	  "stats_modified": {
+		"hull_hp_bonus": 50,
+		"armor_absorbed": 3
+	  },
+	  "description": "Layered graphene plating absorbs incoming kinetic impact damage."
+	},
+	"graphene_armor_l2": {
+	  "id": "graphene_armor_l2",
+	  "name": "Composite Reactive Plating L2",
+	  "category": "armor",
+	  "required_slots": 2,
+	  "cost": 500,
+	  "stats_modified": {
+		"hull_hp_bonus": 120,
+		"armor_absorbed": 7
+	  },
+	  "description": "Reactive ceramic-graphene armor designed for heavy corporate skirmishes."
+	},
+	"ordnance_mount_l1": {
+	  "id": "ordnance_mount_l1",
+	  "name": "Heavy Ordnance Mount L1",
+	  "category": "ordnance",
+	  "required_slots": 1,
+	  "cost": 300,
+	  "stats_modified": {
+		"attack_bonus": 6,
+		"damage_multiplier": 1.15
+	  },
+	  "description": "Unlocks dual Gatling cannons and increases hit accuracy."
+	},
+	"ordnance_mount_l2": {
+	  "id": "ordnance_mount_l2",
+	  "name": "Heavy Ordnance Mount L2",
+	  "category": "ordnance",
+	  "required_slots": 2,
+	  "cost": 600,
+	  "stats_modified": {
+		"attack_bonus": 12,
+		"damage_multiplier": 1.35
+	  },
+	  "description": "Upgrades Gatling fire to Heavy EMP Autocannon."
+	},
+	"telemetry_terminal_l1": {
+	  "id": "telemetry_terminal_l1",
+	  "name": "Telemetry Vitals Terminal L1",
+	  "category": "telemetry",
+	  "required_slots": 1,
+	  "cost": 400,
+	  "stats_modified": {
+		"unlocks_hud_vitals": true
+	  },
+	  "description": "Unlocks live core temp, RPM, and hull vitals diagnostic HUD."
+	},
+	"telemetry_terminal_l2": {
+	  "id": "telemetry_terminal_l2",
+	  "name": "Dual-Roll Math Matrix Terminal L2",
+	  "category": "telemetry",
+	  "required_slots": 1,
+	  "cost": 750,
+	  "stats_modified": {
+		"unlocks_combat_math_matrix": true
+	  },
+	  "description": "Unlocks real-time d20 attack and defense dice roll telemetry."
+	},
+	"telemetry_terminal_l3": {
+	  "id": "telemetry_terminal_l3",
+	  "name": "Nanite Drone Dispatch Uplink L3",
+	  "category": "telemetry",
+	  "required_slots": 2,
+	  "cost": 1200,
+	  "stats_modified": {
+		"unlocks_repair_drone_button": true
+	  },
+	  "description": "Enables Banquo nanite repair drone dispatch directly from the terminal."
+	},
+	"ocular_scope_t1": {
+	  "id": "ocular_scope_t1",
+	  "name": "Kiroshi Ocular Targeting Scope T1",
+	  "category": "cyberware",
+	  "required_slots": 1,
+	  "cost": 450,
+	  "stats_modified": {
+		"crit_threshold_reduction": 2,
+		"attack_bonus": 4
+	  },
+	  "description": "Neural eye implant expanding critical hit range down to 13-20."
+	}
+  }
+}

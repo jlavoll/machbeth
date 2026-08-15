@@ -325,6 +325,3 @@ func _convert_target_limo_to_wreckage() -> void:
 				
 				print("[TrafficSystem] Executive Limo halted and reduced to a burning wreck on the city grid.")
 				break
-
-
-

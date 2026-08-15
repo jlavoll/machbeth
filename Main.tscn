@@ -24,6 +24,7 @@
 [ext_resource type="Script" path="res://GarageManager.gd" id="22_garagemgr"]
 [ext_resource type="Script" path="res://CyborgModdingManager.gd" id="23_cyborgmgr"]
 [ext_resource type="Script" path="res://CampaignManager.gd" id="24_campaignmgr"]
+[ext_resource type="Script" path="res://DatabaseEditorUI.gd" id="25_dbeditor"]
 
 [sub_resource type="Environment" id="Environment_1"]
 background_mode = 1
@@ -126,6 +127,9 @@ script = ExtResource("23_cyborgmgr")
 
 [node name="CampaignManager" type="Node" parent="." unique_id=6120391823]
 script = ExtResource("24_campaignmgr")
+
+[node name="DatabaseEditorUI" type="CanvasLayer" parent="." unique_id=7182930415]
+script = ExtResource("25_dbeditor")
 
 [node name="TrafficSystem" type="Node3D" parent="." unique_id=578341031]
 script = ExtResource("15_traffic")

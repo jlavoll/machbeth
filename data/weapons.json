@@ -1,0 +1,136 @@
+{
+  "weapons": {
+	"gatling_cannon_l1": {
+	  "id": "gatling_cannon_l1",
+	  "name": "Heavy Dual Gatling Cannon",
+	  "weapon_type": "Kinetic",
+	  "damage_min": 18,
+	  "damage_max": 24,
+	  "rate_of_fire": 2.2,
+	  "required_slots": 1,
+	  "accuracy_bonus": 8,
+	  "crit_threshold": 15,
+	  "description": "Standard high-velocity twin Gatling setup for Mack's War-Rig."
+	},
+	"emp_autocannon_l2": {
+	  "id": "emp_autocannon_l2",
+	  "name": "Heavy EMP Autocannon",
+	  "weapon_type": "Energy",
+	  "damage_min": 24,
+	  "damage_max": 32,
+	  "rate_of_fire": 2.0,
+	  "required_slots": 1,
+	  "accuracy_bonus": 10,
+	  "crit_threshold": 14,
+	  "description": "Electromagnetic pulse autocannon capable of disrupting enemy shield grids."
+	},
+	"plasma_pods_l3": {
+	  "id": "plasma_pods_l3",
+	  "name": "Military Ordnance Plasma Pods",
+	  "weapon_type": "Plasma",
+	  "damage_min": 32,
+	  "damage_max": 45,
+	  "rate_of_fire": 1.8,
+	  "required_slots": 2,
+	  "accuracy_bonus": 12,
+	  "crit_threshold": 13,
+	  "description": "Heavy military-grade plasma rocket pods."
+	},
+	"twin_20mm_cannon": {
+	  "id": "twin_20mm_cannon",
+	  "name": "Twin 20mm Cannon",
+	  "weapon_type": "Kinetic",
+	  "damage_min": 18,
+	  "damage_max": 24,
+	  "rate_of_fire": 2.5,
+	  "required_slots": 1,
+	  "accuracy_bonus": 4,
+	  "crit_threshold": 19,
+	  "description": "Standard corporate interceptor cannon."
+	},
+	"spike_ram": {
+	  "id": "spike_ram",
+	  "name": "Heavy Hydraulic Spike Ram",
+	  "weapon_type": "Melee/Ramming",
+	  "damage_min": 20,
+	  "damage_max": 28,
+	  "rate_of_fire": 3.0,
+	  "required_slots": 1,
+	  "accuracy_bonus": 6,
+	  "crit_threshold": 18,
+	  "description": "Reinforced hydraulic bumper ram."
+	},
+	"plasma_rifle_array": {
+	  "id": "plasma_rifle_array",
+	  "name": "Plasma Rifle Array",
+	  "weapon_type": "Energy",
+	  "damage_min": 22,
+	  "damage_max": 30,
+	  "rate_of_fire": 2.2,
+	  "required_slots": 1,
+	  "accuracy_bonus": 5,
+	  "crit_threshold": 18,
+	  "description": "Concentrated infantry plasma fire."
+	},
+	"emp_mortar": {
+	  "id": "emp_mortar",
+	  "name": "EMP Shock Mortar",
+	  "weapon_type": "EMP",
+	  "damage_min": 20,
+	  "damage_max": 28,
+	  "rate_of_fire": 3.5,
+	  "required_slots": 2,
+	  "accuracy_bonus": 4,
+	  "crit_threshold": 19,
+	  "description": "Fires EMP charges that disrupt vehicle HUD systems."
+	},
+	"laser_cutter": {
+	  "id": "laser_cutter",
+	  "name": "High-Frequency Laser Cutter",
+	  "weapon_type": "Laser",
+	  "damage_min": 15,
+	  "damage_max": 22,
+	  "rate_of_fire": 1.5,
+	  "required_slots": 1,
+	  "accuracy_bonus": 6,
+	  "crit_threshold": 17,
+	  "description": "Precision laser optics."
+	},
+	"disruptor_beam": {
+	  "id": "disruptor_beam",
+	  "name": "Neural Disruptor Beam",
+	  "weapon_type": "Beam",
+	  "damage_min": 16,
+	  "damage_max": 24,
+	  "rate_of_fire": 1.8,
+	  "required_slots": 1,
+	  "accuracy_bonus": 5,
+	  "crit_threshold": 18,
+	  "description": "Targeting beam designed to scramble targeting matrices."
+	},
+	"nanite_swarm": {
+	  "id": "nanite_swarm",
+	  "name": "Corrosive Nanite Swarm Pod",
+	  "weapon_type": "Bio-Tech",
+	  "damage_min": 18,
+	  "damage_max": 26,
+	  "rate_of_fire": 2.0,
+	  "required_slots": 1,
+	  "accuracy_bonus": 5,
+	  "crit_threshold": 18,
+	  "description": "Releases self-replicating nanite clouds."
+	},
+	"hellfire_rockets": {
+	  "id": "hellfire_rockets",
+	  "name": "Hellfire Ordnance Rockets",
+	  "weapon_type": "Heavy Ordnance",
+	  "damage_min": 35,
+	  "damage_max": 50,
+	  "rate_of_fire": 4.0,
+	  "required_slots": 3,
+	  "accuracy_bonus": 8,
+	  "crit_threshold": 16,
+	  "description": "Military helicopter heavy rocket pod."
+	}
+  }
+}
