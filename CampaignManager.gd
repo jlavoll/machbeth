@@ -1406,15 +1406,15 @@ func _trigger_sequential_daily_calls() -> void:
 	if is_instance_valid(neural_comms) and neural_comms.has_method("send_message"):
 		neural_comms.send_message("Lady M: 'Good morning, Banquo. Day %d is starting across the city grid. Check intel: %s!'" % [current_day, event_text], "LADY M // MISSION CONTROL")
 
-	# Call 2: Mack (After 4.5 seconds)
-	var t2 = get_tree().create_timer(4.5)
+	# Call 2: Mack (After 10.0 seconds)
+	var t2 = get_tree().create_timer(10.0)
 	t2.timeout.connect(func():
 		if is_instance_valid(neural_comms) and neural_comms.has_method("send_message"):
 			neural_comms.send_message("Mack: 'My neural stack is primed for Day %d! Banquo, drive us to The Pit or launch the convoy hit when you're ready!'" % current_day, "MACK // WAR-RIG EXECUTOR")
 	)
 
-	# Call 3: The 3 Norns Prophecy (After 9.0 seconds)
-	var t3 = get_tree().create_timer(9.0)
+	# Call 3: The 3 Norns Prophecy (After 20.0 seconds)
+	var t3 = get_tree().create_timer(20.0)
 	t3.timeout.connect(func():
 		if is_instance_valid(neural_comms) and neural_comms.has_method("send_message"):
 			neural_comms.send_message("The 3 Norns: 'Beware the Thane of Fife! Macduff's security forces shadow our movement today... Event: %s!'" % event_title, "THE 3 NORNS // PROPHECY")

@@ -1,0 +1,68 @@
+{
+  "mission_types": [
+    {
+      "type_id": "TAIL_TARGET",
+      "display_name": "🕵️‍♂️ Tail Target (Stealth Distance)",
+      "description": "Follow a suspicious vehicle or target 15m-40m behind without triggering their suspicion meter."
+    },
+    {
+      "type_id": "COURIER_RUN",
+      "display_name": "📦 Courier Run (Timed Delivery)",
+      "description": "Retrieve sensitive data drives or packages under a time limit across city districts."
+    },
+    {
+      "type_id": "EAVESDROP_RECON",
+      "display_name": "📡 Eavesdrop Recon (Signal Intercept)",
+      "description": "Infiltrate crowd spaces or alley corners to intercept encrypted audio transmissions."
+    },
+    {
+      "type_id": "ALLEY_PURSUIT",
+      "display_name": "🏃 Alley Pursuit (On-Foot Chase)",
+      "description": "Sprint down narrow alley corridors to tackle or corner fleeing informants before they escape."
+    },
+    {
+      "type_id": "PIT_BRAWL",
+      "display_name": "🥊 Underground Pit Brawl (1-on-1 Fight)",
+      "description": "Step into The Porter Pit arena or street corners for 1-on-1 melee combat."
+    }
+  ],
+  "street_missions": {
+    "street_01_pink_cadillac": {
+      "id": "street_01_pink_cadillac",
+      "name": "The Mysterious Pink Cadillac",
+      "type": "TAIL_TARGET",
+      "act": 1,
+      "client": "MR. DODGY",
+      "target_vehicle": "Pink Cadillac",
+      "start_location": "West Park Plaza",
+      "target_destination": "Chop Shop Garage",
+      "min_distance": 15.0,
+      "max_distance": 40.0,
+      "reward_credits": 850,
+      "objective_text": "Follow the Pink Cadillac at a safe distance (15m-40m) without raising suspicion."
+    },
+    "street_02_data_drop": {
+      "id": "street_02_data_drop",
+      "name": "Syndicate Intel Chip Transfer",
+      "type": "COURIER_RUN",
+      "act": 1,
+      "client": "LADY M",
+      "start_location": "Mack's Hideout",
+      "target_destination": "The Pit Garage",
+      "time_limit": 90.0,
+      "reward_credits": 1200,
+      "objective_text": "Deliver the encrypted data-chip to Porter within 90 seconds."
+    },
+    "street_03_park_wiretap": {
+      "id": "street_03_park_wiretap",
+      "name": "Preacher Audio Wiretap",
+      "type": "EAVESDROP_RECON",
+      "act": 2,
+      "client": "BANQUO",
+      "start_location": "Cyber Park Plaza",
+      "eavesdrop_duration": 15.0,
+      "reward_credits": 1500,
+      "objective_text": "Blend into the concert/rally crowd and intercept 15s of encrypted audio."
+    }
+  }
+}

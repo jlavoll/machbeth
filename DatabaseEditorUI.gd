@@ -48,7 +48,7 @@ func _toggle_database_overlay() -> void:
 	if is_editor_open:
 		_load_all_json_catalogs()
 		_refresh_catalog_list()
-		_update_status_banner("DATABASE EDITOR ACTIVE [F1 TO CLOSE]")
+		_update_status_banner("ACTIVE")
 	else:
 		_update_status_banner("GAME RESUMED")
 
@@ -135,7 +135,7 @@ func _build_ui_hierarchy() -> void:
 	main_vbox.add_child(header_hbox)
 
 	var title_lbl = Label.new()
-	title_lbl.text = "🖥️ STANDALONE CYBERPUNK DATABASE EDITOR [F1 PAUSE MODE]"
+	title_lbl.text = "DATABASE EDITOR [F1]"
 	title_lbl.add_theme_font_size_override("font_size", 14)
 	title_lbl.add_theme_color_override("font_color", Color(0.0, 0.85, 1.0))
 	header_hbox.add_child(title_lbl)
@@ -145,7 +145,7 @@ func _build_ui_hierarchy() -> void:
 	header_hbox.add_child(spacer)
 
 	var exit_btn = Button.new()
-	exit_btn.text = " ✖ CLOSE EDITOR (F1) "
+	exit_btn.text = " CLOSE "
 	exit_btn.pressed.connect(_toggle_database_overlay)
 	header_hbox.add_child(exit_btn)
 

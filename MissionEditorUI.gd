@@ -46,7 +46,7 @@ func _toggle_mission_overlay() -> void:
 	if is_editor_open:
 		_load_all_json_catalogs()
 		_refresh_mission_list()
-		_update_status_banner("MISSION & FIGHT EDITOR ACTIVE [F2 TO CLOSE]")
+		_update_status_banner("ACTIVE")
 	else:
 		_update_status_banner("GAME RESUMED")
 
@@ -117,7 +117,7 @@ func _build_ui_hierarchy() -> void:
 	main_vbox.add_child(header_hbox)
 	
 	var title_label = Label.new()
-	title_label.text = "⚔️ CYBERPUNK MISSION & FIGHT ENCOUNTER EDITOR [F2]"
+	title_label.text = "MACK BATTLES EDITOR [F2]"
 	title_label.add_theme_color_override("font_color", Color(1.0, 0.2, 0.5))
 	title_label.add_theme_font_size_override("font_size", 14)
 	header_hbox.add_child(title_label)
@@ -130,7 +130,7 @@ func _build_ui_hierarchy() -> void:
 	header_hbox.add_child(status_banner_label)
 	
 	var close_btn = Button.new()
-	close_btn.text = "✖ CLOSE (F2)"
+	close_btn.text = " CLOSE "
 	close_btn.size_flags_horizontal = Control.SIZE_SHRINK_END
 	close_btn.pressed.connect(_toggle_mission_overlay)
 	header_hbox.add_child(close_btn)

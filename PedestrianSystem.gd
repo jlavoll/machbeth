@@ -1078,6 +1078,8 @@ func _update_concert_crowd(delta: float) -> void:
 		var base_p: Vector3 = fan.get_meta("base_pos", fan.position)
 		var idx: int = fan.get_meta("fan_idx", 0)
 		var fan_event_id: String = fan.get_meta("event_id", "PARK_CONCERT")
+		if is_instance_valid(performers_node) and performers_node.has_meta("event_id"):
+			fan_event_id = performers_node.get_meta("event_id", fan_event_id)
 
 		if fan_event_id == "RELIGIOUS_RALLY" and is_instance_valid(performers_node):
 			# CALL-AND-RESPONSE TIMING ENGINE:

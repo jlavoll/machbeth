@@ -23,8 +23,8 @@ extends Node3D
 # Narrow gap width between buildings inside a block cluster in meters (10.0m = 1 full grid lane)
 @export var alley_width: float = 10.0
 
-# Procedural generation seed number (Set to 0 for random city every launch, or enter any integer e.g. 777 for a persistent map!)
-@export var city_seed: int = 0
+# Procedural generation seed number (Set to 1042 for a fixed, persistent home city map!)
+@export var city_seed: int = 1042
 
 # Random generator instance used for layout calculation
 var rng: RandomNumberGenerator = RandomNumberGenerator.new()
@@ -923,43 +923,142 @@ func _spawn_building(pos: Vector3, b_size: Vector3, neon_colors: Array, b_type: 
 			hq_door_node = door_container
 		elif b_type == "MACK_HIDEOUT":
 			mack_hideout_door_pos = door_world_pos
-			# Spawn Mack's War-Rig parked outside his home
-			var rig_body = StaticBody3D.new()
-			rig_body.name = "MackParkedWarRig"
-			rig_body.position = pos + Vector3(0.0, 1.25, hd + 5.0)
-			var r_col = CollisionShape3D.new()
-			var r_shape = BoxShape3D.new()
-			r_shape.size = Vector3(4.2, 2.8, 8.0)
-			r_col.shape = r_shape
-			rig_body.add_child(r_col)
-
-			var r_mesh = MeshInstance3D.new()
-			var box = BoxMesh.new()
-			box.size = Vector3(4.2, 2.8, 8.0)
-			r_mesh.mesh = box
-			var mat = StandardMaterial3D.new()
-			mat.albedo_color = Color(0.12, 0.05, 0.02)
-			mat.metallic = 0.8
-			mat.roughness = 0.2
-			mat.emission_enabled = true
-			mat.emission = Color(1.0, 0.35, 0.0) # Rust Orange Emissive Grille
-			mat.emission_energy_multiplier = 3.5
-			r_mesh.material_override = mat
-			rig_body.add_child(r_mesh)
-
-			# 3D Label
-			var rig_lbl = Label3D.new()
-			rig_lbl.text = "🚛 MACK'S WAR-RIG EXECUTOR\n[PARKED OUTSIDE HIDEOUT]"
-			rig_lbl.position = Vector3(0.0, 3.2, 0.0)
-			rig_lbl.font_size = 24
-			rig_lbl.pixel_size = 0.005
-			rig_lbl.modulate = Color(1.0, 0.35, 0.0)
-			rig_body.add_child(rig_lbl)
-
-			add_child(rig_body)
-			mack_parked_rig_node = rig_body
+			
+			# --- 3D HIGH-RISE BALCONY PLATFORM ON MACK'S SKYSCRAPER ---
+			var balcony_root = StaticBody3D.new()
+			balcony_root.name = "MackHighRiseBalcony"
+			# Position balcony 22 meters high up on front facade (z = hd + 3.0)
+			balcony_root.position = pos + Vector3(0.0, 22.0, hd + 3.0)
+			
+			# Floor Deck (8m wide, 0.4m thick, 6m deep platform)
+			var balcony_floor_collision = CollisionShape3D.new()
+			var balcony_floor_shape = BoxShape3D.new()
+			balcony_floor_shape.size = Vector3(8.0, 0.4, 6.0)
+			balcony_floor_collision.shape = balcony_floor_shape
+			balcony_root.add_child(balcony_floor_collision)
+			
+			var balcony_floor_mesh_instance = MeshInstance3D.new()
+			var balcony_floor_box_mesh = BoxMesh.new()
+			balcony_floor_box_mesh.size = Vector3(8.0, 0.4, 6.0)
+			balcony_floor_mesh_instance.mesh = balcony_floor_box_mesh
+			var balcony_deck_material = StandardMaterial3D.new()
+			balcony_deck_material.albedo_color = Color(0.08, 0.05, 0.03)
+			balcony_deck_material.metallic = 0.8
+			balcony_deck_material.roughness = 0.2
+			balcony_deck_material.emission_enabled = true
+			balcony_deck_material.emission = Color(1.0, 0.4, 0.0) # Ember Orange Floor Trim
+			balcony_deck_material.emission_energy_multiplier = 2.5
+			balcony_floor_mesh_instance.material_override = balcony_deck_material
+			balcony_root.add_child(balcony_floor_mesh_instance)
+			
+			# Safety Barrier Glass Railings (1.4m tall around 3 sides so player NEVER falls off!)
+			var balcony_railing_offsets = [
+				{"pos": Vector3(0.0, 0.9, 2.9), "size": Vector3(8.0, 1.4, 0.2)},   # Front Railing
+				{"pos": Vector3(-3.9, 0.9, 0.0), "size": Vector3(0.2, 1.4, 6.0)},  # Left Railing
+				{"pos": Vector3(3.9, 0.9, 0.0), "size": Vector3(0.2, 1.4, 6.0)}   # Right Railing
+			]
+			for railing_info in balcony_railing_offsets:
+				var railing_collision_shape = CollisionShape3D.new()
+				var railing_box_shape = BoxShape3D.new()
+				railing_box_shape.size = railing_info["size"]
+				railing_collision_shape.shape = railing_box_shape
+				railing_collision_shape.position = railing_info["pos"]
+				balcony_root.add_child(railing_collision_shape)
+				
+				var railing_mesh_instance = MeshInstance3D.new()
+				var railing_box_mesh = BoxMesh.new()
+				railing_box_mesh.size = railing_info["size"]
+				railing_mesh_instance.mesh = railing_box_mesh
+				railing_mesh_instance.position = railing_info["pos"]
+				var railing_glass_material = StandardMaterial3D.new()
+				railing_glass_material.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
+				railing_glass_material.albedo_color = Color(1.0, 0.5, 0.0, 0.45) # Glowing Orange Safety Glass
+				railing_glass_material.emission_enabled = true
+				railing_glass_material.emission = Color(1.0, 0.5, 0.0)
+				railing_glass_material.emission_energy_multiplier = 3.0
+				railing_mesh_instance.material_override = railing_glass_material
+				balcony_root.add_child(railing_mesh_instance)
+				
+			add_child(balcony_root)
 		elif b_type == "BANQUO_LOFT":
 			banquo_safehouse_door_pos = door_world_pos
+			
+			# --- 3D ROOFTOP ELEVATOR HATCH & OBSERVATION DECK FOR BANQUO'S BUILDING ---
+			var rooftop_elevator_root = StaticBody3D.new()
+			rooftop_elevator_root.name = "BanquoRooftopElevator"
+			# Position elevator box on top roof surface at (b_size.y + 0.1) height
+			var roof_surface_y: float = b_size.y + 0.1
+			rooftop_elevator_root.position = pos + Vector3(0.0, roof_surface_y, 0.0)
+			
+			# Rooftop Elevator Hatch Housing (3.6m wide, 3.2m tall, 3.6m deep box)
+			var elevator_hatch_collision = CollisionShape3D.new()
+			var elevator_hatch_shape = BoxShape3D.new()
+			elevator_hatch_shape.size = Vector3(3.6, 3.2, 3.6)
+			elevator_hatch_collision.shape = elevator_hatch_shape
+			elevator_hatch_collision.position = Vector3(0.0, 1.6, 0.0)
+			rooftop_elevator_root.add_child(elevator_hatch_collision)
+			
+			var elevator_hatch_mesh_instance = MeshInstance3D.new()
+			var elevator_hatch_box_mesh = BoxMesh.new()
+			elevator_hatch_box_mesh.size = Vector3(3.6, 3.2, 3.6)
+			elevator_hatch_mesh_instance.mesh = elevator_hatch_box_mesh
+			elevator_hatch_mesh_instance.position = Vector3(0.0, 1.6, 0.0)
+			var elevator_hatch_material = StandardMaterial3D.new()
+			elevator_hatch_material.albedo_color = Color(0.05, 0.02, 0.08)
+			elevator_hatch_material.metallic = 0.8
+			elevator_hatch_material.roughness = 0.2
+			elevator_hatch_material.emission_enabled = true
+			elevator_hatch_material.emission = Color(1.0, 0.0, 0.8) # Magenta Neon Accent Trim
+			elevator_hatch_material.emission_energy_multiplier = 3.0
+			elevator_hatch_mesh_instance.material_override = elevator_hatch_material
+			rooftop_elevator_root.add_child(elevator_hatch_mesh_instance)
+			
+			# Glowing Elevator Door Frame Decal
+			var door_frame_mesh_instance = MeshInstance3D.new()
+			var door_frame_box_mesh = BoxMesh.new()
+			door_frame_box_mesh.size = Vector3(2.2, 2.4, 0.1)
+			door_frame_mesh_instance.mesh = door_frame_box_mesh
+			door_frame_mesh_instance.position = Vector3(0.0, 1.2, 1.82)
+			var door_frame_material = StandardMaterial3D.new()
+			door_frame_material.albedo_color = Color(0.0, 0.85, 1.0)
+			door_frame_material.emission_enabled = true
+			door_frame_material.emission = Color(0.0, 0.85, 1.0)
+			door_frame_material.emission_energy_multiplier = 4.0
+			door_frame_mesh_instance.material_override = door_frame_material
+			rooftop_elevator_root.add_child(door_frame_mesh_instance)
+
+			# Safety Barrier Glass Railings around rooftop edge so player cannot fall off
+			var half_roof_width: float = b_size.x / 2.0 - 0.2
+			var half_roof_depth: float = b_size.z / 2.0 - 0.2
+			var roof_railing_configs = [
+				{"pos": Vector3(0.0, 0.7, -half_roof_depth), "size": Vector3(b_size.x, 1.4, 0.2)}, # North Edge
+				{"pos": Vector3(0.0, 0.7, half_roof_depth), "size": Vector3(b_size.x, 1.4, 0.2)},  # South Edge
+				{"pos": Vector3(-half_roof_width, 0.7, 0.0), "size": Vector3(0.2, 1.4, b_size.z)}, # West Edge
+				{"pos": Vector3(half_roof_width, 0.7, 0.0), "size": Vector3(0.2, 1.4, b_size.z)}   # East Edge
+			]
+			for roof_railing_info in roof_railing_configs:
+				var railing_collision_shape = CollisionShape3D.new()
+				var railing_box_shape = BoxShape3D.new()
+				railing_box_shape.size = roof_railing_info["size"]
+				railing_collision_shape.shape = railing_box_shape
+				railing_collision_shape.position = roof_railing_info["pos"]
+				rooftop_elevator_root.add_child(railing_collision_shape)
+
+				var railing_mesh_instance = MeshInstance3D.new()
+				var railing_box_mesh = BoxMesh.new()
+				railing_box_mesh.size = roof_railing_info["size"]
+				railing_mesh_instance.mesh = railing_box_mesh
+				railing_mesh_instance.position = roof_railing_info["pos"]
+				var railing_glass_material = StandardMaterial3D.new()
+				railing_glass_material.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
+				railing_glass_material.albedo_color = Color(1.0, 0.0, 0.8, 0.45) # Glowing Magenta Safety Glass
+				railing_glass_material.emission_enabled = true
+				railing_glass_material.emission = Color(1.0, 0.0, 0.8)
+				railing_glass_material.emission_energy_multiplier = 3.0
+				railing_mesh_instance.material_override = railing_glass_material
+				rooftop_elevator_root.add_child(railing_mesh_instance)
+
+			add_child(rooftop_elevator_root)
 		elif b_type == "LADY_M":
 			lady_m_lair_door_pos = door_world_pos
 		elif b_type == "CHOP_SHOP":
@@ -1500,6 +1599,7 @@ func _spawn_cyber_park(center: Vector3, b_size: Vector2, neon_colors: Array, par
 			var performers_node = Node3D.new()
 			performers_node.name = "StagePerformers"
 			performers_node.position = Vector3(1.0, 1.2, 0.0)
+			performers_node.set_meta("event_id", active_event_id)
 
 			var band_members: Array = event_cfg.get("performers", [])
 

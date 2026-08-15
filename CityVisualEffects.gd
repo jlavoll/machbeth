@@ -304,16 +304,19 @@ func _update_stage_lights_and_band_animation(delta: float) -> void:
 		if child.name == "ParCanSpotlight":
 			child.light_color = hue2
 
-	# Check active event ID
-	var campaign_mgr = get_parent().get_node_or_null("CampaignManager")
-	var active_event_id: String = "RELIGIOUS_RALLY"
-	if is_instance_valid(campaign_mgr) and "active_daily_event" in campaign_mgr and campaign_mgr.active_daily_event is Dictionary and campaign_mgr.active_daily_event.has("id"):
-		active_event_id = campaign_mgr.active_daily_event.get("id", "RELIGIOUS_RALLY")
-
 	# Animate Stage Performers (Cyber Band vs Charismatic Preacher + Quiet Disciples)
 	var performers_node = stage_node.get_node_or_null("StagePerformers")
 	if not is_instance_valid(performers_node):
 		performers_node = stage_node.get_node_or_null("StageCyberBand") # Backward compatibility fallback
+
+	# Check active event ID directly from StagePerformers metadata or CampaignManager
+	var active_event_id: String = "PARK_CONCERT"
+	if is_instance_valid(performers_node) and performers_node.has_meta("event_id"):
+		active_event_id = performers_node.get_meta("event_id", "PARK_CONCERT")
+	else:
+		var campaign_mgr = get_parent().get_node_or_null("CampaignManager")
+		if is_instance_valid(campaign_mgr) and "active_daily_event" in campaign_mgr and campaign_mgr.active_daily_event is Dictionary and campaign_mgr.active_daily_event.has("id"):
+			active_event_id = campaign_mgr.active_daily_event.get("id", "PARK_CONCERT")
 	if is_instance_valid(performers_node):
 		if active_event_id == "SHAKESPEARE_PARK":
 			# SHAKESPEARE IN THE PARK ANIMATION ENGINE:

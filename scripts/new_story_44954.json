@@ -1,0 +1,17 @@
+{
+	"nodes": {
+		"start": {
+			"choices": [
+				{
+					"target": "exit",
+					"text": "Goodbye. [Leave]"
+				}
+			],
+			"portrait_emotion": "neutral",
+			"text": "Start conversation line..."
+		}
+	},
+	"speaker_color": "#00E5FF",
+	"speaker_display_name": "Unknown Contact",
+	"speaker_subtitle": "NEURAL-ID: UNKNOWN_001"
+}

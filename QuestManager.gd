@@ -62,7 +62,25 @@ var _pending_completion_quest_id: String = ""
 
 func _ready() -> void:
 	_build_quest_hud()
+	_load_street_missions_from_json()
 	call_deferred("_connect_dialogue_signals")
+
+func _load_street_missions_from_json() -> void:
+	if FileAccess.file_exists("res://data/street_missions.json"):
+		var file = FileAccess.open("res://data/street_missions.json", FileAccess.READ)
+		var json = JSON.new()
+		if json.parse(file.get_as_text()) == OK:
+			var s_data = json.get_data().get("street_missions", {})
+			for s_id in s_data:
+				var quest = s_data[s_id]
+				quest_registry[s_id] = {
+					"title": quest.get("name", s_id).to_upper(),
+					"description": quest.get("objective_text", ""),
+					"reward_credits": quest.get("reward_credits", 500),
+					"start_dialogue_target": "accept_" + s_id.replace("street_01_", "").replace("street_02_", "").replace("street_03_", ""),
+					"map_blip_color": Color(1.0, 0.85, 0.0, 0.95),
+					"completion_lady_m_text": "Street quest '" + quest.get("name", s_id) + "' objective complete. Reward added to inventory."
+				}
 
 func _connect_dialogue_signals() -> void:
 	var dialogue_sys = get_parent().get_node_or_null("DialogueSystem")
@@ -75,13 +93,18 @@ func _connect_dialogue_signals() -> void:
 # ==============================================================================
 
 func _on_dialogue_choice_selected(_choice_index: int, target_node_id: String) -> void:
-	# Check if choice target matches any registered quest start or completion trigger!
-	for q_id in quest_registry:
-		var q_data: Dictionary = quest_registry[q_id]
-		if target_node_id == q_data.get("start_dialogue_target", ""):
-			start_quest(q_id)
-		elif target_node_id == q_data.get("complete_dialogue_target", ""):
-			_pending_completion_quest_id = q_id
+	# Check explicit hardcoded targets or dialogue node IDs
+	if target_node_id == "accept_pink_cadillac":
+		start_quest("street_01_pink_cadillac")
+	elif target_node_id == "accept_data_drop":
+		start_quest("street_02_data_drop")
+	else:
+		for q_id in quest_registry:
+			var q_data: Dictionary = quest_registry[q_id]
+			if target_node_id == q_data.get("start_dialogue_target", ""):
+				start_quest(q_id)
+			elif target_node_id == q_data.get("complete_dialogue_target", ""):
+				_pending_completion_quest_id = q_id
 
 func _on_dialogue_ended() -> void:
 	if _pending_completion_quest_id != "":
@@ -109,10 +132,59 @@ func start_quest(quest_id: String) -> void:
 	if is_instance_valid(ped_system) and ped_system.has_method("_trigger_delivery_quest_start"):
 		ped_system._trigger_delivery_quest_start()
 
-	# 2. Update HUD Banner
+	# 2. Check if quest requires spawning Pink Cadillac asset!
+	if quest_id == "street_01_pink_cadillac":
+		_spawn_pink_cadillac_mission_asset()
+
+	# 3. Update HUD Banner
 	_show_quest_hud(active_quest_data.get("title", ""), active_quest_data.get("description", ""))
 
 	emit_signal("quest_started", quest_id)
+
+func _spawn_pink_cadillac_mission_asset() -> void:
+	var traffic_sys = get_parent().get_node_or_null("TrafficSystem")
+	var root_scene = get_parent()
+	
+	if is_instance_valid(root_scene):
+		# Remove existing Cadillac if present
+		var old_cadillac = root_scene.get_node_or_null("PinkCadillacTarget")
+		if is_instance_valid(old_cadillac):
+			old_cadillac.queue_free()
+
+		var cadillac_script = preload("res://PinkCadillacTarget.gd")
+		var cadillac = CharacterBody3D.new()
+		cadillac.set_script(cadillac_script)
+		cadillac.name = "PinkCadillacTarget"
+		
+		# Persistent fixed street route for Seed 1042 (Right-hand traffic lanes along main avenues)
+		# Start: Cyber Park West Gate -> Central Broadway -> North Substation Avenue -> Chop Shop Alley Drop-off
+		var cadillac_route: Array[Vector3] = [
+			Vector3(-60.0, 0.0, 75.0),   # 1. Cyber Park West Gate Departure
+			Vector3(0.0, 0.0, 75.0),     # 2. Main Broadway & 1st Avenue Intersection
+			Vector3(120.0, 0.0, 75.0),   # 3. East Commercial Sector Turn
+			Vector3(120.0, 0.0, -45.0),  # 4. North Industrial Corridor
+			Vector3(0.0, 0.0, -45.0),    # 5. Substation Avenue Crossing
+			Vector3(-120.0, 0.0, -45.0), # 6. West Warehouse District
+			Vector3(-120.0, 0.0, 75.0)   # 7. Return to Chop Shop Alley Destination
+		]
+		cadillac.setup_route(cadillac_route)
+		cadillac.is_active_tail_target = true
+		
+		# Connect failure & completion signals
+		cadillac.tailing_alert_failed.connect(func(reason: String):
+			var neural_comms = get_parent().get_node_or_null("NeuralNotificationSystem")
+			if is_instance_valid(neural_comms):
+				neural_comms.send_message("TAILING FAILED: " + reason, "MR. DODGY // PARK CONTACT")
+			_hide_quest_hud()
+			active_quest_id = ""
+		)
+		
+		cadillac.tailing_completed.connect(func():
+			complete_quest("street_01_pink_cadillac")
+		)
+		
+		root_scene.add_child(cadillac)
+		print("[QUEST MANAGER] Spawned Pink Cadillac mission asset at West Park Plaza!")
 
 ## Completes an active quest, rewarding credits, updating map, and triggering Lady M comms
 func complete_quest(quest_id: String) -> void:

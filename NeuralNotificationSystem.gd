@@ -11,8 +11,8 @@ class_name NeuralNotificationSystem
 var orbitron_font: Font = preload("res://fonts/Orbitron/Orbitron-VariableFont_wght.ttf")
 var ubuntu_font: Font = preload("res://fonts/Ubuntu/Ubuntu-Regular.ttf")
 
-@export var popup_display_duration: float = 5.5
-@export var random_message_interval: float = 35.0 # Seconds between ambient transmissions
+@export var popup_display_duration: float = 9.5
+@export var random_message_interval: float = 45.0 # Seconds between ambient transmissions
 
 # UI Nodes
 var comms_canvas_layer: CanvasLayer

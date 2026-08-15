@@ -398,6 +398,13 @@ func _unhandled_input(event: InputEvent) -> void:
 	if event is InputEventKey and event.pressed and not event.echo:
 		# E key: Talk to nearby character, enter HQ building, or re-enter parked car when close enough
 		if event.keycode == KEY_E and not dialogue_blocking_input:
+			# 0. Check if boarding or disembarking from Cyber-Transit Metro Bus!
+			var transit_sys = get_parent().get_node_or_null("TransitSystem")
+			if is_instance_valid(transit_sys) and transit_sys.has_method("try_toggle_player_bus_passenger"):
+				if transit_sys.try_toggle_player_bus_passenger(global_position, self):
+					get_viewport().set_input_as_handled()
+					return
+
 			# 1. Check if standing near any playable interior entrance door!
 			var city_gen = get_parent().get_node_or_null("CityGenerator")
 			var indoor_mgr = get_parent().get_node_or_null("IndoorSystemManager")
@@ -413,6 +420,14 @@ func _unhandled_input(event: InputEvent) -> void:
 					return
 				elif city_gen.mack_hideout_door_pos != Vector3.ZERO and global_position.distance_to(city_gen.mack_hideout_door_pos) <= 7.0:
 					indoor_mgr.enter_location(indoor_mgr.HQFloor.MACK_HIDEOUT)
+					get_viewport().set_input_as_handled()
+					return
+				elif is_instance_valid(city_gen.get_node_or_null("MackHighRiseBalcony")) and global_position.distance_to(city_gen.get_node("MackHighRiseBalcony").global_position) <= 6.0:
+					indoor_mgr.enter_location(indoor_mgr.HQFloor.MACK_HIDEOUT)
+					get_viewport().set_input_as_handled()
+					return
+				elif is_instance_valid(city_gen.get_node_or_null("BanquoRooftopElevator")) and global_position.distance_to(city_gen.get_node("BanquoRooftopElevator").global_position) <= 7.0:
+					indoor_mgr.enter_location(indoor_mgr.HQFloor.BANQUO_LOFT)
 					get_viewport().set_input_as_handled()
 					return
 				elif city_gen.lady_m_lair_door_pos != Vector3.ZERO and global_position.distance_to(city_gen.lady_m_lair_door_pos) <= 7.0:

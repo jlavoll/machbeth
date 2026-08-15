@@ -175,6 +175,16 @@ func _build_hideout_floor() -> void:
 	# Spawn Mack NPC Warlord (Only present at home when not out on battle missions!)
 	_spawn_npc_character(root_hideout, Vector3(0.0, 0.0, -5.5), Color(1.0, 0.3, 0.0), "Mack", Vector3(0.0, 0.0, 0.0))
 
+	# High-Rise Balcony Express Door (North Wall Center: [E] STEP OUT TO BALCONY)
+	_build_interactive_door(root_hideout, Vector3(0.0, 2.0, -8.6), Vector3(3.6, 4.0, 0.8), Color(1.0, 0.85, 0.0))
+	var balcony_lbl = Label3D.new()
+	balcony_lbl.text = "🌆 EXPRESS BALCONY ELEVATOR\n[PRESS E TO STEP OUT TO BALCONY]"
+	balcony_lbl.position = Vector3(0.0, 4.2, -8.2)
+	balcony_lbl.font_size = 20
+	balcony_lbl.pixel_size = 0.005
+	balcony_lbl.modulate = Color(1.0, 0.85, 0.0)
+	root_hideout.add_child(balcony_lbl)
+
 	# Exit Door (South Wall Center)
 	_build_exit_door(root_hideout, Vector3(0.0, 1.8, 8.2))
 
@@ -232,7 +242,15 @@ func _build_banquo_loft_floor() -> void:
 	c_lbl.modulate = Color(1.0, 0.0, 0.8)
 	cupboard_body.add_child(c_lbl)
 
-	root_loft.add_child(cupboard_body)
+	# Rooftop Express Elevator Door (North Wall Center: [E] TAKE ELEVATOR TO ROOFTOP)
+	_build_interactive_door(root_loft, Vector3(0.0, 2.0, -8.6), Vector3(3.6, 4.0, 0.8), Color(1.0, 0.0, 0.8))
+	var roof_lbl = Label3D.new()
+	roof_lbl.text = "🌆 ROOFTOP EXPRESS ELEVATOR\n[PRESS E TO ASCEND TO ROOFTOP]"
+	roof_lbl.position = Vector3(0.0, 4.2, -8.2)
+	roof_lbl.font_size = 20
+	roof_lbl.pixel_size = 0.005
+	roof_lbl.modulate = Color(1.0, 0.0, 0.8)
+	root_loft.add_child(roof_lbl)
 
 	# Exit Door (South Wall Center)
 	_build_exit_door(root_loft, Vector3(0.0, 1.8, 8.2))
@@ -1183,6 +1201,19 @@ func _unhandled_input(event: InputEvent) -> void:
 				var bed_pos: Vector3 = current_loc_origin + Vector3(6.0, 0.0, -4.0)
 				var cupboard_pos: Vector3 = banquo_loft_origin + Vector3(-9.5, 1.5, -4.0)
 
+				if current_floor == HQFloor.MACK_HIDEOUT:
+					var balcony_door_pos: Vector3 = mack_hideout_origin + Vector3(0.0, 0.0, -8.6)
+					if pos.distance_to(balcony_door_pos) <= 4.5:
+						_teleport_player_to_mack_balcony()
+						get_viewport().set_input_as_handled()
+						return
+				elif current_floor == HQFloor.BANQUO_LOFT:
+					var roof_door_pos: Vector3 = banquo_loft_origin + Vector3(0.0, 0.0, -8.6)
+					if pos.distance_to(roof_door_pos) <= 4.5:
+						_teleport_player_to_banquo_rooftop()
+						get_viewport().set_input_as_handled()
+						return
+
 				if current_floor == HQFloor.BANQUO_LOFT and pos.distance_to(cupboard_pos) <= 5.5:
 					if is_instance_valid(player_car) and player_car.is_on_foot and is_instance_valid(player_car.on_foot_node):
 						var foot_node = player_car.on_foot_node
@@ -1311,8 +1342,42 @@ func _toggle_pit_backroom_door() -> void:
 	is_pit_backroom_door_open = not is_pit_backroom_door_open
 	if is_instance_valid(pit_backroom_door_node):
 		if is_pit_backroom_door_open:
-			pit_backroom_door_node.position.z = 3.2
-			print("[PIT ENTRANCE DOOR] Pit Back-Room Side Entrance Door Unlocked & Sliding Open!")
+			pit_backroom_door_node.position.z = porter_pit_origin.z - 13.0 + 3.2
 		else:
-			pit_backroom_door_node.position.z = 0.0
-			print("[PIT ENTRANCE DOOR] Pit Back-Room Side Entrance Door Closed & Sealed.")
+			pit_backroom_door_node.position.z = porter_pit_origin.z - 13.0
+
+func _teleport_player_to_mack_balcony() -> void:
+	var city_gen = get_parent().get_node_or_null("CityGenerator")
+	var balcony_node = city_gen.get_node_or_null("MackHighRiseBalcony") if is_instance_valid(city_gen) else null
+	
+	if is_instance_valid(player_car) and player_car.is_on_foot and is_instance_valid(player_car.on_foot_node):
+		var foot_node = player_car.on_foot_node
+		exit_building_interior()
+		
+		var balcony_target_pos = Vector3(0.0, 22.8, 48.0) # Fallback
+		if is_instance_valid(balcony_node):
+			balcony_target_pos = balcony_node.global_position + Vector3(0.0, 0.8, 0.0)
+			
+		foot_node.global_position = balcony_target_pos
+		
+		var comms = get_parent().get_node_or_null("NeuralNotificationSystem")
+		if is_instance_valid(comms) and comms.has_method("send_message"):
+			comms.send_message("🌆 STEPPED OUT ONTO MACK'S HIGH-RISE BALCONY! Enjoy the skyline view over Cyberpunk City.", "EXPRESS BALCONY ELEVATOR")
+
+func _teleport_player_to_banquo_rooftop() -> void:
+	var city_gen = get_parent().get_node_or_null("CityGenerator")
+	var elevator_node = city_gen.get_node_or_null("BanquoRooftopElevator") if is_instance_valid(city_gen) else null
+	
+	if is_instance_valid(player_car) and player_car.is_on_foot and is_instance_valid(player_car.on_foot_node):
+		var foot_node = player_car.on_foot_node
+		exit_building_interior()
+		
+		var roof_target_pos = Vector3(220.0, 60.8, 220.0) # Fallback
+		if is_instance_valid(elevator_node):
+			roof_target_pos = elevator_node.global_position + Vector3(0.0, 0.8, 2.8)
+			
+		foot_node.global_position = roof_target_pos
+		
+		var comms = get_parent().get_node_or_null("NeuralNotificationSystem")
+		if is_instance_valid(comms) and comms.has_method("send_message"):
+			comms.send_message("🏢 ASCENDED TO BANQUO'S SKYSCRAPER ROOFTOP! Press 'E' near the elevator hatch box to return inside.", "ROOFTOP EXPRESS ELEVATOR")

@@ -43,7 +43,7 @@ func _toggle_dialogue_overlay() -> void:
 	
 	if is_editor_open:
 		_scan_dialogue_directory()
-		_update_status_banner("STORY & DIALOGUE EDITOR ACTIVE [F3 TO CLOSE]")
+		_update_status_banner("ACTIVE")
 	else:
 		_update_status_banner("GAME RESUMED")
 
@@ -138,7 +138,7 @@ func _build_ui_hierarchy() -> void:
 	main_vbox.add_child(header_hbox)
 	
 	var title_label = Label.new()
-	title_label.text = "📜 CYBERPUNK STORY & DIALOGUE TREE EDITOR [F3]"
+	title_label.text = "DIALOGUE EDITOR [F3]"
 	title_label.add_theme_color_override("font_color", Color(1.0, 0.45, 0.1))
 	title_label.add_theme_font_size_override("font_size", 14)
 	header_hbox.add_child(title_label)
@@ -163,7 +163,7 @@ func _build_ui_hierarchy() -> void:
 	header_hbox.add_child(status_banner_label)
 	
 	var close_btn = Button.new()
-	close_btn.text = "✖ CLOSE (F3)"
+	close_btn.text = " CLOSE "
 	close_btn.size_flags_horizontal = Control.SIZE_SHRINK_END
 	close_btn.pressed.connect(_toggle_dialogue_overlay)
 	header_hbox.add_child(close_btn)
@@ -409,6 +409,48 @@ func _populate_node_form() -> void:
 		)
 		row2_hbox.add_child(target_opt)
 		
+		# Row 3: Optional Quest Action Trigger Dropdown
+		var row3_hbox = HBoxContainer.new()
+		c_vbox.add_child(row3_hbox)
+
+		var q_action_lbl = Label.new(); q_action_lbl.text = "  ⚡ Quest Trigger Action:"
+		row3_hbox.add_child(q_action_lbl)
+
+		var q_action_opt = OptionButton.new()
+		q_action_opt.add_item("NONE (Standard Dialogue Branch)")
+		q_action_opt.add_item("START_STREET_MISSION (Trigger F4 Quest)")
+		q_action_opt.add_item("START_MACK_BATTLE (Trigger F2 Combat)")
+
+		var curr_action: String = choice_entry.get("action", "")
+		if curr_action == "START_STREET_MISSION":
+			q_action_opt.select(1)
+		elif curr_action == "START_MACK_BATTLE":
+			q_action_opt.select(2)
+		else:
+			q_action_opt.select(0)
+
+		row3_hbox.add_child(q_action_opt)
+
+		var q_id_lbl = Label.new(); q_id_lbl.text = "  Target Quest/Battle ID:"
+		row3_hbox.add_child(q_id_lbl)
+
+		var edit_q_id = LineEdit.new()
+		edit_q_id.text = choice_entry.get("quest_id", "")
+		edit_q_id.placeholder_text = "e.g. street_01_pink_cadillac"
+		edit_q_id.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		edit_q_id.text_changed.connect(func(txt): choice_entry["quest_id"] = txt)
+		row3_hbox.add_child(edit_q_id)
+
+		q_action_opt.item_selected.connect(func(idx):
+			if idx == 1:
+				choice_entry["action"] = "START_STREET_MISSION"
+			elif idx == 2:
+				choice_entry["action"] = "START_MACK_BATTLE"
+			else:
+				choice_entry.erase("action")
+				choice_entry.erase("quest_id")
+		)
+
 		# Quick Jump to Target Node Button
 		var jump_btn = Button.new(); jump_btn.text = "🔍 Jump To Node"
 		jump_btn.pressed.connect(func():
