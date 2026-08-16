@@ -34,6 +34,9 @@ var active_buskers: Array[Node3D] = []
 var active_tech_drones: Array[Node3D] = []
 var active_joggers: Array[Node3D] = []
 
+# Emergency Gathering Points (Dynamic sidewalk alcove assembly points)
+var active_emergency_gathering_points: Array[Vector3] = []
+
 # Gang color themes & faction names
 var gang_color_themes: Array[Color] = [
 	Color(0.9, 0.1, 0.1),  # The Red Crows (Crimson Red)
@@ -87,9 +90,25 @@ func _ready() -> void:
 	call_deferred("_spawn_narrow_street_residents")
 	call_deferred("_spawn_new_archetypes")
 	call_deferred("_spawn_concert_crowd")
+	call_deferred("_setup_emergency_gathering_points")
 
 	# Wire quest event listener to DialogueSystem
 	call_deferred("_connect_dialogue_signals")
+
+func _setup_emergency_gathering_points() -> void:
+	active_emergency_gathering_points.clear()
+	var city_gen = get_parent().get_node_or_null("CityGenerator")
+	var x_cuts: Array = city_gen.active_x_streets if is_instance_valid(city_gen) and "active_x_streets" in city_gen else [-180.0, -90.0, 0.0, 90.0, 180.0]
+	var z_cuts: Array = city_gen.active_z_streets if is_instance_valid(city_gen) and "active_z_streets" in city_gen else [-180.0, -90.0, 0.0, 90.0, 180.0]
+
+	# Build 8-12 distributed emergency gathering points in sheltered building alcoves
+	for x_coord in x_cuts:
+		for z_coord in z_cuts:
+			# Off-street sidewalk alcove position
+			var point_pos = Vector3(x_coord + 8.5, 0.0, z_coord + 8.5)
+			if is_instance_valid(city_gen) and city_gen.has_method("_is_position_in_water"):
+				if not city_gen._is_position_in_water(point_pos):
+					active_emergency_gathering_points.append(point_pos)
 
 func _connect_dialogue_signals() -> void:
 	var dialogue_sys = get_parent().get_node_or_null("DialogueSystem")
@@ -430,8 +449,13 @@ func _process(delta: float) -> void:
 			var current_ped_speed: float = walk_speed
 
 			# --------------------------------------------------------------------------
-			# 0. WEATHER SHELTER SEEKING (RAIN LOGIC)
+			# 0. RED-ALERT LOCKDOWN PANIC & EVASION SPRINT LOGIC
 			# --------------------------------------------------------------------------
+			var city_vfx_node = $"../CityVisualEffects"
+			var is_red_alert_active: bool = false
+			if is_instance_valid(city_vfx_node) and city_vfx_node.get("is_red_alert_lockdown_active") != null:
+				is_red_alert_active = city_vfx_node.is_red_alert_lockdown_active
+
 			var weather_system = $"../WeatherSystem"
 			var is_raining: bool = false
 			if is_instance_valid(weather_system):
@@ -478,7 +502,29 @@ func _process(delta: float) -> void:
 							is_near_shelter = true
 
 			var is_sheltered: bool = false
-			if is_raining:
+			if is_red_alert_active:
+				# Find nearest Emergency Gathering Point across the city grid
+				var nearest_gathering_point: Vector3 = Vector3.ZERO
+				var min_gathering_dist: float = 9999.0
+				for gathering_point in active_emergency_gathering_points:
+					var dist_to_point: float = ped_pos.distance_to(gathering_point)
+					if dist_to_point < min_gathering_dist:
+						min_gathering_dist = dist_to_point
+						nearest_gathering_point = gathering_point
+
+				if min_gathering_dist < 3.0:
+					is_sheltered = true # Reached assembly gathering point! Stand together in lockdown formation
+				elif nearest_gathering_point != Vector3.ZERO:
+					walk_dir = (nearest_gathering_point - ped_pos).normalized()
+					current_ped_speed = walk_speed * 3.8 # High speed panic sprint to assembly point
+					ped.set_meta("walk_direction", walk_dir)
+				elif is_near_shelter:
+					is_sheltered = true
+				elif nearest_building_pos != Vector3.ZERO:
+					walk_dir = (nearest_building_pos - ped_pos).normalized()
+					current_ped_speed = walk_speed * 3.8
+					ped.set_meta("walk_direction", walk_dir)
+			elif is_raining:
 				if is_near_shelter:
 					is_sheltered = true
 				elif nearest_building_pos != Vector3.ZERO:
@@ -1072,9 +1118,28 @@ func _update_concert_crowd(delta: float) -> void:
 		if is_instance_valid(performers_node) and performers_node.has_meta("routine_type"):
 			is_religious_active = true
 
+	var city_vfx_node = get_parent().get_node_or_null("CityVisualEffects")
+	var is_red_alert: bool = false
+	if is_instance_valid(city_vfx_node) and city_vfx_node.get("is_red_alert_lockdown_active") != null:
+		is_red_alert = city_vfx_node.is_red_alert_lockdown_active
+
 	for fan in active_concert_crowd:
 		if not is_instance_valid(fan):
 			continue
+
+		if is_red_alert:
+			# Concert crowd panics under Red Alert: turn toward perimeter and crouch/flee
+			fan.position.y = move_toward(fan.position.y, 0.0, delta * 4.0)
+			var status_led = fan.get_node_or_null("HeadSphere")
+			if is_instance_valid(status_led) and status_led.material_override:
+				var alert_mat = StandardMaterial3D.new()
+				alert_mat.albedo_color = Color(1.0, 0.05, 0.1)
+				alert_mat.emission_enabled = true
+				alert_mat.emission = Color(1.0, 0.05, 0.1)
+				alert_mat.emission_energy_multiplier = 6.0
+				status_led.material_override = alert_mat
+			continue
+
 		var base_p: Vector3 = fan.get_meta("base_pos", fan.position)
 		var idx: int = fan.get_meta("fan_idx", 0)
 		var fan_event_id: String = fan.get_meta("event_id", "PARK_CONCERT")
@@ -1388,9 +1453,10 @@ func _spawn_dodgy_park_character(park: Rect2) -> void:
 	add_child(ped_node)
 	ped_node.global_position = char_pos
 
-	# Face towards streetlamp pole / park corner, looking cool & shady
-	ped_node.look_at(lamp_pos, Vector3.UP)
-	ped_node.rotate_object_local(Vector3.UP, PI) # Back against lamp pole, looking outward into park
+	# Face directly towards park center so front of character & cigarette ember face the park
+	var park_center_look_target = Vector3(center_pos.x, char_pos.y, center_pos.z)
+	ped_node.look_at(park_center_look_target, Vector3.UP)
+	ped_node.rotate_object_local(Vector3.UP, PI) # Flip 180 degrees so character forward axis aligns toward center_pos
 
 	active_dodgy_characters.append(ped_node)
 	print("[PARK DANCERS] Spawned DodgyParkCharacter at ", char_pos, " near streetlamp ", lamp_pos)

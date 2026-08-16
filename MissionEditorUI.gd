@@ -104,8 +104,9 @@ func _build_ui_hierarchy() -> void:
 	style_box.content_margin_bottom = 8
 	root_overlay_panel.add_theme_stylebox_override("panel", style_box)
 	
+	# Global UI theme font sizing for compact display (11px)
 	var custom_theme = Theme.new()
-	custom_theme.default_font_size = 12
+	custom_theme.default_font_size = 11
 	root_overlay_panel.theme = custom_theme
 	
 	var main_vbox = VBoxContainer.new()
@@ -161,10 +162,16 @@ func _build_ui_hierarchy() -> void:
 	left_panel.add_child(btn_hbox)
 	
 	var add_btn = Button.new()
-	add_btn.text = "➕ NEW MISSION"
+	add_btn.text = "➕ NEW"
 	add_btn.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	add_btn.pressed.connect(_on_add_new_mission_pressed)
 	btn_hbox.add_child(add_btn)
+
+	var dup_btn = Button.new()
+	dup_btn.text = "📋 CLONE"
+	dup_btn.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	dup_btn.pressed.connect(_on_duplicate_mission_pressed)
+	btn_hbox.add_child(dup_btn)
 	
 	var delete_btn = Button.new()
 	delete_btn.text = "🗑️ DELETE"
@@ -519,6 +526,19 @@ func _on_add_new_mission_pressed() -> void:
 	active_selected_mission_id = new_id
 	_populate_mission_form()
 	_update_status_banner("✨ CREATED NEW MISSION " + new_id)
+
+func _on_duplicate_mission_pressed() -> void:
+	if not missions_catalog.has(active_selected_mission_id):
+		return
+	var source_mission: Dictionary = missions_catalog[active_selected_mission_id]
+	var cloned_mission: Dictionary = source_mission.duplicate(true)
+	var new_id = active_selected_mission_id + "_copy_" + str(randi() % 1000)
+	cloned_mission["id"] = new_id
+	cloned_mission["name"] = cloned_mission.get("name", "Mission") + " (Copy)"
+	missions_catalog[new_id] = cloned_mission
+	active_selected_mission_id = new_id
+	_refresh_mission_list()
+	_update_status_banner("📋 CLONED MISSION " + new_id)
 
 func _on_delete_mission_pressed() -> void:
 	if missions_catalog.has(active_selected_mission_id):

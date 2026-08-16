@@ -2,6 +2,29 @@
 
 This manual explains how to use the built-in in-game editor suite in **Cyberpunk Macbeth**. Pressing **F1, F2, F3, or F4** during gameplay opens an isolated, paused overlay for editing game data, quests, dialogue trees, and combat encounters.
 
+
+  ### 🔗 How All 4 Editors Connect Seamlessly:                                            
+                                                                                          
+                      ┌─────────────────────────────────────────┐                         
+                      │          F3: DIALOGUE EDITOR            │                         
+                      │  (Create NPC conversation branch nodes) │                         
+                      └───────────────────┬─────────────────────┘                         
+                                          │                                               
+                   ⚡ Choice Action Trigger Dropdown (New!)                               
+              ┌───────────────────────────┴───────────────────────────┐                   
+              │                                                       │                   
+    ┌─────────▼──────────────────────────┐         ┌──────────────────▼─────────────────┐ 
+    │     F4: BANQUO STREET EDITOR       │         │      F2: MACK BATTLES EDITOR       │ 
+    │  (Tail Target, Courier, Recon...)  │         │ (Multi-round War-Rig encounters)  │  
+    └─────────────────┬──────────────────┘         └──────────────────┬─────────────────┘ 
+                      │                                               │                   
+                      └───────────────────────┬───────────────────────┘                   
+                                              │                                           
+                            ┌─────────────────▼─────────────────┐                         
+                            │        F1: DATABASE EDITOR        │                         
+                            │ (Weapons, Upgrades & Enemy Stats) │                         
+                            └───────────────────────────────────┘                         
+  ──────                                                          
 ---
 
 ## 🎹 Quick Function Key Overview
@@ -35,16 +58,16 @@ The **Mack Battles Editor** designs multi-wave combat missions where Mack deploy
 
 ---
 
-### 3. 📜 F3: Dialogue Editor (`F3`)
-The **Dialogue Editor** crafts interactive conversations with NPCs like Mr. Dodgy, Lady M, Porter, and street contacts.
+### 3. 📜 F3: Visual Dialogue Node Graphing Editor (`F3`)
+The **Dialogue Editor** crafts interactive conversations using Godot's visual `GraphEdit` & `GraphNode` canvas interface.
 
-- **Tree Nodes**: Create branching conversation nodes (e.g., `start`, `who_are_you`, `offer_pink_cadillac`).
-- **Choice Options**: Add player choices, link them to target nodes, or use `🔍 Jump To Node` to navigate complex trees.
-- **⚡ Quest Triggers (Connecting Dialogue to Quests)**:
-  Every choice option includes a **Quest Trigger Action** dropdown:
-  1. `NONE (Standard Dialogue Branch)` — Standard conversation continuation.
-  2. `START_STREET_MISSION (Trigger F4 Quest)` — Launches a Banquo street quest created in F4 (e.g., `street_01_pink_cadillac`).
-  3. `START_MACK_BATTLE (Trigger F2 Combat)` — Triggers a Mack War-Rig battle created in F2.
+- **Visual Canvas Nodes**: Drag and position dialogue nodes across an infinite grid canvas (`start`, `who_are_you`, `accept_quest`).
+- **Interactive Wire Dragging**: Drag wires directly between Choice Output ports and target Input ports to visually map branching conversation paths.
+- **⚡ Color-Coded Quest Triggers**:
+  Choice ports change color based on action triggers:
+  1. 🟡 **Gold Port (`NONE`)** — Standard dialogue conversation branch.
+  2. 🟢 **Emerald Port (`START_STREET_MISSION`)** — Launches an F4 Banquo Street Quest (e.g., `street_01_pink_cadillac`).
+  3. 🔴 **Crimson Port (`START_MACK_BATTLE`)** — Triggers an F2 Mack War-Rig Combat encounter.
 
 ---
 

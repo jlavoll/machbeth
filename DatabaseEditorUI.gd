@@ -101,19 +101,15 @@ func _build_ui_hierarchy() -> void:
 	var outer_margin = MarginContainer.new()
 	outer_margin.set_anchors_preset(Control.PRESET_FULL_RECT)
 	outer_margin.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	outer_margin.add_theme_constant_override("margin_left", 0)
-	outer_margin.add_theme_constant_override("margin_right", 0)
-	outer_margin.add_theme_constant_override("margin_top", 0)
-	outer_margin.add_theme_constant_override("margin_bottom", 0)
 	add_child(outer_margin)
 
 	root_overlay_panel = PanelContainer.new()
 	var p_style = StyleBoxFlat.new()
 	p_style.bg_color = Color(0.02, 0.04, 0.08, 0.96)
-	p_style.border_width_left = 3
-	p_style.border_width_top = 3
-	p_style.border_width_right = 3
-	p_style.border_width_bottom = 3
+	p_style.border_width_left = 2
+	p_style.border_width_top = 2
+	p_style.border_width_right = 2
+	p_style.border_width_bottom = 2
 	p_style.border_color = Color(0.0, 0.85, 1.0) # Cyber Cyan Border
 	p_style.content_margin_left = 10
 	p_style.content_margin_right = 10
@@ -121,8 +117,9 @@ func _build_ui_hierarchy() -> void:
 	p_style.content_margin_bottom = 8
 	root_overlay_panel.add_theme_stylebox_override("panel", p_style)
 	
+	# Global UI theme font sizing for compact display (11px)
 	var custom_theme = Theme.new()
-	custom_theme.default_font_size = 12
+	custom_theme.default_font_size = 11
 	root_overlay_panel.theme = custom_theme
 	outer_margin.add_child(root_overlay_panel)
 
@@ -163,7 +160,7 @@ func _build_ui_hierarchy() -> void:
 	body_hbox.add_theme_constant_override("separation", 16)
 	main_vbox.add_child(body_hbox)
 
-	# Left Column: Item List & Add Button
+	# Left Column: Item List & Controls
 	var left_vbox = VBoxContainer.new()
 	left_vbox.custom_minimum_size = Vector2(280, 0)
 	left_vbox.add_theme_constant_override("separation", 8)
@@ -174,10 +171,25 @@ func _build_ui_hierarchy() -> void:
 	catalog_item_list.item_selected.connect(_on_item_selected_in_list)
 	left_vbox.add_child(catalog_item_list)
 
+	var btn_hbox = HBoxContainer.new()
 	var new_entry_btn = Button.new()
-	new_entry_btn.text = "➕ CREATE NEW CATALOG ENTRY"
+	new_entry_btn.text = "➕ Create"
+	new_entry_btn.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	new_entry_btn.pressed.connect(_on_create_new_entry_click)
-	left_vbox.add_child(new_entry_btn)
+	btn_hbox.add_child(new_entry_btn)
+
+	var duplicate_btn = Button.new()
+	duplicate_btn.text = "📋 Clone"
+	duplicate_btn.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	duplicate_btn.pressed.connect(_on_duplicate_entry_click)
+	btn_hbox.add_child(duplicate_btn)
+
+	var sort_btn = Button.new()
+	sort_btn.text = "🔤 Sort A-Z"
+	sort_btn.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	sort_btn.pressed.connect(_on_sort_catalog_alphabetically)
+	btn_hbox.add_child(sort_btn)
+	left_vbox.add_child(btn_hbox)
 
 	# Right Column: Attribute Edit Form Container
 	var right_panel = PanelContainer.new()
@@ -212,11 +224,6 @@ func _build_ui_hierarchy() -> void:
 	status_banner_label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	footer_hbox.add_child(status_banner_label)
 
-	var save_json_btn = Button.new()
-	save_json_btn.text = "💾 SAVE ALL CHANGES TO JSON FILES"
-	save_json_btn.pressed.connect(_save_catalogs_to_json_files)
-	footer_hbox.add_child(save_json_btn)
-
 func _update_status_banner(msg: String) -> void:
 	if is_instance_valid(status_banner_label):
 		status_banner_label.text = msg
@@ -245,6 +252,9 @@ func _refresh_catalog_list() -> void:
 	_clear_form_fields()
 	
 	var active_catalog = _get_current_active_catalog()
+	var selected_idx: int = 0
+	var item_idx: int = 0
+	
 	for item_id in active_catalog.keys():
 		var entry = active_catalog[item_id]
 		var item_name = entry.get("name", item_id)
@@ -258,10 +268,13 @@ func _refresh_catalog_list() -> void:
 			
 		var list_idx = catalog_item_list.add_item(prefix + item_name)
 		catalog_item_list.set_item_metadata(list_idx, item_id)
+		if item_id == active_selected_id:
+			selected_idx = list_idx
+		item_idx += 1
 
 	if catalog_item_list.item_count > 0:
-		catalog_item_list.select(0)
-		_on_item_selected_in_list(0)
+		catalog_item_list.select(selected_idx)
+		_on_item_selected_in_list(selected_idx)
 
 func _on_item_selected_in_list(index: int) -> void:
 	if index < 0 or index >= catalog_item_list.item_count:
@@ -285,17 +298,38 @@ func _build_form_for_selected_item() -> void:
 		
 	var entry_data: Dictionary = active_catalog[active_selected_id]
 	
+	# Section Group Box
+	var group_panel = PanelContainer.new()
+	var g_style = StyleBoxFlat.new()
+	g_style.bg_color = Color(0.04, 0.06, 0.1, 0.8)
+	g_style.border_color = Color(0.0, 0.85, 1.0, 0.4) # Cyan Group Border
+	g_style.set_border_width_all(1)
+	g_style.set_corner_radius_all(4)
+	g_style.set_content_margin_all(8)
+	group_panel.add_theme_stylebox_override("panel", g_style)
+	
+	var group_vbox = VBoxContainer.new()
+	group_vbox.add_theme_constant_override("separation", 8)
+
+	var header_hbox = HBoxContainer.new()
 	var header_title = Label.new()
-	header_title.text = "EDITING ENTRY ID: " + active_selected_id
+	header_title.text = "✏️ EDITING ENTRY ID: " + active_selected_id
 	header_title.add_theme_font_size_override("font_size", 12)
 	header_title.add_theme_color_override("font_color", Color(1.0, 0.85, 0.0))
-	form_fields_container.add_child(header_title)
+	header_hbox.add_child(header_title)
+
+	var duplicate_top_btn = Button.new()
+	duplicate_top_btn.text = "📋 Duplicate Entry"
+	duplicate_top_btn.size_flags_horizontal = Control.SIZE_SHRINK_END
+	duplicate_top_btn.pressed.connect(_on_duplicate_entry_click)
+	header_hbox.add_child(duplicate_top_btn)
+	group_vbox.add_child(header_hbox)
 	
 	for key in entry_data.keys():
 		var val = entry_data[key]
 		var row_hbox = HBoxContainer.new()
 		row_hbox.add_theme_constant_override("separation", 10)
-		form_fields_container.add_child(row_hbox)
+		group_vbox.add_child(row_hbox)
 		
 		var field_label = Label.new()
 		field_label.text = key.capitalize() + ":"
@@ -324,10 +358,27 @@ func _build_form_for_selected_item() -> void:
 			text_line_edit.text_changed.connect(func(new_text): _update_entry_attribute(key, new_text))
 			row_hbox.add_child(text_line_edit)
 
+	var action_btn_hbox = HBoxContainer.new()
+	action_btn_hbox.add_theme_constant_override("separation", 10)
+
+	var save_btn = Button.new()
+	save_btn.text = "💾 SAVE ALL CHANGES TO DISK"
+	save_btn.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	save_btn.add_theme_color_override("font_color", Color(0.2, 1.0, 0.5))
+	save_btn.pressed.connect(_save_catalogs_to_json_files)
+	action_btn_hbox.add_child(save_btn)
+
 	var delete_btn = Button.new()
-	delete_btn.text = "🗑️ DELETE THIS ENTRY FROM CATALOG"
+	delete_btn.text = "🗑️ DELETE ENTRY"
+	delete_btn.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	delete_btn.add_theme_color_override("font_color", Color(1.0, 0.2, 0.2))
 	delete_btn.pressed.connect(_on_delete_entry_click)
-	form_fields_container.add_child(delete_btn)
+	action_btn_hbox.add_child(delete_btn)
+
+	group_vbox.add_child(action_btn_hbox)
+
+	group_panel.add_child(group_vbox)
+	form_fields_container.add_child(group_panel)
 
 func _update_entry_attribute(key: String, new_val) -> void:
 	var active_catalog = _get_current_active_catalog()
@@ -380,8 +431,49 @@ func _on_create_new_entry_click() -> void:
 		}
 		
 	active_catalog[new_id] = new_template
+	active_selected_id = new_id
 	_refresh_catalog_list()
 	_update_status_banner("CREATED NEW CATALOG ENTRY: " + new_id)
+
+func _on_duplicate_entry_click() -> void:
+	var active_catalog = _get_current_active_catalog()
+	if not active_catalog.has(active_selected_id):
+		return
+		
+	var source_data: Dictionary = active_catalog[active_selected_id]
+	var new_cloned_data: Dictionary = source_data.duplicate(true)
+	
+	var cloned_id = active_selected_id + "_copy_" + str(randi() % 1000)
+	new_cloned_data["id"] = cloned_id
+	if new_cloned_data.has("name"):
+		new_cloned_data["name"] = new_cloned_data["name"] + " (Copy)"
+		
+	active_catalog[cloned_id] = new_cloned_data
+	active_selected_id = cloned_id
+	_refresh_catalog_list()
+	_update_status_banner("📋 CLONED ENTRY " + source_data.get("name", active_selected_id) + " -> " + cloned_id)
+
+func _on_sort_catalog_alphabetically() -> void:
+	var active_catalog = _get_current_active_catalog()
+	if active_catalog.is_empty():
+		return
+		
+	var sorted_entries: Array = []
+	for item_id in active_catalog.keys():
+		sorted_entries.append({
+			"id": item_id,
+			"name": active_catalog[item_id].get("name", item_id).to_lower(),
+			"data": active_catalog[item_id]
+		})
+		
+	sorted_entries.sort_custom(func(a, b): return a["name"] < b["name"])
+	
+	active_catalog.clear()
+	for entry_item in sorted_entries:
+		active_catalog[entry_item["id"]] = entry_item["data"]
+		
+	_refresh_catalog_list()
+	_update_status_banner("🔤 SORTED CATALOG ALPHABETICALLY BY NAME")
 
 func _on_delete_entry_click() -> void:
 	var active_catalog = _get_current_active_catalog()

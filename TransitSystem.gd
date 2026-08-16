@@ -48,41 +48,40 @@ func _create_bus_assets() -> void:
 func _setup_transit_network() -> void:
 	var city_gen = get_parent().get_node_or_null("CityGenerator")
 	if not is_instance_valid(city_gen): return
-	
-	var broad_x: float = city_gen.active_broadway_x if "active_broadway_x" in city_gen else 0.0
-	var broad_z: float = city_gen.active_broadway_z if "active_broadway_z" in city_gen else 0.0
-	
+
+	var x_cuts: Array = city_gen.active_x_streets if "active_x_streets" in city_gen and city_gen.active_x_streets.size() > 1 else [-180.0, -90.0, 0.0, 90.0, 180.0]
+	var z_cuts: Array = city_gen.active_z_streets if "active_z_streets" in city_gen and city_gen.active_z_streets.size() > 1 else [-180.0, -90.0, 0.0, 90.0, 180.0]
+
+	# Pick 2 major perpendicular street axes (Central Broadway X and Main Avenue Z)
+	var main_x_street: float = city_gen.active_broadway_x if "active_broadway_x" in city_gen else x_cuts[x_cuts.size() / 2]
+	var main_z_street: float = city_gen.active_broadway_z if "active_broadway_z" in city_gen else z_cuts[z_cuts.size() / 2]
+
+	var north_z: float = z_cuts[0]
+	var south_z: float = z_cuts[z_cuts.size() - 1]
+	var west_x: float = x_cuts[0]
+	var east_x: float = x_cuts[x_cuts.size() - 1]
+
 	# Define 4 Major Cyber-Transit Stations strictly positioned along street curb lanes
 	transit_stations = [
-		Vector3(broad_x + 6.0, 0.0, -220.0), # Station 01: North Gate Station
-		Vector3(broad_x + 6.0, 0.0, 0.0),    # Station 02: Central Duncan Dynamics HQ
-		Vector3(broad_x + 6.0, 0.0, 220.0),  # Station 03: South Pit Garage Station
-		Vector3(-220.0, 0.0, broad_z + 6.0)  # Station 04: West Park Station
+		Vector3(main_x_street + 4.5, 0.0, north_z), # Station 01: North Gate Station
+		Vector3(main_x_street + 4.5, 0.0, 0.0),     # Station 02: Central Duncan Dynamics HQ
+		Vector3(main_x_street + 4.5, 0.0, south_z), # Station 03: South Pit Garage Station
+		Vector3(west_x, 0.0, main_z_street + 4.5)   # Station 04: West Park Station
 	]
 
-	# Define 90-Degree Street Waypoint Routes for each bus so they turn at street intersections!
-	# Loop 01 (Clockwise along Broadway N -> Central -> S -> Intersection -> West -> North)
+	# Lock route to 90-degree street corridor grid intersections (avoids clipping through building plots)
 	var route_01: Array[Vector3] = [
-		Vector3(broad_x + 6.0, 0.0, -220.0), # Station 01
-		Vector3(broad_x + 6.0, 0.0, 0.0),    # Station 02
-		Vector3(broad_x + 6.0, 0.0, 220.0),  # Station 03
-		Vector3(broad_x + 6.0, 0.0, broad_z + 6.0), # Turn Intersection (Broadway / Main Ave)
-		Vector3(-220.0, 0.0, broad_z + 6.0), # Station 04
-		Vector3(-220.0, 0.0, -220.0),        # West-North Corner Street Turn
-		Vector3(broad_x + 6.0, 0.0, -220.0)  # Return to Station 01
+		Vector3(main_x_street + 4.5, 0.0, north_z),     # Station 01 (North Broadway)
+		Vector3(main_x_street + 4.5, 0.0, 0.0),        # Station 02 (Central HQ)
+		Vector3(main_x_street + 4.5, 0.0, south_z),     # Station 03 (South Pit)
+		Vector3(main_x_street + 4.5, 0.0, main_z_street + 4.5), # Broadway / Main Ave Intersection
+		Vector3(west_x, 0.0, main_z_street + 4.5),       # Station 04 (West Park)
+		Vector3(west_x, 0.0, north_z),                   # West-North Intersection Turn
+		Vector3(main_x_street + 4.5, 0.0, north_z)      # Return to Station 01
 	]
 
-	# Loop 02 (Counter-Clockwise)
-	var route_02: Array[Vector3] = [
-		Vector3(-220.0, 0.0, broad_z + 6.0), # Station 04
-		Vector3(broad_x + 6.0, 0.0, broad_z + 6.0), # Turn Intersection
-		Vector3(broad_x + 6.0, 0.0, 220.0),  # Station 03
-		Vector3(broad_x + 6.0, 0.0, 0.0),    # Station 02
-		Vector3(broad_x + 6.0, 0.0, -220.0), # Station 01
-		Vector3(-220.0, 0.0, -220.0),        # West-North Corner Turn
-		Vector3(-220.0, 0.0, broad_z + 6.0)  # Return to Station 04
-	]
-	
+	var route_02: Array[Vector3] = route_01
+
 	_spawn_station_shelters()
 	_spawn_cyber_busses(route_01, route_02)
 
@@ -117,7 +116,7 @@ func _spawn_station_shelters() -> void:
 
 func _spawn_cyber_busses(route_01: Array[Vector3], route_02: Array[Vector3]) -> void:
 	var routes = [route_01, route_02]
-	for b_idx in range(2): # 2 Busses running structured street routes
+	for b_idx in range(1): # 1 single Cyber-Transit streetcar bus running the main loop
 		var bus_node = Node3D.new()
 		bus_node.name = "CyberBus_%d" % (b_idx + 1)
 		var bus_route: Array[Vector3] = routes[b_idx]
@@ -128,8 +127,66 @@ func _spawn_cyber_busses(route_01: Array[Vector3], route_02: Array[Vector3]) -> 
 		mesh_inst.mesh = bus_box_mesh
 		mesh_inst.material_override = bus_material
 		bus_node.add_child(mesh_inst)
-		
-		# Glowing Front Banner
+
+		# 1. Tinted Dark Cyber Glass Windshield & Side Windows
+		var glass_window_mesh_instance = MeshInstance3D.new()
+		var glass_box = BoxMesh.new()
+		glass_box.size = Vector3(3.85, 1.1, 8.4)
+		glass_window_mesh_instance.mesh = glass_box
+		glass_window_mesh_instance.position = Vector3(0.0, 0.4, 0.0)
+
+		var streetcar_glass_material = StandardMaterial3D.new()
+		streetcar_glass_material.albedo_color = Color(0.02, 0.08, 0.14)
+		streetcar_glass_material.metallic = 0.95
+		streetcar_glass_material.roughness = 0.1
+		glass_window_mesh_instance.material_override = streetcar_glass_material
+		bus_node.add_child(glass_window_mesh_instance)
+
+		# 2. Front Headlight Light Bars (High Cyan Emission)
+		var front_headlight_mesh_instance = MeshInstance3D.new()
+		var headlight_box = BoxMesh.new()
+		headlight_box.size = Vector3(3.2, 0.25, 0.1)
+		front_headlight_mesh_instance.mesh = headlight_box
+		front_headlight_mesh_instance.position = Vector3(0.0, -0.6, -4.52)
+
+		var headlight_material = StandardMaterial3D.new()
+		headlight_material.albedo_color = Color(0.0, 0.9, 1.0)
+		headlight_material.emission_enabled = true
+		headlight_material.emission = Color(0.0, 0.9, 1.0)
+		headlight_material.emission_energy_multiplier = 6.0
+		front_headlight_mesh_instance.material_override = headlight_material
+		bus_node.add_child(front_headlight_mesh_instance)
+
+		# 3. Rear Red Brake Lights
+		var rear_taillight_mesh_instance = MeshInstance3D.new()
+		var taillight_box = BoxMesh.new()
+		taillight_box.size = Vector3(3.2, 0.25, 0.1)
+		rear_taillight_mesh_instance.mesh = taillight_box
+		rear_taillight_mesh_instance.position = Vector3(0.0, -0.6, 4.52)
+
+		var taillight_material = StandardMaterial3D.new()
+		taillight_material.albedo_color = Color(1.0, 0.05, 0.2)
+		taillight_material.emission_enabled = true
+		taillight_material.emission = Color(1.0, 0.05, 0.2)
+		taillight_material.emission_energy_multiplier = 6.0
+		rear_taillight_mesh_instance.material_override = taillight_material
+		bus_node.add_child(rear_taillight_mesh_instance)
+
+		# 4. Roof Overhead Pantograph Power Connector Frame
+		var pantograph_frame_instance = MeshInstance3D.new()
+		var pantograph_box = BoxMesh.new()
+		pantograph_box.size = Vector3(1.2, 0.6, 1.6)
+		pantograph_frame_instance.mesh = pantograph_box
+		pantograph_frame_instance.position = Vector3(0.0, 1.9, 0.0)
+
+		var pantograph_material = StandardMaterial3D.new()
+		pantograph_material.albedo_color = Color(0.1, 0.12, 0.15)
+		pantograph_material.metallic = 0.9
+		pantograph_material.roughness = 0.2
+		pantograph_frame_instance.material_override = pantograph_material
+		bus_node.add_child(pantograph_frame_instance)
+
+		# 5. Glowing Front Route Banner
 		var banner = Label3D.new()
 		banner.text = "🚌 LINE 01 // METRO TRANSIT EXPRESS"
 		banner.position = Vector3(0.0, 2.0, -4.6)

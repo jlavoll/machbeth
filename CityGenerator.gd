@@ -127,6 +127,7 @@ func generate_city_from_seed(target_seed: int) -> void:
 	_generate_city_grid()
 	_spawn_exit_points()
 	_spawn_food_trucks()
+	_spawn_steam_manholes()
 	_eject_entities_from_water()
 	
 	var ped_system = get_parent().get_node_or_null("PedestrianSystem")
@@ -265,7 +266,33 @@ func _spawn_food_trucks() -> void:
 			active_food_trucks.append(truck_node)
 			spawned_count += 1
 
+# Spawns localized steam manhole cover vents with pulsing smoke bursts along street corridors
+func _spawn_steam_manholes() -> void:
+	var total_manholes_to_spawn: int = rng.randi_range(12, 20)
+	var scenery_props_script = preload("res://CitySceneryProps.gd")
+	var scenery_props_instance = scenery_props_script.new()
+
+	var manholes_spawned_count: int = 0
+	var attempts_limit: int = 60
+
+	while manholes_spawned_count < total_manholes_to_spawn and attempts_limit > 0:
+		attempts_limit -= 1
+		if active_x_streets.size() == 0 or active_z_streets.size() == 0:
+			break
+
+		var street_x_coord: float = active_x_streets[rng.randi() % active_x_streets.size()]
+		var street_z_coord: float = active_z_streets[rng.randi() % active_z_streets.size()]
+
+		# Offset slightly from the center of the street lane onto street asphalt surface
+		var manhole_world_position = Vector3(street_x_coord + rng.randf_range(-3.5, 3.5), 0.0, street_z_coord + rng.randf_range(-3.5, 3.5))
+
+		if not _is_position_in_water(manhole_world_position):
+			var manhole_node = scenery_props_instance.create_steam_vent_manhole(manhole_world_position)
+			add_child(manhole_node)
+			manholes_spawned_count += 1
+
 # Checks if PlayerCar, ambient traffic cars, or pedestrians are stuck in CyberRiver water and moves them to safe land
+
 func _eject_entities_from_water() -> void:
 	# 1. Eject PlayerCar if stuck in water
 	var player_car = $"../PlayerCar"

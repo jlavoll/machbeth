@@ -8,9 +8,9 @@
    - Core city generator and driving engine remain untouched and decoupled from visual effects, weather, or combat logic.
 
 2. **Descriptive & Non-Generic Naming Conventions**
-   - Variable, constant, and mesh names must be highly expressive, domain-specific, and self-documenting to avoid scope collisions and confusion.
-   - Strictly avoid generic names (`data`, `temp`, `manager`, `obj`, `quad_mesh`, `streak_mat`).
-   - Use clear, thematic terms (`cockpit_hud_overlay`, `cyber_rain_streak_quad_mesh`, `neural_glitch_potency`, `tactile_dashboard_button`, `cyber_war_rig`).
+   - Variable, constant, and mesh names must always be long, descriptive, highly expressive, domain-specific, and self-documenting to avoid scope collisions and confusion.
+   - Strictly avoid generic or short names (`data`, `temp`, `manager`, `obj`, `quad_mesh`, `streak_mat`, `i`, `v`, `tmp`).
+   - Use clear, long, and explicit thematic terms (`cockpit_hud_overlay`, `cyber_rain_streak_quad_mesh`, `neural_glitch_potency`, `tactile_dashboard_button`, `cyber_war_rig`).
 
 3. **Explicit & Obvious Numbers**
    - Keep key tweaking numbers exposed via `@export` variables at the top of scripts.
@@ -42,6 +42,7 @@ graph TD
     A --> H["MusicPlaylistManager (Track Catalog & Audio Streamer)"]
     A --> I["TacticalOvermapManager (Satellite Map & PIP Tracking)"]
     A --> J["BattleTriggerManager (B Key Combat Listener)"]
+    A --> O["CorporateDronePatrolSystem (Aerial Surveillance & Spotlight Scans)"]
     J --> K["BattleSystemManager (ATB Combat Orchestration)"]
     K --> L["CockpitDashboardUI (Windshield HUD & ATB Action Deck)"]
     K --> M["Enemies (Hostile Vehicle Factory & Profiles)"]
@@ -67,4 +68,5 @@ graph TD
 | **`CockpitDashboardUI.gd`** | Renders first-person windshield frame, Orbitron synth-deck dashboard panel, active ATB progress bars, and action buttons. |
 | **`Enemies.gd`** | Defines enemy profiles (Corporate Enforcers, Heavy War-Rigs, Hunter Drones), stats, weaknesses, and 3D hostile mesh generation. |
 | **`NeuralGlitchSystem.gd`** | Tracks Mack's mental glitch gauge, passive decay, glitch intensity triggers, and Banquo ghost button spawns. |
+| **`CorporateDronePatrolSystem.gd`** | Manages aerial corporate surveillance drone flight paths along street grid corridors, alleyway scan pauses, and hostile spotlight alert states upon detecting the player vehicle. |
 

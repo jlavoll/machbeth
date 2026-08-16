@@ -30,6 +30,7 @@
 [ext_resource type="Script" path="res://BattleTelemetryRadarUI.gd" id="28_telemetryui"]
 [ext_resource type="Script" path="res://TransitSystem.gd" id="29_transitsystem"]
 [ext_resource type="Script" path="res://StreetMissionEditorUI.gd" id="30_streeteditor"]
+[ext_resource type="Script" path="res://CorporateDronePatrolSystem.gd" id="31_dronepatrol"]
 
 [sub_resource type="Environment" id="Environment_1"]
 background_mode = 1
@@ -156,6 +157,9 @@ script = ExtResource("16_pedestrians")
 
 [node name="TransitSystem" type="Node3D" parent="." unique_id=1152637485]
 script = ExtResource("29_transitsystem")
+
+[node name="CorporateDronePatrolSystem" type="Node" parent="." unique_id=314592019]
+script = ExtResource("31_dronepatrol")
 
 [node name="PlayerCar" type="CharacterBody3D" parent="." unique_id=1110453537]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1, 0)

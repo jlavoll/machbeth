@@ -39,6 +39,10 @@ var wave_ripple_progress: float = 0.0 # Moves from 0.0 (Corner A) to 1.0 (Corner
 var wave_ripple_speed: float = 0.5    # Completes sweep in ~2 seconds
 var wave_ripple_color: Color = Color(1.0, 1.0, 1.0) # Bright pulse front
 
+# Red Alert Lockdown Mode State
+var is_red_alert_lockdown_active: bool = false
+var red_alert_emergency_color: Color = Color(1.0, 0.05, 0.1) # Emergency Strobe Crimson Red
+
 # Grid line instance reference
 var grid_material_ref: StandardMaterial3D
 
@@ -56,11 +60,13 @@ func _ready() -> void:
 	await get_tree().create_timer(0.2).timeout
 	_find_grid_material_reference()
 
-# Listen for L key shortcut to cycle City Lighting Stages
+# Listen for L key shortcut to cycle City Lighting Stages & K key for Red-Alert Lockdown toggle
 func _unhandled_input(event: InputEvent) -> void:
 	if event is InputEventKey and event.pressed and not event.echo:
 		if event.keycode == KEY_L:
 			cycle_city_light_stage()
+		elif event.keycode == KEY_K:
+			toggle_citywide_red_alert_lockdown()
 
 func _find_grid_material_reference() -> void:
 	if is_instance_valid(city_generator):
@@ -140,7 +146,12 @@ func _process(delta: float) -> void:
 			grid_material_ref.emission_enabled = false
 		else:
 			grid_material_ref.emission_enabled = true
-			if is_hiccup_active:
+			if is_red_alert_lockdown_active:
+				# Flashing emergency strobe red grid (10 Hz strobe frequency)
+				var red_strobe_pulse: float = (sin(Time.get_ticks_msec() * 0.015) * 0.5) + 0.5
+				grid_material_ref.emission = red_alert_emergency_color
+				grid_material_ref.emission_energy_multiplier = (2.0 + red_strobe_pulse * 6.0) * dark_mult
+			elif is_hiccup_active:
 				var rng = RandomNumberGenerator.new()
 				grid_material_ref.emission_energy_multiplier = (0.6 if rng.randf() > 0.5 else (3.0 + 3.0 * visual_effect_potency)) * dark_mult
 				grid_material_ref.emission = Color(1.0, 1.0, 1.0)
@@ -255,6 +266,61 @@ func _apply_city_lighting_stage() -> void:
 			grid_material_ref.emission_energy_multiplier = 3.0 * dark_mult
 
 	print("[CITY VISUALS] City Lighting Stage: ", stage_name)
+
+# ==============================================================================
+# CITYWIDE RED-ALERT LOCKDOWN MODE (TOGGLED VIA 'K' KEY)
+# ==============================================================================
+# Flashes all building window trim, rooftop neon, streetlights, and wireframe grid into red emergency strobe
+func toggle_citywide_red_alert_lockdown() -> void:
+	if is_red_alert_lockdown_active:
+		clear_citywide_red_alert()
+	else:
+		trigger_citywide_red_alert()
+
+func trigger_citywide_red_alert() -> void:
+	is_red_alert_lockdown_active = true
+	print("[ALERT SYSTEM] 🚨 CITYWIDE RED-ALERT LOCKDOWN ACTIVATED! 🚨")
+
+	# Shift volumetric fog atmosphere to deep crimson emergency tint
+	var world_environment_node = $"../WorldEnvironment"
+	if is_instance_valid(world_environment_node) and world_environment_node.environment:
+		world_environment_node.environment.volumetric_fog_albedo = Color(0.8, 0.05, 0.1)
+		world_environment_node.environment.volumetric_fog_emission = Color(0.2, 0.01, 0.02)
+
+	# Override building emission colors to red alert
+	if is_instance_valid(city_generator):
+		_apply_red_alert_materials_recursively(city_generator, true)
+
+func clear_citywide_red_alert() -> void:
+	is_red_alert_lockdown_active = false
+	print("[ALERT SYSTEM] ✅ CITYWIDE RED-ALERT LOCKDOWN CLEARED.")
+
+	# Restore normal volumetric fog atmosphere tint
+	var world_environment_node = $"../WorldEnvironment"
+	if is_instance_valid(world_environment_node) and world_environment_node.environment:
+		world_environment_node.environment.volumetric_fog_albedo = Color(0.35, 0.45, 0.65)
+		world_environment_node.environment.volumetric_fog_emission = Color(0.008, 0.012, 0.025)
+
+	# Restore standard building emission colors
+	if is_instance_valid(city_generator):
+		_apply_red_alert_materials_recursively(city_generator, false)
+
+func _apply_red_alert_materials_recursively(parent_node: Node, enable_red_alert: bool) -> void:
+	for child_node in parent_node.get_children():
+		if child_node is MeshInstance3D and is_instance_valid(child_node.material_override):
+			var node_material = child_node.material_override as StandardMaterial3D
+			if is_instance_valid(node_material) and node_material.emission_enabled:
+				if enable_red_alert:
+					node_material.set_meta("original_emission_color", node_material.emission)
+					node_material.emission = red_alert_emergency_color
+					node_material.emission_energy_multiplier = 6.0
+				else:
+					if node_material.has_meta("original_emission_color"):
+						node_material.emission = node_material.get_meta("original_emission_color")
+					node_material.emission_energy_multiplier = 3.0
+
+		if child_node.get_child_count() > 0:
+			_apply_red_alert_materials_recursively(child_node, enable_red_alert)
 
 # Helper function to recursively update material emission across all city elements (buildings, grass, water, trees)
 func _update_node_lighting_recursively(target_node: Node, mult: float) -> void:

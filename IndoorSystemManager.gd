@@ -550,7 +550,7 @@ func _build_blueprint_grid(parent: Node3D, size_x: int, size_z: int, grid_color:
 	grid_mat.albedo_color = Color(0, 0, 0)
 	grid_mat.emission_enabled = true
 	grid_mat.emission = grid_color
-	grid_mat.emission_energy_multiplier = 4.0
+	grid_mat.emission_energy_multiplier = 1.2 # Toned down blueprint grid glow
 
 	var grid_mesh = ImmediateMesh.new()
 	var grid_inst = MeshInstance3D.new()
@@ -591,7 +591,7 @@ func _build_interior_wall(parent: Node3D, pos: Vector3, size: Vector3, accent_co
 	mat.albedo_color = Color(0.02, 0.04, 0.09)
 	mat.emission_enabled = true
 	mat.emission = accent_color
-	mat.emission_energy_multiplier = 3.0
+	mat.emission_energy_multiplier = 1.0 # Soft ambient wall trim emission
 	mesh_inst.material_override = mat
 	body.add_child(mesh_inst)
 
@@ -614,7 +614,7 @@ func _build_interior_pillar(parent: Node3D, pos: Vector3, size: Vector3, glow_co
 	mat.albedo_color = Color(0.03, 0.06, 0.12)
 	mat.emission_enabled = true
 	mat.emission = glow_color
-	mat.emission_energy_multiplier = 2.5
+	mat.emission_energy_multiplier = 0.8
 	mesh_inst.material_override = mat
 	body.add_child(mesh_inst)
 
@@ -637,7 +637,7 @@ func _build_interior_desk(parent: Node3D, pos: Vector3, size: Vector3, glow_colo
 	mat.albedo_color = Color(0.05, 0.08, 0.15)
 	mat.emission_enabled = true
 	mat.emission = glow_color
-	mat.emission_energy_multiplier = 3.5
+	mat.emission_energy_multiplier = 1.0
 	mesh_inst.material_override = mat
 	body.add_child(mesh_inst)
 
@@ -656,7 +656,7 @@ func _build_exit_door(parent: Node3D, pos: Vector3) -> void:
 	frame_mat.albedo_color = Color(0.05, 0.1, 0.15)
 	frame_mat.emission_enabled = true
 	frame_mat.emission = Color(1.0, 0.0, 0.8) # Radiant Magenta Exit Door
-	frame_mat.emission_energy_multiplier = 6.0
+	frame_mat.emission_energy_multiplier = 2.0
 	frame_inst.material_override = frame_mat
 	door_node.add_child(frame_inst)
 
@@ -676,7 +676,7 @@ func _build_elevator_shaft(parent: Node3D, pos: Vector3) -> void:
 	frame_mat.albedo_color = Color(0.1, 0.08, 0.02)
 	frame_mat.emission_enabled = true
 	frame_mat.emission = Color(1.0, 0.85, 0.0) # High-energy Gold Elevator Frame
-	frame_mat.emission_energy_multiplier = 5.0
+	frame_mat.emission_energy_multiplier = 1.8
 	frame_inst.material_override = frame_mat
 	elev_node.add_child(frame_inst)
 
@@ -813,7 +813,9 @@ func _setup_indoor_hud() -> void:
 	if font_res:
 		indoor_title_label.add_theme_font_override("font", font_res)
 	indoor_title_label.add_theme_font_size_override("font_size", 18)
-	indoor_title_label.add_theme_color_override("font_color", Color(0.0, 1.0, 0.85))
+	indoor_title_label.add_theme_color_override("font_color", Color(1.0, 1.0, 1.0)) # Crisp High-Contrast Pure White Text
+	indoor_title_label.add_theme_color_override("font_outline_color", Color(0.0, 0.0, 0.0))
+	indoor_title_label.add_theme_constant_override("outline_size", 6) # Heavy Black Outline for maximum legibility!
 	indoor_hud_layer.add_child(indoor_title_label)
 
 	# Camera View Mode Key Hint
@@ -823,7 +825,9 @@ func _setup_indoor_hud() -> void:
 	if font_res:
 		indoor_view_label.add_theme_font_override("font", font_res)
 	indoor_view_label.add_theme_font_size_override("font_size", 13)
-	indoor_view_label.add_theme_color_override("font_color", Color(1.0, 0.85, 0.0))
+	indoor_view_label.add_theme_color_override("font_color", Color(1.0, 0.95, 0.4)) # High-Visibility Bright Yellow
+	indoor_view_label.add_theme_color_override("font_outline_color", Color(0.0, 0.0, 0.0))
+	indoor_view_label.add_theme_constant_override("outline_size", 5) # Heavy Black Outline
 	indoor_hud_layer.add_child(indoor_view_label)
 
 	# Interaction Prompt Label
@@ -835,7 +839,9 @@ func _setup_indoor_hud() -> void:
 	if font_res:
 		_indoor_prompt_label.add_theme_font_override("font", font_res)
 	_indoor_prompt_label.add_theme_font_size_override("font_size", 22)
-	_indoor_prompt_label.add_theme_color_override("font_color", Color(1.0, 0.85, 0.0))
+	_indoor_prompt_label.add_theme_color_override("font_color", Color(1.0, 0.95, 0.4))
+	_indoor_prompt_label.add_theme_color_override("font_outline_color", Color(0.0, 0.0, 0.0))
+	_indoor_prompt_label.add_theme_constant_override("outline_size", 7)
 	_indoor_prompt_label.visible = false
 	indoor_hud_layer.add_child(_indoor_prompt_label)
 
@@ -1050,8 +1056,12 @@ func _process(_delta: float) -> void:
 			indoor_camera.current = true
 	else:
 		if is_instance_valid(indoor_fp_camera):
-			indoor_fp_camera.global_position = player_node.global_position + Vector3(0.0, 1.65, 0.0)
-			indoor_fp_camera.rotation = Vector3(_fp_pitch, player_node.rotation.y, 0.0)
+			# Match outdoor over-the-shoulder walking camera (3.2m behind shoulder, eye-level height & pitch angle)
+			var foot_basis = player_node.global_transform.basis
+			var shoulder_offset = foot_basis * Vector3(0.35, 1.6, 1.8)
+			indoor_fp_camera.global_position = player_node.global_position + shoulder_offset
+			var target_look_at = player_node.global_position + Vector3(0.0, 1.4, 0.0) - (foot_basis.z * 5.0)
+			indoor_fp_camera.look_at(target_look_at, Vector3.UP)
 			indoor_fp_camera.current = true
 
 	# --- INTERACTION PROMPT DETECTION ---

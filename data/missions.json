@@ -1,157 +1,196 @@
 {
   "missions": {
     "act1_limo_intercept": {
+      "act": 1.0,
+      "act_title": "Act I: Macbeth's Ambition",
+      "description": "Intercept corporate courier limos supplying the Cawdor perimeter post.",
+      "difficulty_threshold": 1.0,
       "id": "act1_limo_intercept",
       "name": "Act I: Duncan Logistics Limo Intercept",
-      "act": 1,
-      "act_title": "Act I: Macbeth's Ambition",
-      "difficulty_threshold": 1,
-      "description": "Intercept corporate courier limos supplying the Cawdor perimeter post.",
+      "rewards": {
+        "credits": 500.0,
+        "reputation": "Cawdor Defiant (+10)",
+        "scrap": 35.0
+      },
       "rounds": [
         {
-          "round_number": 1,
-          "round_name": "Wave 1 - Vanguard Patrol",
           "enemies": [
             {
               "enemy_id": "cawdor_interceptor_alpha",
-              "equipped_weapons": ["twin_20mm_cannon"],
-              "equipped_upgrades": ["graphene_armor_l1"]
+              "equipped_upgrades": [
+                "graphene_armor_l1"
+              ],
+              "equipped_weapons": [
+                "twin_20mm_cannon"
+              ]
+            },
+            {
+              "enemy_id": "new_enemy_42",
+              "equipped_upgrades": [
+                "graphene_armor_l1"
+              ],
+              "equipped_weapons": [
+                "twin_20mm_cannon"
+              ]
             }
-          ]
+          ],
+          "round_name": "Wave 1 - Vanguard Patrol",
+          "round_number": 1.0
         },
         {
-          "round_number": 2,
-          "round_name": "Wave 2 - Armored Brawler",
           "enemies": [
             {
               "enemy_id": "cawdor_interceptor_beta",
-              "equipped_weapons": ["spike_ram"],
-              "equipped_upgrades": ["graphene_armor_l1"]
+              "equipped_upgrades": [
+                "graphene_armor_l1"
+              ],
+              "equipped_weapons": [
+                "spike_ram"
+              ]
             }
-          ]
+          ],
+          "round_name": "Wave 2 - Armored Brawler",
+          "round_number": 2.0
         }
-      ],
-      "rewards": {
-        "credits": 500,
-        "scrap": 35,
-        "reputation": "Cawdor Defiant (+10)"
-      }
+      ]
     },
     "act2_fife_ambush": {
+      "act": 2.0,
+      "act_title": "Act II: The Crown of Glamis",
+      "description": "Breach heavy exo-troopers besieging the industrial sector.",
+      "difficulty_threshold": 2.0,
       "id": "act2_fife_ambush",
       "name": "Act II: Macduff's Fife Outpost Raid",
-      "act": 2,
-      "act_title": "Act II: The Crown of Glamis",
-      "difficulty_threshold": 2,
-      "description": "Breach heavy exo-troopers besieging the industrial sector.",
+      "rewards": {
+        "credits": 1200.0,
+        "reputation": "Fife Scavenger (+25)",
+        "scrap": 80.0
+      },
       "rounds": [
         {
-          "round_number": 1,
-          "round_name": "Wave 1 - Plasma Exo Squad",
           "enemies": [
             {
               "enemy_id": "fife_exo_trooper_a",
-              "equipped_weapons": ["plasma_rifle_array"],
-              "equipped_upgrades": ["graphene_armor_l2"]
+              "equipped_upgrades": [
+                "graphene_armor_l2"
+              ],
+              "equipped_weapons": [
+                "plasma_rifle_array"
+              ]
             }
-          ]
+          ],
+          "round_name": "Wave 1 - Plasma Exo Squad",
+          "round_number": 1.0
         },
         {
-          "round_number": 2,
-          "round_name": "Wave 2 - Mortar Siege Squad",
           "enemies": [
             {
               "enemy_id": "fife_exo_trooper_b",
-              "equipped_weapons": ["emp_mortar"],
-              "equipped_upgrades": ["graphene_armor_l2"]
+              "equipped_upgrades": [
+                "graphene_armor_l2"
+              ],
+              "equipped_weapons": [
+                "emp_mortar"
+              ]
             }
-          ]
+          ],
+          "round_name": "Wave 2 - Mortar Siege Squad",
+          "round_number": 2.0
         }
-      ],
-      "rewards": {
-        "credits": 1200,
-        "scrap": 80,
-        "reputation": "Fife Scavenger (+25)"
-      }
+      ]
     },
     "act3_norns_swarm": {
+      "act": 3.0,
+      "act_title": "Act III: Banquo's Phantom",
+      "description": "Survive automated AI drone swarms haunting Mack's neural link.",
+      "difficulty_threshold": 3.0,
       "id": "act3_norns_swarm",
       "name": "Act III: The Weird Sisters Drone Swarm",
-      "act": 3,
-      "act_title": "Act III: Banquo's Phantom",
-      "difficulty_threshold": 3,
-      "description": "Survive automated AI drone swarms haunting Mack's neural link.",
+      "rewards": {
+        "credits": 2500.0,
+        "reputation": "Neural Phantom (+40)",
+        "scrap": 150.0
+      },
       "rounds": [
         {
-          "round_number": 1,
-          "round_name": "Wave 1 - Drone Duo",
           "enemies": [
             {
               "enemy_id": "norns_hunter_drone_01",
-              "equipped_weapons": ["laser_cutter"],
-              "equipped_upgrades": []
+              "equipped_upgrades": [],
+              "equipped_weapons": [
+                "laser_cutter"
+              ]
             },
             {
               "enemy_id": "norns_hunter_drone_02",
-              "equipped_weapons": ["disruptor_beam"],
-              "equipped_upgrades": []
+              "equipped_upgrades": [],
+              "equipped_weapons": [
+                "disruptor_beam"
+              ]
             }
-          ]
+          ],
+          "round_name": "Wave 1 - Drone Duo",
+          "round_number": 1.0
         },
         {
-          "round_number": 2,
-          "round_name": "Wave 2 - Nanite Striker",
           "enemies": [
             {
               "enemy_id": "norns_hunter_drone_03",
-              "equipped_weapons": ["nanite_swarm"],
-              "equipped_upgrades": []
+              "equipped_upgrades": [],
+              "equipped_weapons": [
+                "nanite_swarm"
+              ]
             }
-          ]
+          ],
+          "round_name": "Wave 2 - Nanite Striker",
+          "round_number": 2.0
         }
-      ],
-      "rewards": {
-        "credits": 2500,
-        "scrap": 150,
-        "reputation": "Neural Phantom (+40)"
-      }
+      ]
     },
     "act4_dunsinane_gunship": {
+      "act": 4.0,
+      "act_title": "Act IV: Birnam Wood Advances",
+      "description": "Defeat Duncan's Apex Gunship hovering over the city core.",
+      "difficulty_threshold": 4.0,
       "id": "act4_dunsinane_gunship",
       "name": "Act IV: Dunsinane Apex Gunship Strike",
-      "act": 4,
-      "act_title": "Act IV: Birnam Wood Advances",
-      "difficulty_threshold": 4,
-      "description": "Defeat Duncan's Apex Gunship hovering over the city core.",
+      "rewards": {
+        "credits": 5000.0,
+        "reputation": "High King of Dunsinane (+100)",
+        "scrap": 300.0
+      },
       "rounds": [
         {
-          "round_number": 1,
-          "round_name": "Wave 1 - Escort Patrol",
           "enemies": [
             {
               "enemy_id": "fife_exo_trooper_a",
-              "equipped_weapons": ["plasma_rifle_array"],
-              "equipped_upgrades": ["graphene_armor_l2"]
+              "equipped_upgrades": [
+                "graphene_armor_l2"
+              ],
+              "equipped_weapons": [
+                "plasma_rifle_array"
+              ]
             }
-          ]
+          ],
+          "round_name": "Wave 1 - Escort Patrol",
+          "round_number": 1.0
         },
         {
-          "round_number": 2,
-          "round_name": "Boss Wave - Duncan Gunship Apex",
           "enemies": [
             {
               "enemy_id": "duncan_gunship_apex",
-              "equipped_weapons": ["hellfire_rockets"],
-              "equipped_upgrades": ["graphene_armor_l2"]
+              "equipped_upgrades": [
+                "graphene_armor_l2"
+              ],
+              "equipped_weapons": [
+                "hellfire_rockets"
+              ]
             }
-          ]
+          ],
+          "round_name": "Boss Wave - Duncan Gunship Apex",
+          "round_number": 2.0
         }
-      ],
-      "rewards": {
-        "credits": 5000,
-        "scrap": 300,
-        "reputation": "High King of Dunsinane (+100)"
-      }
+      ]
     }
   }
 }

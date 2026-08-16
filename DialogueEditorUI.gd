@@ -1,11 +1,15 @@
 extends CanvasLayer
 
 # ==============================================================================
-# STORY & DIALOGUE BRANCHING EDITOR OVERLAY (DialogueEditorUI.gd)
+# DUAL-MODE STORY & DIALOGUE BRANCHING EDITOR OVERLAY (DialogueEditorUI.gd)
 # ==============================================================================
 # Pressing F3 toggles this overlay on/off and pauses/unpauses the game engine.
-# Isolated overlay for creating, editing, and mapping branching dialogues.
-# Saves & loads directly from res://scripts/*.json dialogue files.
+# Supports 2 seamlessly compatible view modes:
+# 1. GRAPH VIEW: Visual GraphEdit & GraphNode drag-and-drop wire canvas.
+# 2. LIST VIEW: Clean linear ItemList node directory & detailed form editor.
+
+enum EditorViewMode { GRAPH_VIEW, LIST_VIEW }
+var current_view_mode: EditorViewMode = EditorViewMode.GRAPH_VIEW
 
 var is_editor_open: bool = false
 
@@ -13,21 +17,29 @@ var is_editor_open: bool = false
 var dialogue_files_list: Array[String] = []
 var active_file_res_path: String = ""
 var active_dialogue_data: Dictionary = {}
-
 var active_selected_node_id: String = ""
 
-# UI Node References
+# UI Controls
 var root_overlay_panel: PanelContainer = null
 var file_option_button: OptionButton = null
+var mode_toggle_button: Button = null
+var status_banner_label: Label = null
+
+# Containers for Dual-Mode View
+var graph_editor_container: Control = null
+var list_editor_container: Control = null
+
+# Graph View Controls
+var dialogue_graph_edit: GraphEdit = null
+
+# List View Controls
 var node_item_list: ItemList = null
 var form_fields_container: VBoxContainer = null
-var choices_container: VBoxContainer = null
-var status_banner_label: Label = null
 
 func _ready() -> void:
 	process_mode = Node.PROCESS_MODE_ALWAYS
 	layer = 122 # Above F1 (120) and F2 (121)
-	_build_ui_hierarchy()
+	_build_dual_mode_ui_hierarchy()
 	visible = false
 
 func _unhandled_input(event: InputEvent) -> void:
@@ -76,7 +88,7 @@ func _on_dialogue_file_selected(index: int) -> void:
 		return
 	active_file_res_path = dialogue_files_list[index]
 	active_dialogue_data = _read_json_file(active_file_res_path)
-	_refresh_node_list()
+	_refresh_active_view_mode()
 
 func _read_json_file(res_path: String) -> Dictionary:
 	if not FileAccess.file_exists(res_path):
@@ -101,16 +113,35 @@ func _save_current_dialogue_file() -> void:
 		_update_status_banner("💾 SAVED DIALOGUE TO " + active_file_res_path)
 
 # ==============================================================================
-# UI GENERATION
+# DUAL MODE SWITCHING
 # ==============================================================================
 
-func _build_ui_hierarchy() -> void:
+func _on_toggle_view_mode_pressed() -> void:
+	if current_view_mode == EditorViewMode.GRAPH_VIEW:
+		current_view_mode = EditorViewMode.LIST_VIEW
+	else:
+		current_view_mode = EditorViewMode.GRAPH_VIEW
+	_refresh_active_view_mode()
+
+func _refresh_active_view_mode() -> void:
+	if current_view_mode == EditorViewMode.GRAPH_VIEW:
+		if mode_toggle_button: mode_toggle_button.text = "🔀 SWITCH TO LIST VIEW"
+		graph_editor_container.visible = true
+		list_editor_container.visible = false
+		_rebuild_graph_nodes()
+	else:
+		if mode_toggle_button: mode_toggle_button.text = "🕸️ SWITCH TO GRAPH VIEW"
+		graph_editor_container.visible = false
+		list_editor_container.visible = true
+		_refresh_list_nodes()
+
+# ==============================================================================
+# UI HIERARCHY GENERATION
+# ==============================================================================
+
+func _build_dual_mode_ui_hierarchy() -> void:
 	root_overlay_panel = PanelContainer.new()
 	root_overlay_panel.set_anchors_preset(Control.PRESET_FULL_RECT)
-	root_overlay_panel.offset_left = 0
-	root_overlay_panel.offset_top = 0
-	root_overlay_panel.offset_right = 0
-	root_overlay_panel.offset_bottom = 0
 	add_child(root_overlay_panel)
 	
 	var style_box = StyleBoxFlat.new()
@@ -118,22 +149,18 @@ func _build_ui_hierarchy() -> void:
 	style_box.border_color = Color(1.0, 0.45, 0.1, 0.9) # Orange Cyber Glow
 	style_box.set_border_width_all(2)
 	style_box.set_corner_radius_all(6)
-	style_box.content_margin_left = 10
-	style_box.content_margin_right = 10
-	style_box.content_margin_top = 8
-	style_box.content_margin_bottom = 8
 	root_overlay_panel.add_theme_stylebox_override("panel", style_box)
 	
-	# Global UI theme font sizing for compact display
+	# Global UI theme font sizing for compact display (11px)
 	var custom_theme = Theme.new()
-	custom_theme.default_font_size = 12
+	custom_theme.default_font_size = 11
 	root_overlay_panel.theme = custom_theme
-	
+
 	var main_vbox = VBoxContainer.new()
 	main_vbox.add_theme_constant_override("separation", 6)
 	root_overlay_panel.add_child(main_vbox)
 	
-	# Header
+	# Header Toolbar
 	var header_hbox = HBoxContainer.new()
 	main_vbox.add_child(header_hbox)
 	
@@ -151,9 +178,26 @@ func _build_ui_hierarchy() -> void:
 	file_option_button.item_selected.connect(_on_dialogue_file_selected)
 	header_hbox.add_child(file_option_button)
 	
-	var new_file_btn = Button.new(); new_file_btn.text = "➕ New Story File"
+	var new_file_btn = Button.new(); new_file_btn.text = "➕ New File"
 	new_file_btn.pressed.connect(_on_create_new_story_file_pressed)
 	header_hbox.add_child(new_file_btn)
+	
+	header_hbox.add_child(VSeparator.new())
+
+	# Mode Toggle Button
+	mode_toggle_button = Button.new()
+	mode_toggle_button.text = "🔀 SWITCH TO LIST VIEW"
+	mode_toggle_button.pressed.connect(_on_toggle_view_mode_pressed)
+	header_hbox.add_child(mode_toggle_button)
+
+	var add_node_btn = Button.new(); add_node_btn.text = "➕ Add Node"
+	add_node_btn.pressed.connect(_on_add_new_node_pressed)
+	header_hbox.add_child(add_node_btn)
+
+	var save_btn = Button.new(); save_btn.text = "💾 Save All"
+	save_btn.add_theme_color_override("font_color", Color(0.2, 1.0, 0.5))
+	save_btn.pressed.connect(_save_current_dialogue_file)
+	header_hbox.add_child(save_btn)
 	
 	header_hbox.add_child(VSeparator.new())
 	
@@ -169,355 +213,447 @@ func _build_ui_hierarchy() -> void:
 	header_hbox.add_child(close_btn)
 	
 	main_vbox.add_child(HSeparator.new())
-	
-	# Split View Container
-	var split_container = HSplitContainer.new()
-	split_container.size_flags_vertical = Control.SIZE_EXPAND_FILL
-	split_container.split_offset = 260
-	main_vbox.add_child(split_container)
-	
-	# Left: Node Tree Directory
+
+	# Content Area
+	var content_container = PanelContainer.new()
+	content_container.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	content_container.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	main_vbox.add_child(content_container)
+
+	# --- 1. GRAPH VIEW CONTAINER ---
+	graph_editor_container = MarginContainer.new()
+	graph_editor_container.set_anchors_preset(Control.PRESET_FULL_RECT)
+	content_container.add_child(graph_editor_container)
+
+	dialogue_graph_edit = GraphEdit.new()
+	dialogue_graph_edit.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	dialogue_graph_edit.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	dialogue_graph_edit.snapping_enabled = true
+	dialogue_graph_edit.snapping_distance = 20
+	dialogue_graph_edit.connection_request.connect(_on_graph_connection_request)
+	dialogue_graph_edit.disconnection_request.connect(_on_graph_disconnection_request)
+	dialogue_graph_edit.delete_nodes_request.connect(_on_graph_delete_nodes_request)
+	graph_editor_container.add_child(dialogue_graph_edit)
+
+	# --- 2. LIST VIEW CONTAINER ---
+	list_editor_container = HSplitContainer.new()
+	list_editor_container.set_anchors_preset(Control.PRESET_FULL_RECT)
+	(list_editor_container as HSplitContainer).split_offset = 260
+	list_editor_container.visible = false
+	content_container.add_child(list_editor_container)
+
+	# Left: Node List Directory
 	var left_panel = VBoxContainer.new()
-	split_container.add_child(left_panel)
-	
+	list_editor_container.add_child(left_panel)
+
 	var list_title = Label.new()
 	list_title.text = "🔀 STORY BRANCH NODES"
 	list_title.add_theme_color_override("font_color", Color(1.0, 0.8, 0.2))
 	left_panel.add_child(list_title)
-	
+
 	node_item_list = ItemList.new()
 	node_item_list.size_flags_vertical = Control.SIZE_EXPAND_FILL
-	node_item_list.item_selected.connect(_on_node_selected)
+	node_item_list.item_selected.connect(_on_list_node_selected)
 	left_panel.add_child(node_item_list)
-	
-	var btn_hbox = HBoxContainer.new()
-	left_panel.add_child(btn_hbox)
-	
-	var add_node_btn = Button.new()
-	add_node_btn.text = "➕ Add Node"
-	add_node_btn.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	add_node_btn.pressed.connect(_on_add_new_node_pressed)
-	btn_hbox.add_child(add_node_btn)
-	
-	var delete_node_btn = Button.new()
-	delete_node_btn.text = "🗑️ Delete"
-	delete_node_btn.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	delete_node_btn.pressed.connect(_on_delete_node_pressed)
-	btn_hbox.add_child(delete_node_btn)
-	
-	# Right: Detailed Form & Branching Matrix
+
+	# Right: Detailed Form Panel
 	var right_scroll = ScrollContainer.new()
 	right_scroll.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	right_scroll.size_flags_vertical = Control.SIZE_EXPAND_FILL
-	split_container.add_child(right_scroll)
-	
+	list_editor_container.add_child(right_scroll)
+
 	form_fields_container = VBoxContainer.new()
 	form_fields_container.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	form_fields_container.add_theme_constant_override("separation", 10)
 	right_scroll.add_child(form_fields_container)
 
-# ==============================================================================
-# REFRESH & POPULATION
-# ==============================================================================
-
 func _update_status_banner(msg: String) -> void:
 	if status_banner_label:
 		status_banner_label.text = msg
 
-func _refresh_node_list() -> void:
-	node_item_list.clear()
-	var nodes_dict = active_dialogue_data.get("nodes", {})
-	
+# ==============================================================================
+# MODE 1: GRAPH VIEW IMPLEMENTATION
+# ==============================================================================
+
+func _rebuild_graph_nodes() -> void:
+	if not is_instance_valid(dialogue_graph_edit): return
+	dialogue_graph_edit.clear_connections()
+	for child in dialogue_graph_edit.get_children():
+		if child is GraphNode: child.queue_free()
+
+	var nodes_dict: Dictionary = active_dialogue_data.get("nodes", {})
+	var layout_x: float = 80.0
+	var layout_y: float = 60.0
+	var column_index: int = 0
+
 	for node_id in nodes_dict.keys():
-		var node_data = nodes_dict[node_id]
-		var choices = node_data.get("choices", [])
-		var branch_count = choices.size()
-		var display_text = node_id + " (" + str(branch_count) + " branches)"
-		if node_id == "start":
-			display_text = "⭐ " + display_text
-		node_item_list.add_item(display_text)
-		node_item_list.set_item_metadata(node_item_list.get_item_count() - 1, node_id)
-		
-	if nodes_dict.size() > 0:
-		node_item_list.select(0)
-		_on_node_selected(0)
+		var node_data: Dictionary = nodes_dict[node_id]
+		var graph_node = _construct_single_graph_node(node_id, node_data)
+		var stored_pos = node_data.get("editor_position", Vector2(layout_x + (column_index % 3) * 360.0, layout_y + (column_index / 3) * 260.0))
+		graph_node.position_offset = Vector2(stored_pos.x if typeof(stored_pos) == TYPE_VECTOR2 else stored_pos.get("x", 100), stored_pos.y if typeof(stored_pos) == TYPE_VECTOR2 else stored_pos.get("y", 100))
+		dialogue_graph_edit.add_child(graph_node)
+		column_index += 1
 
-func _on_node_selected(index: int) -> void:
-	active_selected_node_id = node_item_list.get_item_metadata(index)
-	_populate_node_form()
+	for node_id in nodes_dict.keys():
+		var choices: Array = nodes_dict[node_id].get("choices", [])
+		for choice_idx in range(choices.size()):
+			var target_node_id: String = choices[choice_idx].get("target", "")
+			if not target_node_id.is_empty() and nodes_dict.has(target_node_id):
+				dialogue_graph_edit.connect_node(node_id, choice_idx, target_node_id, 0)
 
-func _populate_node_form() -> void:
-	for child in form_fields_container.get_children():
-		child.queue_free()
-		
-	var nodes_dict = active_dialogue_data.get("nodes", {})
-	if not nodes_dict.has(active_selected_node_id):
-		return
-		
-	var node_data = nodes_dict[active_selected_node_id]
-	
-	# --- SECTION 1: SPEAKER & FILE METADATA ---
-	var sec1_label = Label.new()
-	sec1_label.text = "🗣️ SPEAKER IDENTITY & OVERLAY PROFILE"
-	sec1_label.add_theme_color_override("font_color", Color(0.2, 0.9, 1.0))
-	form_fields_container.add_child(sec1_label)
-	
-	var s_hbox = HBoxContainer.new()
-	form_fields_container.add_child(s_hbox)
-	
-	var lbl_spk = Label.new(); lbl_spk.text = "Speaker Name:"; lbl_spk.custom_minimum_size.x = 110
-	s_hbox.add_child(lbl_spk)
-	var edit_spk = LineEdit.new(); edit_spk.text = active_dialogue_data.get("speaker_display_name", ""); edit_spk.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	edit_spk.text_changed.connect(func(txt): active_dialogue_data["speaker_display_name"] = txt)
-	s_hbox.add_child(edit_spk)
-	
-	var lbl_sub = Label.new(); lbl_sub.text = " Subtitle / Neural ID:"
-	s_hbox.add_child(lbl_sub)
-	var edit_sub = LineEdit.new(); edit_sub.text = active_dialogue_data.get("speaker_subtitle", ""); edit_sub.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	edit_sub.text_changed.connect(func(txt): active_dialogue_data["speaker_subtitle"] = txt)
-	s_hbox.add_child(edit_sub)
-	
-	# Accent Color
-	var c_hbox = HBoxContainer.new()
-	form_fields_container.add_child(c_hbox)
-	var lbl_clr = Label.new(); lbl_clr.text = "Accent Color (Hex):"; lbl_clr.custom_minimum_size.x = 140
-	c_hbox.add_child(lbl_clr)
-	var edit_clr = LineEdit.new(); edit_clr.text = active_dialogue_data.get("speaker_color", "#FF6B35"); edit_clr.custom_minimum_size.x = 120
-	edit_clr.text_changed.connect(func(txt): active_dialogue_data["speaker_color"] = txt)
-	c_hbox.add_child(edit_clr)
-	
-	form_fields_container.add_child(HSeparator.new())
-	
-	# --- SECTION 2: NODE DETAILS & DIALOGUE BODY ---
-	var sec2_label = Label.new()
-	sec2_label.text = "📝 NODE CONTENT [" + active_selected_node_id + "]"
-	sec2_label.add_theme_color_override("font_color", Color(1.0, 0.8, 0.2))
-	form_fields_container.add_child(sec2_label)
-	
-	var id_hbox = HBoxContainer.new()
-	form_fields_container.add_child(id_hbox)
-	var lbl_nid = Label.new(); lbl_nid.text = "Node ID:"; lbl_nid.custom_minimum_size.x = 110
-	id_hbox.add_child(lbl_nid)
-	var edit_nid = LineEdit.new(); edit_nid.text = active_selected_node_id; edit_nid.custom_minimum_size.x = 200
-	edit_nid.text_submitted.connect(func(new_id):
-		if new_id != active_selected_node_id and not new_id.is_empty():
-			nodes_dict[new_id] = nodes_dict[active_selected_node_id]
-			nodes_dict.erase(active_selected_node_id)
-			active_selected_node_id = new_id
-			_refresh_node_list()
-	)
-	id_hbox.add_child(edit_nid)
-	
-	var emo_hbox = HBoxContainer.new()
-	form_fields_container.add_child(emo_hbox)
-	var lbl_emo = Label.new(); lbl_emo.text = "Emotion State:"; lbl_emo.custom_minimum_size.x = 110
-	emo_hbox.add_child(lbl_emo)
-	var edit_emo = LineEdit.new()
-	edit_emo.text = node_data.get("portrait_emotion", "neutral")
-	edit_emo.custom_minimum_size.x = 200
-	edit_emo.text_changed.connect(func(txt): node_data["portrait_emotion"] = txt)
-	emo_hbox.add_child(edit_emo)
-	
-	# Dialogue Rich Text Box
-	var txt_lbl = Label.new(); txt_lbl.text = "Dialogue Body Text:"
-	form_fields_container.add_child(txt_lbl)
+func _construct_single_graph_node(node_id: String, node_data: Dictionary) -> GraphNode:
+	var graph_node = GraphNode.new()
+	graph_node.name = node_id
+	graph_node.title = ("⭐ START: " if node_id == "start" else "NODE: ") + node_id
+	graph_node.resizable = true
+	graph_node.custom_minimum_size = Vector2(300, 220)
+	graph_node.set_slot(0, true, 0, Color(0.0, 0.85, 1.0), false, 0, Color(1.0, 1.0, 1.0))
+
 	var text_edit = TextEdit.new()
-	text_edit.custom_minimum_size.y = 100
 	text_edit.text = node_data.get("text", "")
+	text_edit.custom_minimum_size.y = 70
 	text_edit.wrap_mode = TextEdit.LINE_WRAPPING_BOUNDARY
 	text_edit.text_changed.connect(func(): node_data["text"] = text_edit.text)
-	form_fields_container.add_child(text_edit)
-	
-	form_fields_container.add_child(HSeparator.new())
-	
-	# --- SECTION 3: BRANCHING CHOICE MATRIX ---
-	var sec3_label = Label.new()
-	sec3_label.text = "🔀 BRANCHING CHOICES MATRIX"
-	sec3_label.add_theme_color_override("font_color", Color(1.0, 0.45, 0.1))
-	form_fields_container.add_child(sec3_label)
-	
-	var choices_array = node_data.get("choices", [])
-	
-	var ch_top_hbox = HBoxContainer.new()
-	form_fields_container.add_child(ch_top_hbox)
-	var add_choice_btn = Button.new(); add_choice_btn.text = "➕ Add Choice Option"
-	add_choice_btn.pressed.connect(func():
-		choices_array.append({ "text": "New dialogue response...", "target": "exit" })
-		node_data["choices"] = choices_array
-		_populate_node_form()
-	)
-	ch_top_hbox.add_child(add_choice_btn)
-	
-	choices_container = VBoxContainer.new()
-	choices_container.add_theme_constant_override("separation", 8)
-	form_fields_container.add_child(choices_container)
-	
-	# Render each choice row
-	for c_idx in range(choices_array.size()):
-		var choice_entry = choices_array[c_idx]
-		var c_box = PanelContainer.new()
-		var c_style = StyleBoxFlat.new()
-		c_style.bg_color = Color(0.06, 0.08, 0.12, 0.85)
-		c_style.set_border_width_all(1)
-		c_style.border_color = Color(1.0, 0.45, 0.1, 0.5)
-		c_box.add_theme_stylebox_override("panel", c_style)
-		choices_container.add_child(c_box)
+	graph_node.add_child(text_edit)
+
+	var choices: Array = node_data.get("choices", [])
+	for choice_idx in range(choices.size()):
+		var choice_entry: Dictionary = choices[choice_idx]
+		var choice_hbox = HBoxContainer.new()
 		
-		var c_vbox = VBoxContainer.new()
-		c_box.add_child(c_vbox)
+		var choice_line = LineEdit.new()
+		choice_line.text = choice_entry.get("text", "")
+		choice_line.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		choice_line.text_changed.connect(func(txt): choice_entry["text"] = txt)
+		choice_hbox.add_child(choice_line)
+
+		var action_opt = OptionButton.new()
+		action_opt.add_item("💬 DIALOGUE ONLY", 0); action_opt.add_item("🚀 F4 QUEST", 1); action_opt.add_item("⚔️ F2 BATTLE", 2)
+		var curr_action: String = choice_entry.get("action", "")
+		if curr_action == "START_STREET_MISSION": action_opt.select(1)
+		elif curr_action == "START_MACK_BATTLE": action_opt.select(2)
+		else: action_opt.select(0)
+
+		action_opt.item_selected.connect(func(idx):
+			match idx:
+				0: choice_entry.erase("action"); choice_entry.erase("quest_id")
+				1: choice_entry["action"] = "START_STREET_MISSION"; choice_entry["quest_id"] = "street_01_pink_cadillac"
+				2: choice_entry["action"] = "START_MACK_BATTLE"; choice_entry["quest_id"] = "mission_act1_war_rig"
+		)
+		choice_hbox.add_child(action_opt)
+		graph_node.add_child(choice_hbox)
+
+		var port_color = Color(1.0, 0.85, 0.0)
+		if curr_action == "START_STREET_MISSION": port_color = Color(0.0, 1.0, 0.4)
+		elif curr_action == "START_MACK_BATTLE": port_color = Color(1.0, 0.1, 0.2)
+		graph_node.set_slot(choice_idx + 1, false, 0, Color(1.0, 1.0, 1.0), true, 0, port_color)
+
+	var add_choice_btn = Button.new(); add_choice_btn.text = "➕ Add Choice"
+	add_choice_btn.pressed.connect(func():
+		choices.append({"text": "New choice option...", "target": "exit"})
+		_rebuild_graph_nodes()
+	)
+	graph_node.add_child(add_choice_btn)
+	return graph_node
+
+func _on_graph_connection_request(from_node: StringName, from_port: int, to_node: StringName, _to_port: int) -> void:
+	var nodes_dict: Dictionary = active_dialogue_data.get("nodes", {})
+	if nodes_dict.has(from_node):
+		var choices: Array = nodes_dict[from_node].get("choices", [])
+		if from_port < choices.size():
+			choices[from_port]["target"] = String(to_node)
+			dialogue_graph_edit.connect_node(from_node, from_port, to_node, 0)
+			_update_status_banner("⚡ WIRED CHOICE " + str(from_port) + " -> " + String(to_node))
+
+func _on_graph_disconnection_request(from_node: StringName, from_port: int, to_node: StringName, _to_port: int) -> void:
+	var nodes_dict: Dictionary = active_dialogue_data.get("nodes", {})
+	if nodes_dict.has(from_node):
+		var choices: Array = nodes_dict[from_node].get("choices", [])
+		if from_port < choices.size():
+			choices[from_port]["target"] = "exit"
+			dialogue_graph_edit.disconnect_node(from_node, from_port, to_node, 0)
+			_update_status_banner("✂️ UNWIRED CHOICE BRANCH")
+
+func _on_graph_delete_nodes_request(node_names: Array[StringName]) -> void:
+	var nodes_dict: Dictionary = active_dialogue_data.get("nodes", {})
+	for node_name in node_names:
+		var n_str = String(node_name)
+		if n_str != "start" and nodes_dict.has(n_str): nodes_dict.erase(n_str)
+	_rebuild_graph_nodes()
+
+# ==============================================================================
+# MODE 2: ORIGINAL LIST VIEW IMPLEMENTATION
+# ==============================================================================
+
+func _refresh_list_nodes() -> void:
+	node_item_list.clear()
+	var nodes_dict = active_dialogue_data.get("nodes", {})
+	var selected_idx: int = 0
+	var item_idx: int = 0
+	
+	for node_id in nodes_dict.keys():
+		var choices = nodes_dict[node_id].get("choices", [])
+		var display_text = node_id + " (" + str(choices.size()) + " branches)"
+		if node_id == "start": display_text = "⭐ " + display_text
+		node_item_list.add_item(display_text)
+		node_item_list.set_item_metadata(item_idx, node_id)
+		
+		if node_id == active_selected_node_id:
+			selected_idx = item_idx
+		item_idx += 1
+		
+	if nodes_dict.size() > 0:
+		node_item_list.select(selected_idx)
+		active_selected_node_id = node_item_list.get_item_metadata(selected_idx)
+		_populate_list_form()
+
+func _on_list_node_selected(index: int) -> void:
+	active_selected_node_id = node_item_list.get_item_metadata(index)
+	_populate_list_form()
+
+func _populate_list_form() -> void:
+	for child in form_fields_container.get_children(): child.queue_free()
+	var nodes_dict: Dictionary = active_dialogue_data.get("nodes", {})
+	if not nodes_dict.has(active_selected_node_id): return
+	var node_data: Dictionary = nodes_dict[active_selected_node_id]
+
+	# --- GROUP 1: GLOBAL SPEAKER METADATA GROUP BOX ---
+	var speaker_group_panel = PanelContainer.new()
+	var group1_style = StyleBoxFlat.new()
+	group1_style.bg_color = Color(0.05, 0.07, 0.12, 0.8)
+	group1_style.border_color = Color(0.0, 0.85, 1.0, 0.4) # Cyan Group Border
+	group1_style.set_border_width_all(1)
+	group1_style.set_corner_radius_all(4)
+	group1_style.set_content_margin_all(8)
+	speaker_group_panel.add_theme_stylebox_override("panel", group1_style)
+
+	var speaker_vbox = VBoxContainer.new()
+	var group1_title = Label.new()
+	group1_title.text = "👤 SPEAKER METADATA"
+	group1_title.add_theme_color_override("font_color", Color(0.0, 0.85, 1.0))
+	group1_title.add_theme_font_size_override("font_size", 12)
+	speaker_vbox.add_child(group1_title)
+
+	var speaker_box = HBoxContainer.new()
+	var name_lbl = Label.new(); name_lbl.text = "Name:"
+	speaker_box.add_child(name_lbl)
+	var name_edit = LineEdit.new()
+	name_edit.text = active_dialogue_data.get("speaker_display_name", "NPC")
+	name_edit.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	name_edit.text_changed.connect(func(txt): active_dialogue_data["speaker_display_name"] = txt)
+	speaker_box.add_child(name_edit)
+
+	var sub_edit = LineEdit.new()
+	sub_edit.text = active_dialogue_data.get("speaker_subtitle", "")
+	sub_edit.placeholder_text = "Subtitle / Neural ID..."
+	sub_edit.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	sub_edit.text_changed.connect(func(txt): active_dialogue_data["speaker_subtitle"] = txt)
+	speaker_box.add_child(sub_edit)
+	speaker_vbox.add_child(speaker_box)
+	speaker_group_panel.add_child(speaker_vbox)
+	form_fields_container.add_child(speaker_group_panel)
+
+	# --- GROUP 2: NODE PROMPT & EMOTION GROUP BOX ---
+	var node_group_panel = PanelContainer.new()
+	var group2_style = StyleBoxFlat.new()
+	group2_style.bg_color = Color(0.05, 0.07, 0.12, 0.8)
+	group2_style.border_color = Color(1.0, 0.85, 0.0, 0.4) # Gold Group Border
+	group2_style.set_border_width_all(1)
+	group2_style.set_corner_radius_all(4)
+	group2_style.set_content_margin_all(8)
+	node_group_panel.add_theme_stylebox_override("panel", group2_style)
+
+	var node_vbox = VBoxContainer.new()
+	node_vbox.add_theme_constant_override("separation", 6)
+	
+	var header_hbox = HBoxContainer.new()
+	var title_lbl = Label.new()
+	title_lbl.text = "💬 EDITING NODE: " + active_selected_node_id
+	title_lbl.add_theme_color_override("font_color", Color(1.0, 0.85, 0.0))
+	title_lbl.add_theme_font_size_override("font_size", 13)
+	header_hbox.add_child(title_lbl)
+
+	var delete_btn = Button.new(); delete_btn.text = "🗑️ Delete Node"
+	delete_btn.size_flags_horizontal = Control.SIZE_SHRINK_END
+	delete_btn.add_theme_color_override("font_color", Color(1.0, 0.2, 0.2))
+	delete_btn.pressed.connect(func():
+		if active_selected_node_id != "start":
+			nodes_dict.erase(active_selected_node_id)
+			_refresh_list_nodes()
+			_update_status_banner("🗑️ DELETED NODE " + active_selected_node_id)
+	)
+	header_hbox.add_child(delete_btn)
+	node_vbox.add_child(header_hbox)
+
+	var emotion_hbox = HBoxContainer.new()
+	var emo_lbl = Label.new(); emo_lbl.text = "Portrait Emotion:"
+	emotion_hbox.add_child(emo_lbl)
+	var emo_opt = OptionButton.new()
+	var emotions = ["neutral", "smirk", "angry", "shocked", "thoughtful"]
+	for emo in emotions: emo_opt.add_item(emo)
+	var curr_emo = node_data.get("portrait_emotion", "neutral")
+	var emo_idx = emotions.find(curr_emo)
+	emo_opt.select(emo_idx if emo_idx >= 0 else 0)
+	emo_opt.item_selected.connect(func(idx): node_data["portrait_emotion"] = emotions[idx])
+	emotion_hbox.add_child(emo_opt)
+	node_vbox.add_child(emotion_hbox)
+
+	var text_lbl = Label.new(); text_lbl.text = "Dialogue Line Text:"
+	node_vbox.add_child(text_lbl)
+	var text_edit = TextEdit.new()
+	text_edit.text = node_data.get("text", "")
+	text_edit.custom_minimum_size.y = 70
+	text_edit.wrap_mode = TextEdit.LINE_WRAPPING_BOUNDARY
+	text_edit.text_changed.connect(func(): node_data["text"] = text_edit.text)
+	node_vbox.add_child(text_edit)
+
+	node_group_panel.add_child(node_vbox)
+	form_fields_container.add_child(node_group_panel)
+
+	# --- GROUP 3: CHOICE BRANCHES & QUEST TRIGGERS GROUP BOX ---
+	var choices_group_panel = PanelContainer.new()
+	var group3_style = StyleBoxFlat.new()
+	group3_style.bg_color = Color(0.04, 0.06, 0.1, 0.8)
+	group3_style.border_color = Color(1.0, 0.45, 0.1, 0.4) # Orange Group Border
+	group3_style.set_border_width_all(1)
+	group3_style.set_corner_radius_all(4)
+	group3_style.set_content_margin_all(8)
+	choices_group_panel.add_theme_stylebox_override("panel", group3_style)
+
+	var choices_vbox = VBoxContainer.new()
+	choices_vbox.add_theme_constant_override("separation", 8)
+
+	var choices_hdr = Label.new(); choices_hdr.text = "🌿 CHOICE BRANCHES & QUEST TRIGGERS"
+	choices_hdr.add_theme_color_override("font_color", Color(1.0, 0.45, 0.1))
+	choices_hdr.add_theme_font_size_override("font_size", 12)
+	choices_vbox.add_child(choices_hdr)
+
+	var choices: Array = node_data.get("choices", [])
+	for i in range(choices.size()):
+		var choice_entry: Dictionary = choices[i]
+		
+		# Individual Choice Card Panel
+		var choice_card = PanelContainer.new()
+		var card_style = StyleBoxFlat.new()
+		card_style.bg_color = Color(0.07, 0.09, 0.14)
+		card_style.border_color = Color(0.2, 0.25, 0.35)
+		card_style.set_border_width_all(1)
+		card_style.set_corner_radius_all(3)
+		card_style.set_content_margin_all(6)
+		choice_card.add_theme_stylebox_override("panel", card_style)
+
+		var choice_card_vbox = VBoxContainer.new()
 		
 		var row1_hbox = HBoxContainer.new()
-		c_vbox.add_child(row1_hbox)
-		
-		var c_lbl = Label.new(); c_lbl.text = "Option #" + str(c_idx + 1) + ":"
-		row1_hbox.add_child(c_lbl)
-		
-		var edit_ctxt = LineEdit.new(); edit_ctxt.text = choice_entry.get("text", ""); edit_ctxt.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-		edit_ctxt.text_changed.connect(func(txt): choice_entry["text"] = txt)
-		row1_hbox.add_child(edit_ctxt)
-		
-		var del_c_btn = Button.new(); del_c_btn.text = "❌"
-		del_c_btn.pressed.connect(func():
-			choices_array.remove_at(c_idx)
-			node_data["choices"] = choices_array
-			_populate_node_form()
-		)
-		row1_hbox.add_child(del_c_btn)
-		
-		var row2_hbox = HBoxContainer.new()
-		c_vbox.add_child(row2_hbox)
-		
-		var tgt_lbl = Label.new(); tgt_lbl.text = "  ➡ Target Branch Node:"
-		row2_hbox.add_child(tgt_lbl)
-		
-		# Target Node Dropdown
+		var choice_num_lbl = Label.new()
+		choice_num_lbl.text = "#" + str(i + 1) + ":" # Compact prefix
+		choice_num_lbl.add_theme_color_override("font_color", Color(0.7, 0.7, 0.7))
+		row1_hbox.add_child(choice_num_lbl)
+
+		var line = LineEdit.new()
+		line.text = choice_entry.get("text", "")
+		line.placeholder_text = "Choice text..."
+		line.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		line.text_changed.connect(func(txt): choice_entry["text"] = txt)
+		row1_hbox.add_child(line)
+
+		var target_lbl = Label.new(); target_lbl.text = "Target:"
+		row1_hbox.add_child(target_lbl)
+
+		# Dynamic OptionButton dropdown of all valid dialogue node targets in the current story file
 		var target_opt = OptionButton.new()
-		var all_node_ids = nodes_dict.keys()
-		if not all_node_ids.has("exit"):
-			all_node_ids.append("exit")
-			
-		var curr_tgt = choice_entry.get("target", "exit")
-		var sel_tgt_idx = 0
-		for tid_i in range(all_node_ids.size()):
-			var tid = all_node_ids[tid_i]
-			target_opt.add_item(tid)
-			if tid == curr_tgt:
-				sel_tgt_idx = tid_i
-		target_opt.select(sel_tgt_idx)
-		target_opt.item_selected.connect(func(t_idx):
-			choice_entry["target"] = all_node_ids[t_idx]
-		)
-		row2_hbox.add_child(target_opt)
+		target_opt.size_flags_horizontal = Control.SIZE_EXPAND_FILL # Gives generous horizontal width to Target!
 		
-		# Row 3: Optional Quest Action Trigger Dropdown
-		var row3_hbox = HBoxContainer.new()
-		c_vbox.add_child(row3_hbox)
+		var valid_target_ids: Array[String] = ["exit"]
+		for nid in nodes_dict.keys():
+			valid_target_ids.append(nid)
 
-		var q_action_lbl = Label.new(); q_action_lbl.text = "  ⚡ Quest Trigger Action:"
-		row3_hbox.add_child(q_action_lbl)
+		for tid in valid_target_ids:
+			target_opt.add_item("🚪 exit" if tid == "exit" else ("⭐ " + tid if tid == "start" else "🔀 " + tid))
 
-		var q_action_opt = OptionButton.new()
-		q_action_opt.add_item("NONE (Standard Dialogue Branch)")
-		q_action_opt.add_item("START_STREET_MISSION (Trigger F4 Quest)")
-		q_action_opt.add_item("START_MACK_BATTLE (Trigger F2 Combat)")
+		var current_target: String = choice_entry.get("target", "exit")
+		var selected_target_idx = valid_target_ids.find(current_target)
+		target_opt.select(selected_target_idx if selected_target_idx >= 0 else 0)
 
-		var curr_action: String = choice_entry.get("action", "")
-		if curr_action == "START_STREET_MISSION":
-			q_action_opt.select(1)
-		elif curr_action == "START_MACK_BATTLE":
-			q_action_opt.select(2)
-		else:
-			q_action_opt.select(0)
-
-		row3_hbox.add_child(q_action_opt)
-
-		var q_id_lbl = Label.new(); q_id_lbl.text = "  Target Quest/Battle ID:"
-		row3_hbox.add_child(q_id_lbl)
-
-		var edit_q_id = LineEdit.new()
-		edit_q_id.text = choice_entry.get("quest_id", "")
-		edit_q_id.placeholder_text = "e.g. street_01_pink_cadillac"
-		edit_q_id.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-		edit_q_id.text_changed.connect(func(txt): choice_entry["quest_id"] = txt)
-		row3_hbox.add_child(edit_q_id)
-
-		q_action_opt.item_selected.connect(func(idx):
-			if idx == 1:
-				choice_entry["action"] = "START_STREET_MISSION"
-			elif idx == 2:
-				choice_entry["action"] = "START_MACK_BATTLE"
-			else:
-				choice_entry.erase("action")
-				choice_entry.erase("quest_id")
+		target_opt.item_selected.connect(func(idx):
+			if idx >= 0 and idx < valid_target_ids.size():
+				choice_entry["target"] = valid_target_ids[idx]
 		)
+		row1_hbox.add_child(target_opt)
+		choice_card_vbox.add_child(row1_hbox)
 
-		# Quick Jump to Target Node Button
-		var jump_btn = Button.new(); jump_btn.text = "🔍 Jump To Node"
+		var row2_hbox = HBoxContainer.new()
+		var action_opt = OptionButton.new()
+		action_opt.add_item("💬 STANDARD DIALOGUE BRANCH", 0)
+		action_opt.add_item("🚀 TRIGGER F4 STREET QUEST", 1)
+		action_opt.add_item("⚔️ TRIGGER F2 MACK BATTLE", 2)
+		var curr_action: String = choice_entry.get("action", "")
+		if curr_action == "START_STREET_MISSION": action_opt.select(1)
+		elif curr_action == "START_MACK_BATTLE": action_opt.select(2)
+		else: action_opt.select(0)
+
+		action_opt.item_selected.connect(func(idx):
+			match idx:
+				0:
+					choice_entry.erase("action")
+					choice_entry.erase("quest_id")
+				1:
+					choice_entry["action"] = "START_STREET_MISSION"
+					choice_entry["quest_id"] = "street_01_pink_cadillac"
+				2:
+					choice_entry["action"] = "START_MACK_BATTLE"
+					choice_entry["quest_id"] = "mission_act1_war_rig"
+		)
+		row2_hbox.add_child(action_opt)
+
+		var jump_btn = Button.new(); jump_btn.text = "🔍 JUMP TO TARGET NODE"
+		jump_btn.tooltip_text = "Selects and opens the targeted node directly in the form editor"
 		jump_btn.pressed.connect(func():
 			var target_id = choice_entry.get("target", "")
 			if nodes_dict.has(target_id):
 				active_selected_node_id = target_id
-				_refresh_node_list()
-				# Find index in ItemList
-				for i in range(node_item_list.get_item_count()):
-					if node_item_list.get_item_metadata(i) == target_id:
-						node_item_list.select(i)
-						break
+				_refresh_list_nodes()
 		)
 		row2_hbox.add_child(jump_btn)
-		
-		# Quick Create & Link Target Node Button
-		var quick_create_btn = Button.new(); quick_create_btn.text = "➕ Create & Link New Node"
+
+		var quick_create_btn = Button.new(); quick_create_btn.text = "➕ Create & Link Node"
 		quick_create_btn.pressed.connect(func():
 			var new_target_id = "branch_" + str(Time.get_ticks_msec())
 			nodes_dict[new_target_id] = {
-				"text": "Continuation line for " + choice_entry.get("text", "") + "...",
+				"text": "Continuation line...",
 				"portrait_emotion": "neutral",
-				"choices": [
-					{ "text": "Continue... [Leave]", "target": "exit" }
-				]
+				"choices": [ { "text": "Continue...", "target": "exit" } ]
 			}
 			choice_entry["target"] = new_target_id
 			active_selected_node_id = new_target_id
-			_refresh_node_list()
+			_refresh_list_nodes()
 		)
 		row2_hbox.add_child(quick_create_btn)
-	
-	# --- SECTION 4: SAVE FILE ---
-	form_fields_container.add_child(HSeparator.new())
-	var save_btn = Button.new()
-	save_btn.text = "💾 SAVE STORY FILE TO DISK (" + active_file_res_path + ")"
-	save_btn.custom_minimum_size.y = 38
-	save_btn.add_theme_color_override("font_color", Color(0.2, 1.0, 0.5))
-	save_btn.pressed.connect(_save_current_dialogue_file)
-	form_fields_container.add_child(save_btn)
 
-# ==============================================================================
-# NODE CREATION & DELETION
-# ==============================================================================
+		choice_card_vbox.add_child(row2_hbox)
+		choice_card.add_child(choice_card_vbox)
+		choices_vbox.add_child(choice_card)
+
+	var add_choice_btn = Button.new(); add_choice_btn.text = "➕ Add Choice Branch Option"
+	add_choice_btn.pressed.connect(func():
+		choices.append({"text": "New choice option...", "target": "exit"})
+		_populate_list_form()
+	)
+	choices_vbox.add_child(add_choice_btn)
+	choices_group_panel.add_child(choices_vbox)
+	form_fields_container.add_child(choices_group_panel)
 
 func _on_add_new_node_pressed() -> void:
-	var nodes_dict = active_dialogue_data.get("nodes", {})
+	var nodes_dict: Dictionary = active_dialogue_data.get("nodes", {})
 	var new_id = "node_" + str(Time.get_ticks_msec())
 	nodes_dict[new_id] = {
-		"text": "Enter new dialogue text here...",
+		"text": "Enter dialogue line...",
 		"portrait_emotion": "neutral",
-		"choices": [
-			{ "text": "End conversation [Leave]", "target": "exit" }
-		]
+		"choices": [ { "text": "Continue...", "target": "exit" } ]
 	}
 	active_dialogue_data["nodes"] = nodes_dict
-	_refresh_node_list()
-	active_selected_node_id = new_id
-	_populate_node_form()
-	_update_status_banner("✨ CREATED NEW DIALOGUE NODE " + new_id)
-
-func _on_delete_node_pressed() -> void:
-	var nodes_dict = active_dialogue_data.get("nodes", {})
-	if nodes_dict.has(active_selected_node_id) and active_selected_node_id != "start":
-		nodes_dict.erase(active_selected_node_id)
-		_refresh_node_list()
-		_update_status_banner("🗑️ DELETED NODE")
+	_refresh_active_view_mode()
+	_update_status_banner("✨ CREATED NODE " + new_id)
 
 func _on_create_new_story_file_pressed() -> void:
 	var file_name = "new_story_" + str(Time.get_ticks_msec()) + ".json"
@@ -530,9 +666,7 @@ func _on_create_new_story_file_pressed() -> void:
 			"start": {
 				"text": "Start conversation line...",
 				"portrait_emotion": "neutral",
-				"choices": [
-					{ "text": "Goodbye. [Leave]", "target": "exit" }
-				]
+				"choices": [ { "text": "Goodbye. [Leave]", "target": "exit" } ]
 			}
 		}
 	}

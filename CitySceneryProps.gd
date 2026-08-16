@@ -343,3 +343,70 @@ func create_parked_vehicle(spawn_pos: Vector3, facing_dir: Vector3, car_color: C
 	car_root.add_child(static_body)
 
 	return car_root
+
+# ==============================================================================
+# LOCALIZED STEAM MANHOLE VENT PROP FACTORY
+# ==============================================================================
+# Creates a localized street manhole cover with periodic small bursts of steam smoke!
+func create_steam_vent_manhole(spawn_position_world: Vector3) -> Node3D:
+	var vent_root_node = Node3D.new()
+	vent_root_node.name = "SteamVentManholeProp"
+	vent_root_node.position = spawn_position_world
+
+	# 1. Circular Metallic Manhole Grate Disk Mesh
+	var manhole_mesh_instance = MeshInstance3D.new()
+	manhole_mesh_instance.name = "ManholeGrateDisk"
+	var cylinder_disk_mesh = CylinderMesh.new()
+	cylinder_disk_mesh.top_radius = 0.55
+	cylinder_disk_mesh.bottom_radius = 0.55
+	cylinder_disk_mesh.height = 0.04
+	manhole_mesh_instance.mesh = cylinder_disk_mesh
+	manhole_mesh_instance.position = Vector3(0.0, 0.02, 0.0)
+
+	var manhole_material = StandardMaterial3D.new()
+	manhole_material.albedo_color = Color(0.12, 0.12, 0.15) # Dark cast iron street grate
+	manhole_material.metallic = 0.85
+	manhole_material.roughness = 0.4
+	manhole_mesh_instance.material_override = manhole_material
+	vent_root_node.add_child(manhole_mesh_instance)
+
+	# 2. Localized Small Burst GPU Steam Emitter
+	var burst_steam_gpu_emitter = GPUParticles3D.new()
+	burst_steam_gpu_emitter.name = "LocalizedSteamBurstEmitter"
+	burst_steam_gpu_emitter.amount = 16
+	burst_steam_gpu_emitter.lifetime = 1.6
+	burst_steam_gpu_emitter.explosiveness = 0.85 # Pulsing burst behavior
+	burst_steam_gpu_emitter.randomness = 0.4
+	burst_steam_gpu_emitter.position = Vector3(0.0, 0.05, 0.0)
+
+	var steam_process_material = ParticleProcessMaterial.new()
+	steam_process_material.emission_shape = ParticleProcessMaterial.EMISSION_SHAPE_SPHERE
+	steam_process_material.emission_sphere_radius = 0.35
+
+	steam_process_material.direction = Vector3(0.0, 1.0, 0.0) # Upward burst out of grate
+	steam_process_material.spread = 15.0 # Tight vertical plume burst
+	steam_process_material.initial_velocity_min = 2.0
+	steam_process_material.initial_velocity_max = 4.0
+	steam_process_material.gravity = Vector3(0.0, 0.3, 0.0) # Slow rising thermal dissipating smoke
+	steam_process_material.scale_min = 0.4
+	steam_process_material.scale_max = 1.4
+
+	burst_steam_gpu_emitter.process_material = steam_process_material
+
+	# Small translucent smoke quad particle
+	var smoke_quad_mesh = QuadMesh.new()
+	smoke_quad_mesh.size = Vector2(0.8, 0.8)
+
+	var smoke_material = StandardMaterial3D.new()
+	smoke_material.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
+	smoke_material.albedo_color = Color(0.85, 0.9, 0.95, 0.3) # Translucent white-blue steam smoke
+	smoke_material.shading_mode = BaseMaterial3D.SHADING_MODE_PER_PIXEL
+	smoke_material.roughness = 0.8
+	smoke_material.billboard_mode = BaseMaterial3D.BILLBOARD_PARTICLES
+
+	smoke_quad_mesh.material = smoke_material
+	burst_steam_gpu_emitter.draw_pass_1 = smoke_quad_mesh
+
+	vent_root_node.add_child(burst_steam_gpu_emitter)
+
+	return vent_root_node
