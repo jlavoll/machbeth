@@ -143,6 +143,18 @@
       "rate_of_fire": 2.5,
       "required_slots": 1.0,
       "weapon_type": "Kinetic"
+    },
+    "twin_20mm_cannon_copy_236": {
+      "accuracy_bonus": 4.0,
+      "crit_threshold": 19.0,
+      "damage_max": 26.0,
+      "damage_min": 18.0,
+      "description": "Standard corporate interceptor cannon.",
+      "id": "twin_20mm_cannon_copy_236",
+      "name": "Twin 20mm Cannon MkII",
+      "rate_of_fire": 2.6,
+      "required_slots": 2.0,
+      "weapon_type": "Kinetic"
     }
   }
 }

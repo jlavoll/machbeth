@@ -4,6 +4,21 @@
 todo:
 all dialogue things should be in json files simialr to the one that is triggered by the letter "t"
 
+- Dialogs & Dialogue Editor:
+  - Add a "Familiarity" threshold for dialogue lines (e.g. initial talk with NPC like Mr. Dodgy has Familiarity = 1; npc won't offer missions until familiarity is higher).
+  - Add dialogue "Familiarity Score Modifier" per line (+1, +2, max +5).
+- Battle Editor:
+  - Add a "Simulate Now" option with an equipment screen to equip Mack first for testing various configurations.
+- Timed Missions & Penalties:
+  - Timed mission pop-ups must include a countdown timer that automatically fails the mission when it reaches 0.
+  - Add mission failure penalties options: fee to pay, faction score penalty / lower liking, or mission giver's familiarity score reduction.
+- Missions & Familiarity:
+  - Missions must have a "Familiarity Needed" threshold (lowest level missions unlocked first, exclusive ones unlocked later).
+- Vehicle Controls & Audio:
+  - Hold Shift to speed up/boost in the player car.
+  - Skidding sound effect for sharp turns at high speeds.
+  - Short tire skid audio effect when accelerating from a stop/low speed.
+
 also:
 Well, acktually: to make this system far more scalable, readable, and performant, the biggest win lies in moving away from a single monolithic script (PedestrianSystem.gd) that handles generation, state management, movement, geometry checks, array filtering, and UI dialogue for every archetype.  Here are the key structural improvements for refactoring:1. Extract Archetypes into Dedicated State Classes or Sub-NodesRight now, _process and _update_archetype_behaviors iterate through separate tracking arrays (active_pedestrians, active_park_dancers, active_fixers, etc.) and branch using meta-variables.  The Refactor: Create a base PedestrianAgent class (extending CharacterBody3D) with its own internal State Machine (or State pattern sub-nodes).Why: Each agent handles its own physics, timer updates, and state transitions locally (_physics_process). PedestrianSystem transitions into a clean manager/factory responsible solely for spawning, pooling, and spatial distribution.  res://
 ├── scripts/
