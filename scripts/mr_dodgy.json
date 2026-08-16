@@ -1,5 +1,23 @@
 {
 	"nodes": {
+		"accept_data_drop": {
+			"choices": [
+				{
+					"target": "exit",
+					"text": "\"I'll deliver it fast.\""
+				}
+			],
+			"text": "Run fast, Banquo! The clock is tickin'!"
+		},
+		"accept_pink_cadillac": {
+			"choices": [
+				{
+					"target": "exit",
+					"text": "\"I'm on it, Dodgy.\""
+				}
+			],
+			"text": "Good luck out there, Banquo. Keep your distance and don't let 'em spot you!"
+		},
 		"city_secrets": {
 			"choices": [
 				{
@@ -9,6 +27,23 @@
 			],
 			"text": "Secrets? Plenty. Watch out for the parking lot boys in red and purple... and don't drive into the canal unless you like swimming with synth-eels."
 		},
+		"dodgy_quests": {
+			"choices": [
+				{
+					"target": "offer_pink_cadillac",
+					"text": "\"Tell me about the Pink Cadillac.\""
+				},
+				{
+					"target": "offer_data_drop",
+					"text": "\"Need anything delivered?\""
+				},
+				{
+					"target": "exit",
+					"text": "\"Never mind.\""
+				}
+			],
+			"text": "Street's always buzzin' if you know where to look. What kind of work are you lookin' for, Banquo?"
+		},
 		"hanging_around": {
 			"choices": [
 				{
@@ -17,6 +52,32 @@
 				}
 			],
 			"text": "Best shadow in the district. The light keeps the corporate drones away, and the dancers over there keep the music loud enough to drown out bad thoughts."
+		},
+		"offer_data_drop": {
+			"choices": [
+				{
+					"target": "accept_data_drop",
+					"text": "\"I'll take the encrypted drive to Porter.\""
+				},
+				{
+					"target": "exit",
+					"text": "\"Not right now.\""
+				}
+			],
+			"text": "I got an encrypted Syndicate data-chip that needs to get to Porter at The Pit Garage. You got 90 seconds before the corporate scanners lock it down!"
+		},
+		"offer_pink_cadillac": {
+			"choices": [
+				{
+					"target": "accept_pink_cadillac",
+					"text": "\"I'll tail the Pink Cadillac.\""
+				},
+				{
+					"target": "exit",
+					"text": "\"Sounds risky. I'll pass.\""
+				}
+			],
+			"text": "Word on the grid is a suspicious hot pink Cadillac is cruisin' through West Park Plaza. Tail it at a safe distance (15m-40m) without raisin' suspicion!"
 		},
 		"start": {
 			"choices": [
@@ -37,68 +98,7 @@
 					"text": "\"Sorry, I've got to go.\""
 				}
 			],
-			"text": "Hey there stranger, come talk to an old man?"
-		},
-		"dodgy_quests": {
-			"choices": [
-				{
-					"target": "offer_pink_cadillac",
-					"text": "\"Tell me about the Pink Cadillac.\""
-				},
-				{
-					"target": "offer_data_drop",
-					"text": "\"Need anything delivered?\""
-				},
-				{
-					"target": "exit",
-					"text": "\"Never mind.\""
-				}
-			],
-			"text": "Street's always buzzin' if you know where to look. What kind of work are you lookin' for, Banquo?"
-		},
-		"offer_pink_cadillac": {
-			"choices": [
-				{
-					"target": "accept_pink_cadillac",
-					"text": "\"I'll tail the Pink Cadillac.\""
-				},
-				{
-					"target": "exit",
-					"text": "\"Sounds risky. I'll pass.\""
-				}
-			],
-			"text": "Word on the grid is a suspicious hot pink Cadillac is cruisin' through West Park Plaza. Tail it at a safe distance (15m-40m) without raisin' suspicion!"
-		},
-		"accept_pink_cadillac": {
-			"choices": [
-				{
-					"target": "exit",
-					"text": "\"I'm on it, Dodgy.\""
-				}
-			],
-			"text": "Good luck out there, Banquo. Keep your distance and don't let 'em spot you!"
-		},
-		"offer_data_drop": {
-			"choices": [
-				{
-					"target": "accept_data_drop",
-					"text": "\"I'll take the encrypted drive to Porter.\""
-				},
-				{
-					"target": "exit",
-					"text": "\"Not right now.\""
-				}
-			],
-			"text": "I got an encrypted Syndicate data-chip that needs to get to Porter at The Pit Garage. You got 90 seconds before the corporate scanners lock it down!"
-		},
-		"accept_data_drop": {
-			"choices": [
-				{
-					"target": "exit",
-					"text": "\"I'll deliver it fast.\""
-				}
-			],
-			"text": "Run fast, Banquo! The clock is tickin'!"
+			"text": "Nevermind me, I'm just a dodgy old man standing at corner of the park. Damn, I miss the crows that used to live here. "
 		},
 		"who_are_you": {
 			"choices": [
