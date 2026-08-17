@@ -305,12 +305,16 @@ func _spawn_goal_line_beacon(q_data: Dictionary) -> void:
 		target_pos = Vector3(0.0, 0.1, -180.0)
 	elif q_data.get("type", "") == "EAVESDROP_RECON":
 		target_pos = Vector3(0.0, 0.1, 10.0) # Near park stage
-	else:
-		return # No static goal line needed (e.g. mobile tailing)
+	# 5. Sync Target Position to Tactical Overmap Manager (M Key Map)
+	var overmap = get_parent().get_node_or_null("TacticalOvermapManager")
+	if is_instance_valid(overmap):
+		overmap.has_active_delivery = true
+		overmap.delivery_target_pos = target_pos
 
 	var beacon = Node3D.new()
 	beacon.name = "ActiveMissionGoalBeacon"
 	beacon.position = target_pos
+
 
 	# Glowing Neon Ring on ground
 	var ring = MeshInstance3D.new()
@@ -328,33 +332,35 @@ func _spawn_goal_line_beacon(q_data: Dictionary) -> void:
 	ring.material_override = r_mat
 	beacon.add_child(ring)
 
-	# Vertical Sky Beam
+	# Vertical Sky Beam (120m towering laser beacon visible from across the whole city grid)
 	var beam = MeshInstance3D.new()
 	var b_cyl = CylinderMesh.new()
-	b_cyl.top_radius = 0.5
-	b_cyl.bottom_radius = 0.5
-	b_cyl.height = 35.0
+	b_cyl.top_radius = 1.2
+	b_cyl.bottom_radius = 1.2
+	b_cyl.height = 120.0
 	beam.mesh = b_cyl
-	beam.position = Vector3(0.0, 17.5, 0.0)
+	beam.position = Vector3(0.0, 60.0, 0.0)
 	var b_mat = StandardMaterial3D.new()
-	b_mat.albedo_color = Color(1.0, 0.85, 0.0, 0.25)
+	b_mat.albedo_color = Color(1.0, 0.85, 0.0, 0.4)
 	b_mat.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
 	b_mat.emission_enabled = true
 	b_mat.emission = Color(1.0, 0.85, 0.0)
-	b_mat.emission_energy_multiplier = 5.0
+	b_mat.emission_energy_multiplier = 8.0
 	beam.material_override = b_mat
 	beacon.add_child(beam)
 
-	# Floating 3D Label
+	# Floating 3D Label with quest title
+	var q_title: String = q_data.get("title", "MISSION OBJECTIVE")
 	var lbl = Label3D.new()
-	lbl.text = "🏁 MISSION GOAL LINE // DROP-OFF"
-	lbl.position = Vector3(0.0, 4.5, 0.0)
-	lbl.font_size = 24
-	lbl.pixel_size = 0.006
-	lbl.modulate = Color(1.0, 0.85, 0.0)
+	lbl.text = "🎯 " + q_title + "\n[INTERCEPT ZONE // RADIUS 22m]"
+	lbl.position = Vector3(0.0, 6.0, 0.0)
+	lbl.font_size = 32
+	lbl.pixel_size = 0.007
+	lbl.modulate = Color(1.0, 0.9, 0.1)
 	lbl.outline_modulate = Color(0.0, 0.0, 0.0)
-	lbl.outline_size = 8
+	lbl.outline_size = 12
 	beacon.add_child(lbl)
+
 
 	get_parent().add_child(beacon)
 	active_goal_beacon_node = beacon

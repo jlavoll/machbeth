@@ -367,14 +367,42 @@ func _process(_delta: float) -> void:
 		var player_unprojected_screen_position: Vector2 = map_camera.unproject_position(tracked_pos)
 		player_blip_marker.position = player_unprojected_screen_position - (player_blip_marker.size / 2.0)
 
-		# Delivery blip update
+		# Active Mission Objective / Delivery blip update (High-Visibility Animated Pulsing Marker)
 		if is_instance_valid(delivery_blip_marker):
 			if has_active_delivery:
 				delivery_blip_marker.visible = true
 				var deliv_screen_pos: Vector2 = map_camera.unproject_position(delivery_target_pos)
+				
+				# High-visibility pulsing animation (scale & glow)
+				var pulse_t: float = Time.get_ticks_msec() / 1000.0
+				var pulse_scale: float = 14.0 + (sin(pulse_t * 6.0) + 1.0) * 4.0 # 14px to 22px
+				var pulse_alpha: float = 0.6 + (sin(pulse_t * 6.0) + 1.0) * 0.2 # 0.6 to 1.0
+				
+				delivery_blip_marker.size = Vector2(pulse_scale, pulse_scale)
+				delivery_blip_marker.color = Color(1.0, 0.85, 0.0, pulse_alpha)
 				delivery_blip_marker.position = deliv_screen_pos - (delivery_blip_marker.size / 2.0)
+				
+				# Add/update floating text label next to blip marker
+				var deliv_label: Label = map_overlay_panel.get_node_or_null("ActiveDeliveryBlipLabel")
+				if not is_instance_valid(deliv_label):
+					deliv_label = Label.new()
+					deliv_label.name = "ActiveDeliveryBlipLabel"
+					deliv_label.add_theme_font_override("font", orbitron_font)
+					deliv_label.add_theme_font_size_override("font_size", 11)
+					deliv_label.add_theme_color_override("font_color", Color(1.0, 0.9, 0.2))
+					map_overlay_panel.add_child(deliv_label)
+				
+				var q_mgr = $"../QuestManager"
+				var q_title: String = q_mgr.active_quest_data.get("title", "MISSION OBJECTIVE") if is_instance_valid(q_mgr) and q_mgr.active_quest_id != "" else "MISSION TARGET"
+				deliv_label.text = "🎯 " + q_title
+				deliv_label.position = deliv_screen_pos + Vector2(16, -8)
+				deliv_label.visible = true
 			else:
 				delivery_blip_marker.visible = false
+				var deliv_label: Label = map_overlay_panel.get_node_or_null("ActiveDeliveryBlipLabel")
+				if is_instance_valid(deliv_label):
+					deliv_label.visible = false
+
 
 		# Special Location Blips Update
 		_update_single_blip(hq_blip_marker, city_gen.hq_door_pos if is_instance_valid(city_gen) else Vector3.ZERO)
