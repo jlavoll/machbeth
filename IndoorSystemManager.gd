@@ -1278,17 +1278,13 @@ func _process(_delta: float) -> void:
 				var active_drone = drones[_current_surv_drone_idx % drones.size()]
 				if is_instance_valid(active_drone):
 					var drone_pos: Vector3 = active_drone.global_position
-					# Position camera under drone nose, pointing straight forward along flight path with slight downward pitch
-					var forward_dir: Vector3 = -active_drone.global_transform.basis.z.normalized()
-					duncan_drone_cam.global_position = drone_pos + (forward_dir * 0.8) + Vector3(0.0, -0.3, 0.0)
-					duncan_drone_cam.global_transform = active_drone.global_transform
-					duncan_drone_cam.rotation_degrees.x -= 15.0 # Slight downward pitch forward view
+					duncan_drone_cam.global_position = drone_pos + Vector3(0.0, -0.4, 0.0)
+					duncan_drone_cam.global_rotation_degrees = active_drone.global_rotation_degrees + Vector3(-35.0, 0.0, 0.0)
 
 					if is_instance_valid(duncan_drone_header_lbl):
-						duncan_drone_header_lbl.text = "🚁 PATROL DRONE [UNIT 0%d] // FORWARD CAM" % (_current_surv_drone_idx + 1)
+						duncan_drone_header_lbl.text = "🚁 PATROL DRONE [UNIT 0%d] // GIMBAL CAM" % (_current_surv_drone_idx + 1)
 					if is_instance_valid(duncan_drone_telemetry_lbl):
 						duncan_drone_telemetry_lbl.text = "ALTITUDE: %.1fM // POS: [%.0f, %.0f] // STATUS: NOMINAL" % [drone_pos.y, drone_pos.x, drone_pos.z]
-
 
 	var player_node: Node3D = player_car.on_foot_node if (player_car.is_on_foot and is_instance_valid(player_car.on_foot_node)) else null
 	if not is_instance_valid(player_node):
