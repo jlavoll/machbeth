@@ -845,9 +845,12 @@ func start_simulated_mission(mission_id: String, round_idx: int = 0) -> void:
 			"ac": 12 + i,
 			"atk_bonus": 3 + i,
 			"weapon": "Twin 20mm Autocannon",
+			"dmg": "18-28 Kinetic",
 			"weakness": "EMP / ICE-Breaker Hacks",
-			"threat": "LEVEL %d" % (i + 2)
+			"threat": "LEVEL %d" % (i + 2),
+			"icon": "🚙"
 		})
+
 
 	# Open the Battle Telemetry Radar Screen
 	var radar_ui = get_parent().get_node_or_null("BattleTelemetryRadarUI")
@@ -1213,11 +1216,14 @@ func _update_telemetry_hud() -> void:
 				var threat: String = enemy.get("threat", "STANDARD")
 				var weakness: String = enemy.get("weakness", "Kinetic Fire")
 
-				scan_text += "[color=#FFCC00]%s %s[/color] [color=#FF8800][%s][/color]\n" % [enemy["icon"], enemy["name"], threat]
-				scan_text += "[color=#88CCFF]  ⚔️ Weapon System:[/color] %s (%s)\n" % [enemy["weapon"], dmg_str]
+				var icon: String = enemy.get("icon", "🚙")
+				var e_name: String = enemy.get("name", "Hostile Unit")
+				scan_text += "[color=#FFCC00]%s %s[/color] [color=#FF8800][%s][/color]\n" % [icon, e_name, threat]
+				scan_text += "[color=#88CCFF]  ⚔️ Weapon System:[/color] %s (%s)\n" % [enemy.get("weapon", "Autocannon"), dmg_str]
 				scan_text += "[color=#00FF88]  🛡️ Armor Class (AC):[/color] %d  [color=#FFD700]| Weakness:[/color] %s\n" % [ac, weakness]
 				scan_text += "[color=#FF5555]  ❤️ Hull Integrity:[/color] %d / %d HP (%.0f%%)\n\n" % [cur_hp, max_hp, hp_pct]
 			side_enemy_scanner_label.text = scan_text
+
 
 		# Level 2: Detailed Dual-Roll Combat Math Feed (Mack Attacks vs Enemy Offense & Graphene Absorption)
 		if telemetry_lvl >= 2:
