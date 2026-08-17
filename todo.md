@@ -19,3 +19,9 @@
 
 - [x] can duncan have a big tv screen in his private room that has a live feed of the streets outside (768x432 SubViewport camera with slow surveillance pan overlooking Broadway intersection)
 
+- [ ] Banquo's On-Foot Man-vs-Man Fighting System:
+  - Melee combat mechanics (combos, punches, dodges, blocks, and cybernetic sidearm draws).
+  - Combat targeting lock-on reticle against hostile syndicate enforcers, corporate assassins, and muggers in alleys/indoor rooms.
+  - Health/stamina meters, impact sound effects, hit reactions/flinches, and takedowns.
+
+

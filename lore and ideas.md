@@ -34,6 +34,11 @@ all dialogue things should be in json files simialr to the one that is triggered
   - Banquo must physically take the driver's seat of Mack's heavy dreadnought War-Rig ("WAR-RIG EXECUTOR") to smash through a corporate blockade, extract high-value convoy cargo, or rescue Fleance.
   - Banquo gets to unleash the War-Rig's heavy kinetic cannons, pneumatic ramming overdrive, and dual roof turrets firsthand from the cockpit, giving the player direct control over the monstrous war-machine!
 
+- 🥊 Gameplay Feature: Banquo's On-Foot Man-vs-Man Fighting System:
+  - Third-person / close-quarters melee combat system when exploring the city streets, alleys, and indoor interior floors on foot.
+  - Features: Punch/kick combos, dodges/rolls, cybernetic sidearm draws, stamina management, impact SFX, and target lock-on against hostile syndicate thugs, assassins, and security guards.
+
+
 
 
 also:
