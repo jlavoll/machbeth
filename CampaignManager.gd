@@ -11,6 +11,8 @@ signal act_advanced(new_act_index: int, act_title: String)
 signal sector_control_changed(sector_id: int, new_faction: String)
 signal deployment_ui_toggled(is_open: bool)
 signal day_advanced(new_day: int)
+signal battle_concluded(victory: bool)
+
 
 # Day Cycle & Daily Operational Activity Caps
 var current_day: int = 1
@@ -1435,6 +1437,9 @@ func _conclude_autonomous_battle(success: bool) -> void:
 		_spawn_norns_recovery_quest()
 
 		_show_after_action_summary(-penalty_repair_cost, scrap_salvaged, hp_ratio, false)
+
+	# Notify QuestManager so BATTLE_INTERCEPT quests can auto-complete / fail
+	emit_signal("battle_concluded", success)
 
 	# --- DAY LIGHTING PROGRESSION: Step down to Stage 2 (LOW_LIGHT 25% - Dusk) after Mack's Battle ---
 	current_lighting_phase = DayLightingPhase.DUSK_STAGE_2

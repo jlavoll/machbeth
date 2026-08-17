@@ -1,0 +1,68 @@
+{
+	"speaker_display_name": "Porter",
+	"speaker_subtitle": "NEURAL-ID: GREASE_MONK_077 | The Pit — Sublevel 3",
+	"speaker_color": "#FF6B35",
+	"nodes": {
+		"start": {
+			"text": "Morning, Banquo. You look like you slept in the car. Good — means you're hungry. Got a job in. Red Crows have thrown up a blockade on the Bankes Logistics corridor in the industrial sector. Just muscle blocking a freight delivery for protection money. Mack wants it cleared. You in?",
+			"choices": [
+				{ "text": "\"Red Crows? Easy money. What's the route?\"", "target": "route_info", "familiarity_gain": 1 },
+				{ "text": "\"What's in the shipment?\"", "target": "shipment_info" },
+				{ "text": "\"How many of them?\"", "target": "enemy_count" },
+				{ "text": "\"Not interested. Come back with something harder.\"", "target": "hard_man" }
+			]
+		},
+		"route_info": {
+			"text": "Industrial Corridor 7, east side of the grid. Red Crows have three vehicles blocking the freight lane. Standard formation — two outriders and a command van in the middle. Take the outriders first and the van scatters. Ten-minute job if you don't stop to admire the scenery.",
+			"choices": [
+				{ "text": "\"Mack taking point or am I running solo?\"", "target": "mack_role" },
+				{ "text": "\"Alright. I'll clear it. What's the payout?\"", "target": "payout", "familiarity_gain": 1 }
+			]
+		},
+		"shipment_info": {
+			"text": "Medical augmentation parts. Replacement limbs, pain inhibitor chips, nerve conductors. Boring, life-saving stuff. The Crows don't care what's in it — they care that Bankes Logistics won't pay the toll. Your job is to make the toll irrelevant.",
+			"choices": [
+				{ "text": "\"Alright. Route and numbers?\"", "target": "route_info" },
+				{ "text": "\"Medical parts. So people die if this doesn't go through.\"", "target": "moral_weight" }
+			]
+		},
+		"moral_weight": {
+			"text": "Look at you, going soft on me. Yes. People die. Welcome to the grid, Banquo. You going to clear the blockade or write a poem about it?",
+			"choices": [
+				{ "text": "\"I'll clear it.\"", "target": "accept_mission" }
+			]
+		},
+		"enemy_count": {
+			"text": "Three vehicles. Two Red Crow outriders — standard street chassis, light plating. Command van in the middle. Take the outriders first and the van panics. They're territorial, not suicidal.",
+			"choices": [
+				{ "text": "\"Good. What's the payout?\"", "target": "payout" },
+				{ "text": "\"Alright. I'm going.\"", "target": "accept_mission" }
+			]
+		},
+		"hard_man": {
+			"text": "Oh, you want hard? Macduff's Fife Security have been making noise in Sector 3. But that's a different conversation for a different day. Right now — dead freight, live Crows, three minutes from here. Don't be precious about it.",
+			"choices": [
+				{ "text": "\"Fine. Tell me the route.\"", "target": "route_info" }
+			]
+		},
+		"mack_role": {
+			"text": "Mack's in the war-rig running overwatch on the eastern highway. He'll be on comms. This one's yours, Banquo. Front-line intercept. He trusts you to handle it clean.",
+			"choices": [
+				{ "text": "\"Understood. What's the payout?\"", "target": "payout" },
+				{ "text": "\"Then let's not waste his time. I'm going.\"", "target": "accept_mission" }
+			]
+		},
+		"payout": {
+			"text": "Bankes Logistics is paying 1,800 credits for a clean clearance — no civilian collateral, freight gets through. You want the bonus, keep it tidy. Mack gets his cut, you keep the rest. Fair split for a fair fight.",
+			"choices": [
+				{ "text": "\"1,800. I'll take it. Heading out now.\"", "target": "accept_mission", "familiarity_gain": 1 }
+			]
+		},
+		"accept_mission": {
+			"text": "Good. Industrial Corridor 7 — east side of the map, follow the freight markers. When you've cleared the blockade, come back here. We'll debrief and I'll have the Ordnance coolant topped off for you. And Banquo — try not to flip the car this time. The undercarriage took three days to re-seal last week.",
+			"choices": [
+				{ "text": "\"[Head out to Industrial Corridor 7]\"", "target": "exit", "triggers_quest": "act1_m1_dead_end_convoy" }
+			]
+		}
+	}
+}

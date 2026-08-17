@@ -1,0 +1,88 @@
+{
+	"speaker_display_name": "JOE",
+	"speaker_subtitle": "JOE'S FROZEN DELIGHTS // SPONSOR & 'FRIEND'",
+	"speaker_color": "#00FFCC",
+	"nodes": {
+		"start": {
+			"text": "Banquo! My boy! I heard the Red Crows got cleared out of the industrial corridor this morning. Clean and fast. That was you, wasn't it? I knew it! Here's your daily backing — 750 credits, cash in hand. And a scoop of Neon Pistachio on the house. You've earned it.",
+			"choices": [
+				{ "text": "\"Thanks, Joe. Just doing the job.\"", "target": "joe_flatters", "familiarity_gain": 1 },
+				{ "text": "\"How did you hear about the Crows already?\"", "target": "joe_network" },
+				{ "text": "\"Just here for the stipend, Joe.\"", "target": "collect_stipend" }
+			]
+		},
+		"collect_stipend": {
+			"text": "And there it is — always the professional! 750 credits, same as every morning. You know, most of the boys I sponsor spend it on chrome and synth-booze. Not you. Not Banquo. You spend it on results. That's why I believe in you.",
+			"choices": [
+				{ "text": "\"Appreciated. See you tomorrow, Joe.\"", "target": "exit" },
+				{ "text": "\"You 'believe' in me? What does that mean?\"", "target": "joe_believes" }
+			]
+		},
+		"joe_flatters": {
+			"text": "Just doing the job! Ha! You're too modest. You know what separates men like you and Mack from every other driver on this grid? You don't just do the job. You do it *right*. That freight corridor was locked for six hours before you showed up. Six hours. You cleared it in ten minutes.",
+			"choices": [
+				{ "text": "\"It was three vehicles, Joe. Not exactly legendary.\"", "target": "joe_pushes" },
+				{ "text": "\"Mack set the approach. I just executed.\"", "target": "joe_mack" }
+			]
+		},
+		"joe_network": {
+			"text": "Oh, sweetheart — I hear everything. The ice cream stand is the best intelligence post on the grid. You'd be amazed what people say in front of a man handing them frozen synth-cream. CEOs. Gang bosses. Corporate couriers. Everyone talks to the ice cream man.",
+			"choices": [
+				{ "text": "\"That's... actually useful.\"", "target": "joe_intel_offer" },
+				{ "text": "\"Should I be worried about that?\"", "target": "joe_harmless" }
+			]
+		},
+		"joe_intel_offer": {
+			"text": "Very useful. And between you and me — I hear things about Duncan Dynamics lately that would make your hair stand up. But that's tomorrow's conversation. Today, you cleared a blockade and kept medical parts moving. Be proud of that. The bigger moves come later.",
+			"choices": [
+				{ "text": "\"What things about Duncan?\"", "target": "joe_duncan_tease", "familiarity_needed": 2 },
+				{ "text": "\"I'll hold you to that conversation.\"", "target": "exit" }
+			]
+		},
+		"joe_duncan_tease": {
+			"text": "Not yet. You haven't earned that conversation yet, my boy. Come back tomorrow. Do good work today. The city has a rhythm — and right now you're just getting into step with it. Trust the process. Trust Joe.",
+			"choices": [
+				{ "text": "\"Alright, Joe. Tomorrow then.\"", "target": "exit" }
+			]
+		},
+		"joe_harmless": {
+			"text": "Worried? About the ice cream man? Banquo, you wound me. I'm the most harmless person on this grid. I sell frozen desserts and I hand out sponsorship money. What possible threat could that be to anyone?",
+			"choices": [
+				{ "text": "\"Fair enough. Thanks for the credits, Joe.\"", "target": "exit" }
+			]
+		},
+		"joe_pushes": {
+			"text": "Three vehicles *today*. But the men who change this city don't think about today — they think about scale. You know what Mack could do if he stopped taking orders from people smaller than him? If *you* stopped being the loyal backup and started being the one calling shots?",
+			"choices": [
+				{ "text": "\"I'm fine where I am, Joe.\"", "target": "joe_patience" },
+				{ "text": "\"That's not how me and Mack work.\"", "target": "joe_patience" }
+			]
+		},
+		"joe_patience": {
+			"text": "Of course, of course. I'm just talking. Enjoy the pistachio. Come back tomorrow — I might have something interesting for you. A little tip about a corporate shipment moving through the grid. High-value, low-security. The kind of thing a man with your skills could intercept without breaking a sweat.",
+			"choices": [
+				{ "text": "\"I'll think about it. See you, Joe.\"", "target": "exit" }
+			]
+		},
+		"joe_mack": {
+			"text": "Mack set the approach — yes. And you executed it. Perfectly. That's a partnership, Banquo. But let me ask you something — and I say this as a friend — when's the last time Mack told you what *he* was planning? Not the mission. The plan behind the mission. Do you always know what you're actually part of?",
+			"choices": [
+				{ "text": "\"Mack tells me what I need to know.\"", "target": "joe_seeds_doubt" },
+				{ "text": "\"I trust Mack. Completely.\"", "target": "joe_seeds_doubt" }
+			]
+		},
+		"joe_seeds_doubt": {
+			"text": "Of course you do. And why wouldn't you? He's your partner. Your brother in all but blood. I'm sure he'd never keep anything from you. Enjoy the pistachio, Banquo. Have a beautiful day.",
+			"choices": [
+				{ "text": "\"[Something in that sentence didn't sit right.]\"", "target": "exit" }
+			]
+		},
+		"joe_believes": {
+			"text": "It means I see potential in you, Banquo. Real potential. Not just as a driver or a muscle-man — as a *player*. The city's about to change. Big moves incoming. Men who are positioned right when it happens... they inherit the grid. I'm just making sure you're one of them.",
+			"choices": [
+				{ "text": "\"You're very generous, Joe.\"", "target": "exit" },
+				{ "text": "\"What kind of big moves?\"", "target": "joe_patience" }
+			]
+		}
+	}
+}

@@ -30,6 +30,34 @@ var active_goal_beacon_node: Node3D = null
 
 # Registry of all data-driven quests in the game
 var quest_registry: Dictionary = {
+	# -----------------------------------------------------------------------
+	# ACT 1 — STORY MISSIONS
+	# -----------------------------------------------------------------------
+	"act1_m1_dead_end_convoy": {
+		"title": "⚔️ ACT I · DEAD END CONVOY",
+		"description": "Red Crows gang blockade on Industrial Corridor 7. Clear the three-vehicle formation. Protect the Bankes Logistics medical freight shipment.",
+		"type": "BATTLE_INTERCEPT",
+		"act": 1,
+		"day": 1,
+		"is_story_mission": true,
+		"reward_credits": 1800,
+		"reward_scrap": 60,
+		"giver_npc_id": "Porter",
+		"faction_id": "NEON_SYNDICATE",
+		"giver_affinity_reward": 3,
+		"start_dialogue_target": "act1_m1_dead_end_convoy",
+		"target_destination": "Industrial Corridor 7",
+		"goal_coordinates": [180.0, -60.0],
+		"goal_radius": 22.0,
+		"battle_mission_id": "act1_limo_intercept",
+		"battle_round": 0,
+		"map_blip_color": Color(1.0, 0.2, 0.1, 0.95),
+		"completion_lady_m_text": "Red Crows neutralised. Freight corridor is clear. Bankes Logistics has confirmed delivery. 1,800 Credits + 60 Scrap deposited. Return to Porter at The Pit for debrief.",
+		"completion_comms_sender": "MACK // OVERWATCH"
+	},
+	# -----------------------------------------------------------------------
+	# EXISTING SIDE MISSIONS
+	# -----------------------------------------------------------------------
 	"limo_intercept": {
 		"title": "EXEC LIMO INTERCEPT",
 		"description": "Hunt down Duncan Dynamics Exec Limo on the city grid. Side-swipe or trap to engage cockpit combat.",
@@ -120,8 +148,18 @@ func _process(delta: float) -> void:
 						quest_timer_label.add_theme_color_override("font_color", Color(0.0, 1.0, 0.85))
 					if active_eavesdrop_timer >= duration_needed:
 						complete_quest(active_quest_id)
+				elif mission_type == "BATTLE_INTERCEPT":
+					# Arrived at battle zone — launch simulation, remove beacon
+					_clear_goal_beacon()
+					var campaign_mgr = get_parent().get_node_or_null("CampaignManager")
+					if is_instance_valid(campaign_mgr) and campaign_mgr.has_method("start_simulated_mission"):
+						var b_mission: String = active_quest_data.get("battle_mission_id", "act1_limo_intercept")
+						var b_round: int = active_quest_data.get("battle_round", 0)
+						campaign_mgr.start_simulated_mission(b_mission, b_round)
+					# Quest completes when battle simulation ends — handled by _on_battle_simulation_ended
 				elif mission_type in ["COURIER_RUN", "REACH_DESTINATION", "TAIL_TARGET"]:
 					complete_quest(active_quest_id)
+
 
 func _load_street_missions_from_json() -> void:
 	if FileAccess.file_exists("res://data/street_missions.json"):
@@ -154,6 +192,11 @@ func _connect_dialogue_signals() -> void:
 	if is_instance_valid(dialogue_sys):
 		dialogue_sys.dialogue_choice_selected.connect(_on_dialogue_choice_selected)
 		dialogue_sys.dialogue_ended.connect(_on_dialogue_ended)
+	# Wire battle simulation completion → quest completion for BATTLE_INTERCEPT quests
+	var campaign_mgr = get_parent().get_node_or_null("CampaignManager")
+	if is_instance_valid(campaign_mgr) and campaign_mgr.has_signal("battle_concluded"):
+		if not campaign_mgr.battle_concluded.is_connected(_on_battle_simulation_ended):
+			campaign_mgr.battle_concluded.connect(_on_battle_simulation_ended)
 
 # ==============================================================================
 # DIALOGUE & QUEST SIGNAL LISTENERS
@@ -180,6 +223,14 @@ func _on_dialogue_ended() -> void:
 		var q_id = _pending_completion_quest_id
 		_pending_completion_quest_id = ""
 		complete_quest(q_id)
+
+func _on_battle_simulation_ended(victory: bool) -> void:
+	if not active_quest_id.is_empty() and active_quest_data.get("type", "") == "BATTLE_INTERCEPT":
+		if victory:
+			complete_quest(active_quest_id)
+		else:
+			fail_quest(active_quest_id, "BATTLE SIMULATION FAILED // CONVOY NOT NEUTRALISED")
+
 
 # ==============================================================================
 # PUBLIC QUEST CONTROL API
@@ -212,7 +263,17 @@ func start_quest(quest_id: String) -> void:
 	# 4. Update HUD Banner
 	_show_quest_hud(active_quest_data.get("title", ""), active_quest_data.get("description", ""))
 
+	# 5. For story BATTLE_INTERCEPT quests — send a comms briefing from Mack
+	if active_quest_data.get("type", "") == "BATTLE_INTERCEPT":
+		var comms = get_parent().get_node_or_null("NeuralNotificationSystem")
+		if is_instance_valid(comms) and comms.has_method("send_message"):
+			comms.send_message(
+				"🎯 BANQUO — drive to the marked position on the east grid. Red Crow vehicles confirmed at Industrial Corridor 7. Engage when ready. I'm on overwatch.",
+				"MACK // FIELD COMMS"
+			)
+
 	emit_signal("quest_started", quest_id)
+
 
 func _spawn_goal_line_beacon(q_data: Dictionary) -> void:
 	_clear_goal_beacon()

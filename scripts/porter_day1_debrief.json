@@ -1,0 +1,54 @@
+{
+	"speaker_display_name": "Porter",
+	"speaker_subtitle": "NEURAL-ID: GREASE_MONK_077 | The Pit — Sublevel 3",
+	"speaker_color": "#FF6B35",
+	"nodes": {
+		"start": {
+			"text": "You're back. And the car's in one piece. Good start. Freight got through — Bankes just pinged confirmation. 1,800 credits inbound to your neural vault. Not bad for a morning's work. How'd the Crows handle it?",
+			"choices": [
+				{ "text": "\"Two outriders down. Command van scattered north. Clean.\"", "target": "debrief_clean", "familiarity_gain": 1 },
+				{ "text": "\"Messier than expected. Command van put up a fight.\"", "target": "debrief_messy" },
+				{ "text": "\"Done. What else you got for me?\"", "target": "next_contract" }
+			]
+		},
+		"debrief_clean": {
+			"text": "Clean. That's what I like to hear. The Crows'll regroup — they always do — but they'll think twice before blocking that corridor again. Mack called in. Said the overwatch showed good instincts on your intercept line. High praise from him. Don't let it go to your head.",
+			"choices": [
+				{ "text": "\"Noted. What's next?\"", "target": "next_contract" },
+				{ "text": "\"How does Mack seem to you lately?\"", "target": "mack_check" }
+			]
+		},
+		"debrief_messy": {
+			"text": "Messy. Alright. Command vans carry two-man crews — one drives, one calls in reinforcements. If it put up a fight you probably cut the comms short before backup arrived. Lucky. Next time, flank the van before engaging the outriders. Cuts the reaction window in half.",
+			"choices": [
+				{ "text": "\"Noted. Anything else coming in today?\"", "target": "next_contract" }
+			]
+		},
+		"next_contract": {
+			"text": "Nothing lined up right now. Grid's been quiet this morning — which usually means something loud is about to happen somewhere. Go get your stipend from Joe. Walk the streets. Talk to people. The city has a way of finding you work when you're not looking for it.",
+			"choices": [
+				{ "text": "\"Joe's place. Got it.\"", "target": "exit" },
+				{ "text": "\"Anything I should know before I head out?\"", "target": "street_warning" }
+			]
+		},
+		"mack_check": {
+			"text": "Mack? He's... focused. More than usual. You know that look he gets before a big operation — like he's already three moves ahead and the rest of the city hasn't started playing yet? He's got that look. About something bigger than a Red Crows blockade, I'd wager.",
+			"choices": [
+				{ "text": "\"He say anything specific?\"", "target": "mack_vague" },
+				{ "text": "\"I'll check in with him later.\"", "target": "next_contract" }
+			]
+		},
+		"mack_vague": {
+			"text": "No. And that's what bothers me. Usually he tells me what he needs. Today he just drove in, checked the war-rig diagnostics, and left. Didn't say a word. Could be nothing. Could be everything. Just — keep your eyes open out there, Banquo.",
+			"choices": [
+				{ "text": "\"I always do. Thanks, Porter.\"", "target": "exit", "familiarity_gain": 1 }
+			]
+		},
+		"street_warning": {
+			"text": "Duncan Dynamics corporate traffic has been heavier this week. Executive outriders on routes they don't normally run. Either the old man's nervous about something or he's about to make a move. Either way — stay off the main boulevard until you know which.",
+			"choices": [
+				{ "text": "\"Good to know. I'll avoid the main boulevard.\"", "target": "exit" }
+			]
+		}
+	}
+}
