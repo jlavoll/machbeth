@@ -25,6 +25,14 @@ var active_quest_time_left: float = 0.0
 var active_eavesdrop_timer: float = 0.0
 var player_credits: int = 15000 # High starting credits for testing
 
+# Act 1 Day Completion Flags
+var day1_mission_complete: bool = false
+var day2_mission_complete: bool = false
+var day3_mission_complete: bool = false
+var day4_mission_complete: bool = false
+var day5_mission_complete: bool = false
+
+
 # 3D Goal Line Beacon Node
 var active_goal_beacon_node: Node3D = null
 
@@ -472,9 +480,19 @@ func complete_quest(quest_id: String) -> void:
 	# 6. Notify CampaignManager of completed side mission & check daily quota
 	var campaign_mgr = get_parent().get_node_or_null("CampaignManager")
 	if is_instance_valid(campaign_mgr):
-		campaign_mgr.side_missions_today += 1
-		if campaign_mgr.side_missions_today >= campaign_mgr.max_side_missions_per_day:
-			campaign_mgr.notify_daily_quests_exhausted()
+		if q_data.get("is_story_mission", false):
+			# Set per-day completion flag based on which day's story mission this is
+			match q_data.get("day", 0):
+				1: day1_mission_complete = true
+				2: day2_mission_complete = true
+				3: day3_mission_complete = true
+				4: day4_mission_complete = true
+				5: day5_mission_complete = true
+		else:
+			campaign_mgr.side_missions_today += 1
+			if campaign_mgr.side_missions_today >= campaign_mgr.max_side_missions_per_day:
+				campaign_mgr.notify_daily_quests_exhausted()
+
 
 
 # ==============================================================================

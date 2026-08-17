@@ -1363,7 +1363,10 @@ func _process(_delta: float) -> void:
 			var cyborg_terminal_pos: Vector3 = porter_pit_origin + Vector3(10.0, 0.0, 0.0)
 			var wartable_pos: Vector3 = porter_pit_origin + Vector3(0.0, 0.0, 4.0)
 			var pit_cot_pos: Vector3 = porter_pit_origin + Vector3(14.0, 0.0, -4.0) # East Annex Crew Cot
-			if pos.distance_to(pit_backroom_door_pos) <= 4.5:
+			var porter_npc_pos_p: Vector3 = porter_pit_origin + Vector3(0.0, 0.0, -5.5)
+			if pos.distance_to(porter_npc_pos_p) <= 3.5:
+				prompt_text = "[E] TALK TO PORTER"
+			elif pos.distance_to(pit_backroom_door_pos) <= 4.5:
 				if not is_pit_backroom_door_open:
 					prompt_text = "[E] OPEN SIDE ENTRANCE DOOR // PIT BACK-ROOM ANNEX"
 				else:
@@ -1507,7 +1510,35 @@ func _unhandled_input(event: InputEvent) -> void:
 				var terminal_pos: Vector3 = porter_pit_origin + Vector3(-10.0, 0.0, 0.0)
 				var cyborg_terminal_pos: Vector3 = porter_pit_origin + Vector3(10.0, 0.0, 0.0)
 				var wartable_pos: Vector3 = porter_pit_origin + Vector3(0.0, 0.0, 4.0)
-				if pos.distance_to(pit_backroom_door_pos) <= 4.5:
+				var porter_npc_pos: Vector3 = porter_pit_origin + Vector3(0.0, 0.0, -5.5)
+
+				# --- PORTER NPC DIALOGUE (walk up to Porter himself) ---
+				if pos.distance_to(porter_npc_pos) <= 3.5:
+					var dialogue_sys = get_parent().get_node_or_null("DialogueSystem")
+					if is_instance_valid(dialogue_sys) and dialogue_sys.has_method("start_dialogue"):
+						var day: int = 1
+						if is_instance_valid(campaign_mgr):
+							day = campaign_mgr.current_day
+						var quest_mgr2 = get_parent().get_node_or_null("QuestManager")
+						var active_q: String = ""
+						var day1_done: bool = false
+						if is_instance_valid(quest_mgr2):
+							active_q = quest_mgr2.active_quest_id
+							day1_done = quest_mgr2.get("day1_mission_complete") == true
+						# Pick dialogue script based on day + quest state
+						var script_path: String
+						if day == 1 and not day1_done:
+							script_path = "res://scripts/porter_day1_briefing.json"
+						elif day == 1 and day1_done:
+							script_path = "res://scripts/porter_day1_debrief.json"
+						else:
+							script_path = "res://scripts/porter_at_the_pit.json"
+						dialogue_sys.start_dialogue(script_path)
+						get_viewport().set_input_as_handled()
+						return
+
+
+				elif pos.distance_to(pit_backroom_door_pos) <= 4.5:
 					_toggle_pit_backroom_door()
 					get_viewport().set_input_as_handled()
 					return
@@ -1534,7 +1565,6 @@ func _unhandled_input(event: InputEvent) -> void:
 						get_viewport().set_input_as_handled()
 						return
 
-
 				elif pos.distance_to(wartable_pos) <= 4.0:
 					if is_instance_valid(campaign_mgr):
 						campaign_mgr.open_deployment_ui()
@@ -1545,7 +1575,8 @@ func _unhandled_input(event: InputEvent) -> void:
 						campaign_mgr.advance_to_next_day()
 						get_viewport().set_input_as_handled()
 						return
-			
+
+
 			if current_floor == HQFloor.BANKES_LOGISTICS:
 				var bankes_server_pos: Vector3 = bankes_logistics_origin + Vector3(0.0, 0.0, -2.0)
 				if pos.distance_to(bankes_server_pos) <= 4.0:
