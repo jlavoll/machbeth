@@ -2518,8 +2518,12 @@ func _try_trigger_character_dialogue(player_pos: Vector3, dialogue_sys: Dialogue
 	all_nodes.append_array(active_tech_drones)
 	all_nodes.append_array(active_joggers)
 
+	var city_gen_ref = get_parent().get_node_or_null("CityGenerator")
+	if is_instance_valid(city_gen_ref) and "joe_npc_node" in city_gen_ref and is_instance_valid(city_gen_ref.joe_npc_node):
+		all_nodes.append(city_gen_ref.joe_npc_node)
+
 	var closest_node: Node3D = null
-	var min_dist: float = 3.5 # Interaction range
+	var min_dist: float = 4.5 # Interaction range
 
 	for node in all_nodes:
 		if is_instance_valid(node):
@@ -2536,11 +2540,17 @@ func _try_trigger_character_dialogue(player_pos: Vector3, dialogue_sys: Dialogue
 	var is_dodgy_meta: bool = closest_node.get_meta("is_dodgy", false)
 	var is_gang_meta: bool = closest_node.get_meta("is_gang_member", false) or "Gang" in char_name
 	var is_leader: bool = closest_node.get_meta("is_leader", false)
+	var is_joe_meta: bool = closest_node.get_meta("is_joe", false) or "Joe" in char_name
 	
 	var is_delivery_recipient: bool = closest_node.get_meta("is_delivery_recipient", false)
 	var json_path: String = ""
 
-	if is_delivery_recipient or "Delivery" in char_name:
+	if is_joe_meta:
+		json_path = "res://scripts/joe_ice_cream.json"
+		var campaign_mgr = get_parent().get_node_or_null("CampaignManager")
+		if is_instance_valid(campaign_mgr) and campaign_mgr.has_method("collect_joe_daily_stipend"):
+			campaign_mgr.collect_joe_daily_stipend()
+	elif is_delivery_recipient or "Delivery" in char_name:
 		json_path = "res://scripts/delivery_contact.json"
 	elif "Dodgy" in char_name or is_dodgy_meta:
 		json_path = "res://scripts/mr_dodgy.json"
@@ -2560,6 +2570,7 @@ func _try_trigger_character_dialogue(player_pos: Vector3, dialogue_sys: Dialogue
 		json_path = "res://scripts/tech_drone.json"
 	elif "Jogger" in char_name:
 		json_path = "res://scripts/cyber_jogger.json"
+
 
 	if json_path != "" and FileAccess.file_exists(json_path):
 		print("[DIALOGUE INTERACT] Launching dialogue JSON: ", json_path)

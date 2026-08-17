@@ -95,9 +95,58 @@ func _on_combat_requested() -> void:
 		active_hostile_profile.max_hull_integrity
 	)
 
+## Launches an instant battle simulation from the Mission/Battle Editor
+func simulate_mission_battle(mission_id: String, round_idx: int = 0) -> void:
+	is_in_combat = true
+	saved_topdown_camera_transform = camera.transform if is_instance_valid(camera) else Transform3D.IDENTITY
+	if is_instance_valid(camera):
+		camera.transform = Transform3D(Basis.IDENTITY, Vector3(0.0, 0.9, -0.4))
+
+	var enemy_hp: float = 200.0
+	var enemy_name: String = "Cawdor Prototype Vanguard"
+	var enemy_color: Color = Color(1.0, 0.2, 0.4)
+
+	# Read mission definition if available
+	if FileAccess.file_exists("res://data/missions.json"):
+		var f = FileAccess.open("res://data/missions.json", FileAccess.READ)
+		var j = JSON.new()
+		if j.parse(f.get_as_text()) == OK:
+			var m_dict = j.get_data().get("missions", {}).get(mission_id, {})
+			if not m_dict.is_empty():
+				var rounds = m_dict.get("rounds", [])
+				if rounds.size() > round_idx:
+					var r_data = rounds[round_idx]
+					var enemies = r_data.get("enemies", [])
+					if enemies.size() > 0:
+						var e_id = enemies[0].get("enemy_id", "")
+						enemy_name = e_id.replace("_", " ").to_upper()
+						enemy_hp = 180.0 + (round_idx * 60.0)
+
+	active_hostile_profile = {
+		"hostile_designation": "[SIM] " + enemy_name,
+		"current_hull_integrity": enemy_hp,
+		"max_hull_integrity": enemy_hp,
+		"vehicle_color_tint": enemy_color,
+		"rewards": {"credits": 1000, "scrap": 50}
+	}
+
+	_spawn_3d_hostile_vehicle()
+	if is_instance_valid(cockpit_ui):
+		cockpit_ui.display_cockpit_hud(true)
+		cockpit_ui.set_target_hostile_info(
+			active_hostile_profile.hostile_designation,
+			active_hostile_profile.current_hull_integrity,
+			active_hostile_profile.max_hull_integrity
+		)
+
+	var comms = get_parent().get_node_or_null("NeuralNotificationSystem")
+	if is_instance_valid(comms):
+		comms.send_message("⚔️ BATTLE SIMULATOR ACTIVE: Engaging %s with active Loadout Grid configuration!" % enemy_name, "COMBAT SIMULATOR")
+
 func _on_combat_concluded() -> void:
 	is_in_combat = false
 	print("[BATTLE SYSTEM] Concluding combat encounter. Returning to city driving...")
+
 
 	# Restore top-down camera transform
 	camera.transform = saved_topdown_camera_transform
@@ -204,11 +253,15 @@ func _on_player_gatling_attack() -> void:
 
 	_spawn_projectile_effect(Color(1.0, 0.8, 0.1), 0.1, 0.15) # Fast amber Gatling bullet tracer
 
-	var base_damage = 25.0
-	var garage_mgr = get_parent().get_node_or_null("GarageManager")
-	if is_instance_valid(garage_mgr):
-		var veh_key: String = "BANQUO_CAR" if garage_mgr.active_fleet_selection == garage_mgr.VehicleID.BANQUO_CAR else "MACK_RIG"
-		base_damage = garage_mgr.fleet[veh_key]["stats"].get("gatling_damage", 25.0)
+	var base_damage: float = 25.0
+	var loadout_mgr = get_parent().get_node_or_null("LoadoutGridManager") as LoadoutGridManager
+	if is_instance_valid(loadout_mgr):
+		base_damage = loadout_mgr.calculate_total_dps()
+	else:
+		var garage_mgr = get_parent().get_node_or_null("GarageManager")
+		if is_instance_valid(garage_mgr):
+			var veh_key: String = "BANQUO_CAR" if garage_mgr.active_fleet_selection == garage_mgr.VehicleID.BANQUO_CAR else "MACK_RIG"
+			base_damage = garage_mgr.fleet[veh_key]["stats"].get("gatling_damage", 25.0)
 
 	active_hostile_profile.current_hull_integrity = max(0.0, active_hostile_profile.current_hull_integrity - base_damage)
 	print("[COMBAT] Gatling Gun fired! Dealt ", base_damage, " damage!")
@@ -228,7 +281,7 @@ func _on_player_ice_hack(hack_type: String) -> void:
 
 	_spawn_projectile_effect(Color(0.0, 0.85, 1.0), 0.15, 0.25) # Cyan ICE hack pulse wave
 
-	var damage = 40.0
+	var damage = 45.0
 	active_hostile_profile.current_hull_integrity = max(0.0, active_hostile_profile.current_hull_integrity - damage)
 	print("[COMBAT] ICE-Breaker Hack (", hack_type, ") inflicted ", damage, " tech damage!")
 	
@@ -259,11 +312,16 @@ func _on_player_overclock() -> void:
 
 	_spawn_projectile_effect(Color(1.0, 0.0, 0.8), 0.08, 0.35) # Massive Magenta Overclock beam
 
-	var base_damage: float = 70.0
-	var cyborg_mgr = get_parent().get_node_or_null("CyborgModdingManager")
-	if is_instance_valid(cyborg_mgr):
-		var core_tier: int = cyborg_mgr.cyberware_slots["neural_core"]["tier"]
-		base_damage += (core_tier - 1) * 25.0
+	var base_damage: float = 75.0
+	var loadout_mgr = get_parent().get_node_or_null("LoadoutGridManager") as LoadoutGridManager
+	if is_instance_valid(loadout_mgr):
+		var core_item = loadout_mgr.get_equipped_item("MACK", "neural_core")
+		base_damage += core_item.get("dps_bonus", 25.0) * 1.5
+	else:
+		var cyborg_mgr = get_parent().get_node_or_null("CyborgModdingManager")
+		if is_instance_valid(cyborg_mgr):
+			var core_tier: int = cyborg_mgr.cyberware_slots["neural_core"]["tier"]
+			base_damage += (core_tier - 1) * 25.0
 
 	active_hostile_profile.current_hull_integrity = max(0.0, active_hostile_profile.current_hull_integrity - base_damage)
 	print("[COMBAT] NEURAL OVERCLOCK LIMIT BREAK! Dealt ", base_damage, " critical damage!")
@@ -278,6 +336,7 @@ func _on_player_overclock() -> void:
 		active_hostile_profile.current_hull_integrity,
 		active_hostile_profile.max_hull_integrity
 	)
+
 
 	_flash_target_hit()
 	_check_hostile_destroyed()

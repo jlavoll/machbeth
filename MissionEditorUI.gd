@@ -129,6 +129,30 @@ func _build_ui_hierarchy() -> void:
 	status_banner_label.text = "READY"
 	status_banner_label.add_theme_color_override("font_color", Color(0.2, 0.9, 1.0))
 	header_hbox.add_child(status_banner_label)
+
+	header_hbox.add_spacer(false)
+
+	var loadout_btn = Button.new()
+	loadout_btn.text = "⚡ LOADOUT GRID"
+	loadout_btn.add_theme_color_override("font_color", Color(0.0, 1.0, 0.85))
+	loadout_btn.pressed.connect(func():
+		var l_ui = get_parent().get_node_or_null("LoadoutGridUI") as LoadoutGridUI
+		if is_instance_valid(l_ui):
+			l_ui.open_loadout_ui(active_selected_mission_id)
+	)
+	header_hbox.add_child(loadout_btn)
+
+	var sim_btn = Button.new()
+	sim_btn.text = "⚔️ SIMULATE BATTLE NOW"
+	sim_btn.add_theme_color_override("font_color", Color(1.0, 0.2, 0.4))
+	sim_btn.pressed.connect(func():
+		_toggle_mission_overlay()
+		var campaign_mgr = get_parent().get_node_or_null("CampaignManager")
+		if is_instance_valid(campaign_mgr) and campaign_mgr.has_method("start_simulated_mission"):
+			campaign_mgr.start_simulated_mission(active_selected_mission_id, active_selected_round_index)
+	)
+	header_hbox.add_child(sim_btn)
+
 	
 	var close_btn = Button.new()
 	close_btn.text = " CLOSE "
@@ -137,6 +161,7 @@ func _build_ui_hierarchy() -> void:
 	header_hbox.add_child(close_btn)
 	
 	main_vbox.add_child(HSeparator.new())
+
 	
 	# Main Split Container
 	var split_container = HSplitContainer.new()

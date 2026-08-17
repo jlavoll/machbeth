@@ -15,7 +15,12 @@ const EVENT_REGISTRY: Dictionary = {
 		"id": "PARK_CONCERT",
 		"title": "🎵 NEON SYNDICATE CYBER-PUNK CONCERT",
 		"spotlight_preset": "CYBER_NEON",
+		"audio_track": "res://music/shadowrun_the_cage.mp3",
+		"audio_volume_db": 6.0,
+		"audio_unit_size": 18.0,
+		"audio_max_distance": 110.0,
 		"performers": [
+
 			{"name": "Lead Singer", "pos": Vector3(1.5, 0.0, 0.0), "color": Color(1.0, 0.0, 0.8), "mic": true, "robe": false, "armor": false},
 			{"name": "Cyber Guitarist", "pos": Vector3(-0.5, 0.0, -3.0), "color": Color(0.0, 0.85, 1.0), "mic": false, "robe": false, "armor": false},
 			{"name": "Bassist", "pos": Vector3(-0.5, 0.0, 3.0), "color": Color(1.0, 0.85, 0.0), "mic": false, "robe": false, "armor": false},

@@ -15,10 +15,15 @@ signal quest_started(quest_id: String)
 signal quest_objective_updated(quest_id: String, objective_text: String)
 signal quest_completed(quest_id: String, reward_credits: int)
 
-# Active Quest State
+# Active Quest State & Timer Tracking
 var active_quest_id: String = ""
 var active_quest_data: Dictionary = {}
+var active_quest_time_left: float = 0.0
+var active_eavesdrop_timer: float = 0.0
 var player_credits: int = 15000 # High starting credits for testing
+
+# 3D Goal Line Beacon Node
+var active_goal_beacon_node: Node3D = null
 
 # Registry of all data-driven quests in the game
 var quest_registry: Dictionary = {
@@ -52,6 +57,7 @@ var quest_hud_layer: CanvasLayer
 var quest_panel: PanelContainer
 var quest_title_label: Label
 var quest_objective_label: Label
+var quest_timer_label: Label
 
 # Delayed completion queue flag for waiting until dialogue UI closes
 var _pending_completion_quest_id: String = ""
@@ -65,6 +71,55 @@ func _ready() -> void:
 	_load_street_missions_from_json()
 	call_deferred("_connect_dialogue_signals")
 
+func _process(delta: float) -> void:
+	if active_quest_id.is_empty():
+		return
+
+	# 1. Active Quest Live Countdown Timer
+	if active_quest_time_left > 0.0:
+		active_quest_time_left -= delta
+		var minutes: int = int(active_quest_time_left / 60.0)
+		var seconds: int = int(active_quest_time_left) % 60
+		if is_instance_valid(quest_timer_label):
+			quest_timer_label.text = "⏱️ TIME REMAINING: %02d:%02d" % [minutes, seconds]
+			if active_quest_time_left < 20.0:
+				quest_timer_label.add_theme_color_override("font_color", Color(1.0, 0.2, 0.2)) # Urgent Red Pulse
+			else:
+				quest_timer_label.add_theme_color_override("font_color", Color(1.0, 0.85, 0.0))
+
+		if active_quest_time_left <= 0.0:
+			fail_quest(active_quest_id, "TIME LIMIT EXPIRED // CONTRACT CANCELLED")
+			return
+
+	# 2. Check Goal-Line Proximity for Eavesdrop / Destination Beacons
+	if is_instance_valid(active_goal_beacon_node):
+		var player_node: Node3D = null
+		var root_s = get_parent()
+		if is_instance_valid(root_s):
+			player_node = root_s.get_node_or_null("PlayerCar")
+			if is_instance_valid(player_node) and player_node.get("is_on_foot") == true:
+				var on_foot = root_s.get_node_or_null("PlayerOnFoot")
+				if is_instance_valid(on_foot):
+					player_node = on_foot
+
+		if is_instance_valid(player_node):
+			var dist: float = player_node.global_position.distance_to(active_goal_beacon_node.global_position)
+			var goal_radius: float = active_quest_data.get("goal_radius", 18.0)
+			var mission_type: String = active_quest_data.get("type", "COURIER_RUN")
+
+			if dist <= goal_radius:
+				if mission_type == "EAVESDROP_RECON":
+					var duration_needed: float = active_quest_data.get("eavesdrop_duration", 15.0)
+					active_eavesdrop_timer += delta
+					var pct: int = clampi(int((active_eavesdrop_timer / duration_needed) * 100.0), 0, 100)
+					if is_instance_valid(quest_timer_label):
+						quest_timer_label.text = "📡 INTERCEPTING AUDIO: %d%%" % pct
+						quest_timer_label.add_theme_color_override("font_color", Color(0.0, 1.0, 0.85))
+					if active_eavesdrop_timer >= duration_needed:
+						complete_quest(active_quest_id)
+				elif mission_type in ["COURIER_RUN", "REACH_DESTINATION", "TAIL_TARGET"]:
+					complete_quest(active_quest_id)
+
 func _load_street_missions_from_json() -> void:
 	if FileAccess.file_exists("res://data/street_missions.json"):
 		var file = FileAccess.open("res://data/street_missions.json", FileAccess.READ)
@@ -76,6 +131,15 @@ func _load_street_missions_from_json() -> void:
 				quest_registry[s_id] = {
 					"title": quest.get("name", s_id).to_upper(),
 					"description": quest.get("objective_text", ""),
+					"type": quest.get("type", "COURIER_RUN"),
+					"time_limit": quest.get("time_limit", 0.0),
+					"target_destination": quest.get("target_destination", ""),
+					"goal_coordinates": quest.get("goal_coordinates", []),
+					"goal_radius": quest.get("goal_radius", 18.0),
+					"eavesdrop_duration": quest.get("eavesdrop_duration", 15.0),
+					"penalty_credits": quest.get("penalty_credits", 300),
+					"penalty_affinity": quest.get("penalty_affinity", 5),
+					"giver_npc_id": quest.get("client", ""),
 					"reward_credits": quest.get("reward_credits", 500),
 					"start_dialogue_target": "accept_" + s_id.replace("street_01_", "").replace("street_02_", "").replace("street_03_", ""),
 					"map_blip_color": Color(1.0, 0.85, 0.0, 0.95),
@@ -98,6 +162,8 @@ func _on_dialogue_choice_selected(_choice_index: int, target_node_id: String) ->
 		start_quest("street_01_pink_cadillac")
 	elif target_node_id == "accept_data_drop":
 		start_quest("street_02_data_drop")
+	elif target_node_id == "accept_cyberware_heist":
+		start_quest("limo_intercept")
 	else:
 		for q_id in quest_registry:
 			var q_data: Dictionary = quest_registry[q_id]
@@ -108,15 +174,14 @@ func _on_dialogue_choice_selected(_choice_index: int, target_node_id: String) ->
 
 func _on_dialogue_ended() -> void:
 	if _pending_completion_quest_id != "":
-		var q_id: String = _pending_completion_quest_id
+		var q_id = _pending_completion_quest_id
 		_pending_completion_quest_id = ""
 		complete_quest(q_id)
 
 # ==============================================================================
-# PUBLIC QUEST MANAGEMENT API
+# PUBLIC QUEST CONTROL API
 # ==============================================================================
 
-## Starts a quest by ID, updating map blips, spawning NPCs, and displaying HUD notification
 func start_quest(quest_id: String) -> void:
 	if not quest_registry.has(quest_id):
 		push_error("QuestManager: Quest ID not found in registry: " + quest_id)
@@ -124,6 +189,8 @@ func start_quest(quest_id: String) -> void:
 
 	active_quest_id = quest_id
 	active_quest_data = quest_registry[quest_id]
+	active_quest_time_left = float(active_quest_data.get("time_limit", 0.0))
+	active_eavesdrop_timer = 0.0
 
 	print("[QUEST MANAGER] Starting quest: ", active_quest_data.get("title", quest_id))
 
@@ -136,17 +203,99 @@ func start_quest(quest_id: String) -> void:
 	if quest_id == "street_01_pink_cadillac":
 		_spawn_pink_cadillac_mission_asset()
 
-	# 3. Update HUD Banner
+	# 3. Spawn 3D Goal Line Beacon on the city grid
+	_spawn_goal_line_beacon(active_quest_data)
+
+	# 4. Update HUD Banner
 	_show_quest_hud(active_quest_data.get("title", ""), active_quest_data.get("description", ""))
 
 	emit_signal("quest_started", quest_id)
 
+func _spawn_goal_line_beacon(q_data: Dictionary) -> void:
+	_clear_goal_beacon()
+	var dest_name: String = q_data.get("target_destination", "")
+	var explicit_coords: Array = q_data.get("goal_coordinates", [])
+	var target_pos: Vector3 = Vector3.ZERO
+
+	if explicit_coords.size() >= 2:
+		target_pos = Vector3(float(explicit_coords[0]), 0.1, float(explicit_coords[1]))
+	elif dest_name == "The Pit Garage":
+		target_pos = Vector3(-180.0, 0.1, 180.0)
+	elif dest_name == "Chop Shop Garage":
+		target_pos = Vector3(180.0, 0.1, 180.0)
+	elif dest_name == "Cyber Park Plaza":
+		target_pos = Vector3(0.0, 0.1, 0.0)
+	elif dest_name == "West Park Plaza":
+		target_pos = Vector3(-60.0, 0.1, 75.0)
+	elif dest_name == "Joe's Ice Cream":
+		target_pos = Vector3(65.0, 0.1, 25.0)
+	elif dest_name == "Duncan Dynamics HQ":
+		target_pos = Vector3(0.0, 0.1, -180.0)
+	elif q_data.get("type", "") == "EAVESDROP_RECON":
+		target_pos = Vector3(0.0, 0.1, 10.0) # Near park stage
+	else:
+		return # No static goal line needed (e.g. mobile tailing)
+
+	var beacon = Node3D.new()
+	beacon.name = "ActiveMissionGoalBeacon"
+	beacon.position = target_pos
+
+	# Glowing Neon Ring on ground
+	var ring = MeshInstance3D.new()
+	var cyl = CylinderMesh.new()
+	cyl.top_radius = 8.0
+	cyl.bottom_radius = 8.0
+	cyl.height = 0.2
+	ring.mesh = cyl
+	var r_mat = StandardMaterial3D.new()
+	r_mat.albedo_color = Color(1.0, 0.85, 0.0, 0.4)
+	r_mat.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
+	r_mat.emission_enabled = true
+	r_mat.emission = Color(1.0, 0.85, 0.0)
+	r_mat.emission_energy_multiplier = 4.0
+	ring.material_override = r_mat
+	beacon.add_child(ring)
+
+	# Vertical Sky Beam
+	var beam = MeshInstance3D.new()
+	var b_cyl = CylinderMesh.new()
+	b_cyl.top_radius = 0.5
+	b_cyl.bottom_radius = 0.5
+	b_cyl.height = 35.0
+	beam.mesh = b_cyl
+	beam.position = Vector3(0.0, 17.5, 0.0)
+	var b_mat = StandardMaterial3D.new()
+	b_mat.albedo_color = Color(1.0, 0.85, 0.0, 0.25)
+	b_mat.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
+	b_mat.emission_enabled = true
+	b_mat.emission = Color(1.0, 0.85, 0.0)
+	b_mat.emission_energy_multiplier = 5.0
+	beam.material_override = b_mat
+	beacon.add_child(beam)
+
+	# Floating 3D Label
+	var lbl = Label3D.new()
+	lbl.text = "🏁 MISSION GOAL LINE // DROP-OFF"
+	lbl.position = Vector3(0.0, 4.5, 0.0)
+	lbl.font_size = 24
+	lbl.pixel_size = 0.006
+	lbl.modulate = Color(1.0, 0.85, 0.0)
+	lbl.outline_modulate = Color(0.0, 0.0, 0.0)
+	lbl.outline_size = 8
+	beacon.add_child(lbl)
+
+	get_parent().add_child(beacon)
+	active_goal_beacon_node = beacon
+	print("[QUEST MANAGER] 🏁 Spawned Mission Goal Line at: ", target_pos)
+
+func _clear_goal_beacon() -> void:
+	if is_instance_valid(active_goal_beacon_node):
+		active_goal_beacon_node.queue_free()
+		active_goal_beacon_node = null
+
 func _spawn_pink_cadillac_mission_asset() -> void:
-	var traffic_sys = get_parent().get_node_or_null("TrafficSystem")
 	var root_scene = get_parent()
-	
 	if is_instance_valid(root_scene):
-		# Remove existing Cadillac if present
 		var old_cadillac = root_scene.get_node_or_null("PinkCadillacTarget")
 		if is_instance_valid(old_cadillac):
 			old_cadillac.queue_free()
@@ -156,27 +305,20 @@ func _spawn_pink_cadillac_mission_asset() -> void:
 		cadillac.set_script(cadillac_script)
 		cadillac.name = "PinkCadillacTarget"
 		
-		# Persistent fixed street route for Seed 1042 (Right-hand traffic lanes along main avenues)
-		# Start: Cyber Park West Gate -> Central Broadway -> North Substation Avenue -> Chop Shop Alley Drop-off
 		var cadillac_route: Array[Vector3] = [
-			Vector3(-60.0, 0.0, 75.0),   # 1. Cyber Park West Gate Departure
-			Vector3(0.0, 0.0, 75.0),     # 2. Main Broadway & 1st Avenue Intersection
-			Vector3(120.0, 0.0, 75.0),   # 3. East Commercial Sector Turn
-			Vector3(120.0, 0.0, -45.0),  # 4. North Industrial Corridor
-			Vector3(0.0, 0.0, -45.0),    # 5. Substation Avenue Crossing
-			Vector3(-120.0, 0.0, -45.0), # 6. West Warehouse District
-			Vector3(-120.0, 0.0, 75.0)   # 7. Return to Chop Shop Alley Destination
+			Vector3(-60.0, 0.0, 75.0),
+			Vector3(0.0, 0.0, 75.0),
+			Vector3(120.0, 0.0, 75.0),
+			Vector3(120.0, 0.0, -45.0),
+			Vector3(0.0, 0.0, -45.0),
+			Vector3(-120.0, 0.0, -45.0),
+			Vector3(-120.0, 0.0, 75.0)
 		]
 		cadillac.setup_route(cadillac_route)
 		cadillac.is_active_tail_target = true
 		
-		# Connect failure & completion signals
 		cadillac.tailing_alert_failed.connect(func(reason: String):
-			var neural_comms = get_parent().get_node_or_null("NeuralNotificationSystem")
-			if is_instance_valid(neural_comms):
-				neural_comms.send_message("TAILING FAILED: " + reason, "MR. DODGY // PARK CONTACT")
-			_hide_quest_hud()
-			active_quest_id = ""
+			fail_quest("street_01_pink_cadillac", "TAILING FAILED: " + reason)
 		)
 		
 		cadillac.tailing_completed.connect(func():
@@ -185,6 +327,31 @@ func _spawn_pink_cadillac_mission_asset() -> void:
 		
 		root_scene.add_child(cadillac)
 		print("[QUEST MANAGER] Spawned Pink Cadillac mission asset at West Park Plaza!")
+
+## Fails an active quest, applying penalties (credits fine, affinity loss) and notifying user
+func fail_quest(quest_id: String, reason: String = "MISSION FAILED") -> void:
+	var q_data: Dictionary = quest_registry.get(quest_id, active_quest_data)
+	var fine: int = q_data.get("penalty_credits", 300)
+	var aff_loss: int = q_data.get("penalty_affinity", 5)
+	var giver_id: String = q_data.get("giver_npc_id", "")
+
+	player_credits = maxi(0, player_credits - fine)
+
+	var stats_mgr = get_parent().get_node_or_null("FactionStatsManager")
+	if is_instance_valid(stats_mgr) and not giver_id.is_empty():
+		stats_mgr.modify_npc_affinity(giver_id, -aff_loss)
+
+	var neural_comms = get_parent().get_node_or_null("NeuralNotificationSystem")
+	if is_instance_valid(neural_comms) and neural_comms.has_method("send_message"):
+		var fail_msg: String = "⚠️ CONTRACT FAILED: %s\nPenalty Applied: -%d Cyber-Credits & Client Familiarity Lost." % [reason, fine]
+		neural_comms.send_message(fail_msg, "MISSION FAILED // REPUTATION PENALTY")
+
+	_clear_goal_beacon()
+	_hide_quest_hud()
+
+	active_quest_id = ""
+	active_quest_data.clear()
+	active_quest_time_left = 0.0
 
 ## Completes an active quest, rewarding credits, updating map, and triggering Lady M comms
 func complete_quest(quest_id: String) -> void:
@@ -196,6 +363,8 @@ func complete_quest(quest_id: String) -> void:
 	player_credits += reward
 
 	print("[QUEST MANAGER] Quest completed! Reward: %d Credits. Total Credits: %d" % [reward, player_credits])
+
+	_clear_goal_beacon()
 
 	# 1. Clear Overmap blip
 	var overmap = get_parent().get_node_or_null("TacticalOvermapManager")
@@ -232,6 +401,7 @@ func complete_quest(quest_id: String) -> void:
 
 	active_quest_id = ""
 	active_quest_data.clear()
+	active_quest_time_left = 0.0
 
 	emit_signal("quest_completed", quest_id, reward)
 
@@ -277,7 +447,7 @@ func _build_quest_hud() -> void:
 	margin.add_child(quest_panel)
 
 	var vbox := VBoxContainer.new()
-	vbox.add_theme_constant_override("separation", 2)
+	vbox.add_theme_constant_override("separation", 3)
 	quest_panel.add_child(vbox)
 
 	quest_title_label = Label.new()
@@ -294,10 +464,25 @@ func _build_quest_hud() -> void:
 	quest_objective_label.add_theme_color_override("font_color", Color(0.85, 0.9, 0.95))
 	vbox.add_child(quest_objective_label)
 
+	quest_timer_label = Label.new()
+	quest_timer_label.text = ""
+	quest_timer_label.add_theme_font_override("font", orbitron_font)
+	quest_timer_label.add_theme_font_size_override("font_size", 10)
+	quest_timer_label.add_theme_color_override("font_color", Color(1.0, 0.85, 0.0))
+	quest_timer_label.visible = false
+	vbox.add_child(quest_timer_label)
+
 func _show_quest_hud(title: String, desc: String) -> void:
 	quest_title_label.text = "MISSION // " + title
 	quest_objective_label.text = desc
+	if active_quest_time_left > 0.0 or active_quest_data.get("type", "") == "EAVESDROP_RECON":
+		quest_timer_label.visible = true
+		quest_timer_label.text = "⏱️ INITIALIZING OBJECTIVE TRACKER..."
+	else:
+		quest_timer_label.visible = false
 	quest_panel.visible = true
 
 func _hide_quest_hud() -> void:
 	quest_panel.visible = false
+	if is_instance_valid(quest_timer_label):
+		quest_timer_label.visible = false

@@ -8,7 +8,14 @@
   - Stages 4 (DARK_BUILDINGS) and 5 (PITCH_BLACK) are reserved for special story events (blackouts, ambushes, infiltration)
 
 
-instant simulations of battles from the battle editor
+- [x] Instant simulations of battles from the Battle Editor & Loadout Grid System:
+  - Visual Equipment Grid for both MACK (Cyborg implants, weapons, neural mods, armor plates) and his VEHICLE (weapon turrets, armor chassis, nitro boosters, ECM scramblers).
+  - Shows all available inventory slots and what is currently equipped.
+  - Interactive tuning/equipping accessible in The Pit (Porter's subterranean black-market hub) and in the Battle Editor.
+  - Live equipment status & active slot monitoring on the Cockpit Dashboard / Combat HUD.
 
 
-can duncan have a big tv screen in his private room that has a live feed of the streets outside
+
+
+- [x] can duncan have a big tv screen in his private room that has a live feed of the streets outside (768x432 SubViewport camera with slow surveillance pan overlooking Broadway intersection)
+

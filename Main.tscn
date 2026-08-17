@@ -31,6 +31,12 @@
 [ext_resource type="Script" path="res://TransitSystem.gd" id="29_transitsystem"]
 [ext_resource type="Script" path="res://StreetMissionEditorUI.gd" id="30_streeteditor"]
 [ext_resource type="Script" path="res://CorporateDronePatrolSystem.gd" id="31_dronepatrol"]
+[ext_resource type="Script" path="res://LoadoutGridManager.gd" id="32_loadoutmgr"]
+[ext_resource type="Script" path="res://LoadoutGridUI.gd" id="33_loadoutui"]
+[ext_resource type="Script" path="res://UnifiedInventoryManager.gd" id="34_invmgr"]
+[ext_resource type="Script" path="res://InventoryShopUI.gd" id="35_invui"]
+
+
 
 [sub_resource type="Environment" id="Environment_1"]
 background_mode = 1
@@ -161,7 +167,21 @@ script = ExtResource("29_transitsystem")
 [node name="CorporateDronePatrolSystem" type="Node" parent="." unique_id=314592019]
 script = ExtResource("31_dronepatrol")
 
+[node name="LoadoutGridManager" type="Node" parent="." unique_id=987111222]
+script = ExtResource("32_loadoutmgr")
+
+[node name="LoadoutGridUI" type="CanvasLayer" parent="." unique_id=987111333]
+script = ExtResource("33_loadoutui")
+
+[node name="UnifiedInventoryManager" type="Node" parent="." unique_id=987111444]
+script = ExtResource("34_invmgr")
+
+[node name="InventoryShopUI" type="CanvasLayer" parent="." unique_id=987111555]
+script = ExtResource("35_invui")
+
 [node name="PlayerCar" type="CharacterBody3D" parent="." unique_id=1110453537]
+
+
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1, 0)
 script = ExtResource("2_player")
 

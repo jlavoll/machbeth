@@ -64,6 +64,9 @@ var norns_ai_door_pos: Vector3 = Vector3.ZERO
 var fife_hq_door_pos: Vector3 = Vector3.ZERO
 var bankes_logistics_door_pos: Vector3 = Vector3.ZERO
 var power_substation_door_pos: Vector3 = Vector3.ZERO
+var joe_ice_cream_door_pos: Vector3 = Vector3.ZERO
+var joe_npc_node: Node3D = null
+
 
 # ==============================================================================
 # INITIALIZATION LOOPS
@@ -118,6 +121,9 @@ func generate_city_from_seed(target_seed: int) -> void:
 	fife_hq_door_pos = Vector3.ZERO
 	bankes_logistics_door_pos = Vector3.ZERO
 	power_substation_door_pos = Vector3.ZERO
+	joe_ice_cream_door_pos = Vector3.ZERO
+	joe_npc_node = null
+
 	if target_seed != 0:
 		rng.seed = target_seed
 	else:
@@ -758,9 +764,9 @@ func _create_block_cluster(center: Vector3, size: Vector2, neon_colors: Array) -
 			# South-West Quadrant (Bottom-Left): Porter Pit Fight Club
 			elif porter_pit_door_pos == Vector3.ZERO and bx < -50.0 and bz > 50.0:
 				b_type = "PORTER_PIT"
-			# South-Center Sector (Bottom-Center): Power Substation
-			elif power_substation_door_pos == Vector3.ZERO and abs(bx) <= 50.0 and bz > 50.0:
-				b_type = "SUBSTATION"
+			# South-East Inner Sector (Near Park & Broadway): Joe's Ice Cream Store
+			elif joe_ice_cream_door_pos == Vector3.ZERO and bx > 15.0 and bz > -50.0 and bz < 50.0:
+				b_type = "JOE_ICE_CREAM"
 
 			_spawn_building(Vector3(bx, b_height / 2.0 + 0.1, bz), Vector3(b_width, b_height, b_depth), neon_colors, b_type)
 
@@ -777,6 +783,8 @@ func _spawn_building(pos: Vector3, b_size: Vector3, neon_colors: Array, b_type: 
 	if b_type == "HQ":
 		static_body.name = "DuncanHQBuilding"
 		hq_building_pos = pos
+	elif b_type == "JOE_ICE_CREAM":
+		static_body.name = "JoeIceCreamStoreBuilding"
 
 	# 3D Collision Box matching building size (X width, Y height, Z depth)
 	var col_shape: CollisionShape3D = CollisionShape3D.new()
@@ -811,6 +819,9 @@ func _spawn_building(pos: Vector3, b_size: Vector3, neon_colors: Array, b_type: 
 		accent_color = Color(0.9, 0.7, 0.1) # Industrial Yellow
 	elif b_type == "SUBSTATION":
 		accent_color = Color(1.0, 0.9, 0.0) # High-Voltage Yellow Flag
+	elif b_type == "JOE_ICE_CREAM":
+		accent_color = Color(0.0, 1.0, 0.75) # Mint Cyan Ice Cream
+
 
 	var win_tex: Texture2D = _generate_window_texture(accent_color)
 
@@ -1100,13 +1111,15 @@ func _spawn_building(pos: Vector3, b_size: Vector3, neon_colors: Array, b_type: 
 			bankes_logistics_door_pos = door_world_pos
 		elif b_type == "SUBSTATION":
 			power_substation_door_pos = door_world_pos
+		elif b_type == "JOE_ICE_CREAM":
+			_build_joe_ice_cream_storefront(static_body, pos, b_size, accent_color)
 	else:
 		active_normal_buildings.append({"body": static_body, "pos": pos, "size": b_size})
 
 	# Add complete skyscraper object to the main city node
 	add_child(static_body)
 
-# Safety fallback pass ensuring all 9 special enterable buildings are placed across sectors
+# Safety fallback pass ensuring all special enterable buildings are placed across sectors
 func _ensure_all_special_buildings_placed(neon_colors: Array) -> void:
 	var special_specs: Array[Dictionary] = [
 		{"type": "LADY_M", "placed": lady_m_lair_door_pos != Vector3.ZERO, "target": Vector3(-180.0, 0.0, -180.0)},
@@ -1118,7 +1131,8 @@ func _ensure_all_special_buildings_placed(neon_colors: Array) -> void:
 		{"type": "FIFE_HQ", "placed": fife_hq_door_pos != Vector3.ZERO, "target": Vector3(180.0, 0.0, 0.0)},
 		{"type": "PORTER_PIT", "placed": porter_pit_door_pos != Vector3.ZERO, "target": Vector3(-180.0, 0.0, 180.0)},
 		{"type": "SUBSTATION", "placed": power_substation_door_pos != Vector3.ZERO, "target": Vector3(0.0, 0.0, 180.0)},
-		{"type": "CHOP_SHOP", "placed": chop_shop_door_pos != Vector3.ZERO, "target": Vector3(180.0, 0.0, 180.0)}
+		{"type": "CHOP_SHOP", "placed": chop_shop_door_pos != Vector3.ZERO, "target": Vector3(180.0, 0.0, 180.0)},
+		{"type": "JOE_ICE_CREAM", "placed": joe_ice_cream_door_pos != Vector3.ZERO, "target": Vector3(65.0, 0.0, 25.0)}
 	]
 
 	for spec in special_specs:
@@ -1145,6 +1159,8 @@ func _attach_door_to_building(static_body: StaticBody3D, pos: Vector3, b_size: V
 	if b_type == "HQ":
 		static_body.name = "DuncanHQBuilding"
 		hq_building_pos = pos
+	elif b_type == "JOE_ICE_CREAM":
+		static_body.name = "JoeIceCreamStoreBuilding"
 
 	var accent_color: Color = Color(0.0, 1.0, 0.85)
 	if b_type == "HQ":
@@ -1165,6 +1181,11 @@ func _attach_door_to_building(static_body: StaticBody3D, pos: Vector3, b_size: V
 		accent_color = Color(0.9, 0.7, 0.1)
 	elif b_type == "SUBSTATION":
 		accent_color = Color(1.0, 0.9, 0.0)
+	elif b_type == "JOE_ICE_CREAM":
+		accent_color = Color(0.0, 1.0, 0.75)
+		_build_joe_ice_cream_storefront(static_body, pos, b_size, accent_color)
+		return
+
 
 	var hh: float = b_size.y / 2.0
 	var hd: float = b_size.z / 2.0
@@ -1229,6 +1250,191 @@ func _attach_door_to_building(static_body: StaticBody3D, pos: Vector3, b_size: V
 		bankes_logistics_door_pos = door_world_pos
 	elif b_type == "SUBSTATION":
 		power_substation_door_pos = door_world_pos
+
+func _build_joe_ice_cream_storefront(static_body: StaticBody3D, pos: Vector3, b_size: Vector3, _accent_color: Color) -> void:
+	var hh: float = b_size.y / 2.0
+	var hd: float = b_size.z / 2.0
+
+	var store_root = Node3D.new()
+	store_root.name = "JoeIceCreamStorefront"
+	store_root.position = Vector3(0.0, -hh, hd + 0.1)
+
+	# 1. Striped Canopy Awning (Mint Cyan & Strawberry Pink Stripes)
+	var awning = MeshInstance3D.new()
+	var a_box = BoxMesh.new()
+	a_box.size = Vector3(5.2, 0.35, 2.4)
+	awning.mesh = a_box
+	awning.position = Vector3(0.0, 3.4, 1.1)
+	awning.rotation_degrees = Vector3(-15.0, 0.0, 0.0)
+	var a_mat = StandardMaterial3D.new()
+	a_mat.albedo_color = Color(0.0, 0.9, 0.7) # Mint Cyan
+	a_mat.emission_enabled = true
+	a_mat.emission = Color(0.0, 0.9, 0.7)
+	a_mat.emission_energy_multiplier = 3.0
+	awning.material_override = a_mat
+	store_root.add_child(awning)
+
+	# 2. Outdoor Service Counter & Ice Cream Freezer Bay
+	var counter = MeshInstance3D.new()
+	var c_box = BoxMesh.new()
+	c_box.size = Vector3(4.4, 1.1, 1.2)
+	counter.mesh = c_box
+	counter.position = Vector3(0.0, 0.55, 1.2)
+	var c_mat = StandardMaterial3D.new()
+	c_mat.albedo_color = Color(0.08, 0.08, 0.12)
+	c_mat.metallic = 0.9
+	counter.material_override = c_mat
+	store_root.add_child(counter)
+
+	# Counter Glow Strip (Strawberry Pink)
+	var c_strip = MeshInstance3D.new()
+	var cs_box = BoxMesh.new()
+	cs_box.size = Vector3(4.5, 0.08, 1.25)
+	c_strip.mesh = cs_box
+	c_strip.position = Vector3(0.0, 1.12, 1.2)
+	var cs_mat = StandardMaterial3D.new()
+	cs_mat.albedo_color = Color(1.0, 0.2, 0.6)
+	cs_mat.emission_enabled = true
+	cs_mat.emission = Color(1.0, 0.2, 0.6)
+	cs_mat.emission_energy_multiplier = 4.0
+	c_strip.material_override = cs_mat
+	store_root.add_child(c_strip)
+
+	# 3. Giant 3D Glowing Neon Ice Cream Cone Sign (Mounted over canopy)
+	var cone_sign = Node3D.new()
+	cone_sign.name = "NeonIceCreamConeSign"
+	cone_sign.position = Vector3(0.0, 5.2, 1.4)
+	cone_sign.rotation_degrees = Vector3(12.0, 0.0, 0.0)
+
+	# Golden Waffle Cone
+	var cone_mesh = MeshInstance3D.new()
+	var cone_geom = CylinderMesh.new()
+	cone_geom.top_radius = 0.75
+	cone_geom.bottom_radius = 0.04
+	cone_geom.height = 1.6
+	cone_mesh.mesh = cone_geom
+	cone_mesh.position = Vector3(0.0, 0.0, 0.0)
+	var cone_mat = StandardMaterial3D.new()
+	cone_mat.albedo_color = Color(1.0, 0.75, 0.2) # Amber Gold Waffle
+	cone_mat.emission_enabled = true
+	cone_mat.emission = Color(1.0, 0.75, 0.2)
+	cone_mat.emission_energy_multiplier = 3.0
+	cone_mesh.material_override = cone_mat
+	cone_sign.add_child(cone_mesh)
+
+	# Scoop 1: Mint-Cyan
+	var scoop1 = MeshInstance3D.new()
+	var s1_sphere = SphereMesh.new()
+	s1_sphere.radius = 0.75
+	s1_sphere.height = 1.4
+	scoop1.mesh = s1_sphere
+	scoop1.position = Vector3(0.0, 1.0, 0.0)
+	var s1_mat = StandardMaterial3D.new()
+	s1_mat.albedo_color = Color(0.0, 1.0, 0.75)
+	s1_mat.emission_enabled = true
+	s1_mat.emission = Color(0.0, 1.0, 0.75)
+	s1_mat.emission_energy_multiplier = 4.5
+	scoop1.material_override = s1_mat
+	cone_sign.add_child(scoop1)
+
+	# Scoop 2: Strawberry-Pink
+	var scoop2 = MeshInstance3D.new()
+	var s2_sphere = SphereMesh.new()
+	s2_sphere.radius = 0.65
+	s2_sphere.height = 1.2
+	scoop2.mesh = s2_sphere
+	scoop2.position = Vector3(0.0, 1.85, 0.0)
+	var s2_mat = StandardMaterial3D.new()
+	s2_mat.albedo_color = Color(1.0, 0.2, 0.6)
+	s2_mat.emission_enabled = true
+	s2_mat.emission = Color(1.0, 0.2, 0.6)
+	s2_mat.emission_energy_multiplier = 4.5
+	scoop2.material_override = s2_mat
+	cone_sign.add_child(scoop2)
+
+	# Cherry on Top: Glowing Ruby Red
+	var cherry = MeshInstance3D.new()
+	var ch_sphere = SphereMesh.new()
+	ch_sphere.radius = 0.22
+	ch_sphere.height = 0.44
+	cherry.mesh = ch_sphere
+	cherry.position = Vector3(0.0, 2.55, 0.0)
+	var ch_mat = StandardMaterial3D.new()
+	ch_mat.albedo_color = Color(1.0, 0.0, 0.15)
+	ch_mat.emission_enabled = true
+	ch_mat.emission = Color(1.0, 0.0, 0.15)
+	ch_mat.emission_energy_multiplier = 6.0
+	cherry.material_override = ch_mat
+	cone_sign.add_child(cherry)
+
+	# Soft Mint-Pink Glow Light
+	var ice_light = OmniLight3D.new()
+	ice_light.light_color = Color(0.0, 1.0, 0.75)
+	ice_light.light_energy = 5.0
+	ice_light.omni_range = 14.0
+	cone_sign.add_child(ice_light)
+	store_root.add_child(cone_sign)
+
+	# 4. Signboard Label3D
+	var sign_lbl = Label3D.new()
+	sign_lbl.text = "🍦 JOE'S FROZEN DELIGHTS // DAILY SPONSOR"
+	sign_lbl.position = Vector3(0.0, 3.8, 1.8)
+	sign_lbl.font_size = 22
+	sign_lbl.pixel_size = 0.005
+	sign_lbl.modulate = Color(0.0, 1.0, 0.75)
+	sign_lbl.outline_modulate = Color(0.0, 0.0, 0.0)
+	sign_lbl.outline_size = 8
+	store_root.add_child(sign_lbl)
+
+	# 5. Spawn NPC Character "Joe" behind the counter
+	var joe_body = CharacterBody3D.new()
+	joe_body.name = "Joe"
+	joe_body.set_meta("is_joe", true)
+	joe_body.position = Vector3(0.0, 0.0, 0.3)
+
+	var j_mesh = MeshInstance3D.new()
+	var j_capsule = CapsuleMesh.new()
+	j_capsule.radius = 0.25
+	j_capsule.height = 1.3
+	j_mesh.mesh = j_capsule
+	j_mesh.position = Vector3(0.0, 0.65, 0.0)
+	var j_mat = StandardMaterial3D.new()
+	j_mat.albedo_color = Color(0.05, 0.06, 0.09)
+	j_mesh.material_override = j_mat
+	joe_body.add_child(j_mesh)
+
+	var j_head = MeshInstance3D.new()
+	var j_sphere = SphereMesh.new()
+	j_sphere.radius = 0.24
+	j_sphere.height = 0.48
+	j_head.mesh = j_sphere
+	j_head.position = Vector3(0.0, 1.4, 0.0)
+	var jh_mat = StandardMaterial3D.new()
+	jh_mat.albedo_color = Color(0.0, 1.0, 0.75) # Mint Cyan Visor
+	jh_mat.emission_enabled = true
+	jh_mat.emission = Color(0.0, 1.0, 0.75)
+	jh_mat.emission_energy_multiplier = 4.0
+	j_head.material_override = jh_mat
+	joe_body.add_child(j_head)
+
+	# Floating 3D Interaction Prompt
+	var prompt_lbl = Label3D.new()
+	prompt_lbl.text = "🍦 JOE // ICE CREAM & SPONSOR\n[PRESS E TO TALK // COLLECT STIPEND]"
+	prompt_lbl.position = Vector3(0.0, 2.0, 0.0)
+	prompt_lbl.font_size = 18
+	prompt_lbl.pixel_size = 0.005
+	prompt_lbl.modulate = Color(0.0, 1.0, 0.75)
+	prompt_lbl.outline_modulate = Color(0.0, 0.0, 0.0)
+	prompt_lbl.outline_size = 6
+	joe_body.add_child(prompt_lbl)
+
+	store_root.add_child(joe_body)
+	static_body.add_child(store_root)
+
+	joe_ice_cream_door_pos = Vector3(pos.x, 0.0, pos.z + hd + 1.8)
+	joe_npc_node = joe_body
+	print("[CITY GENERATOR] 🍦 Spawned Joe's Ice Cream Storefront at: ", joe_ice_cream_door_pos)
+
 
 # ==============================================================================
 # 6. SPECIAL DISTRICTS (CYBER RIVER, CYBER PARKS, PARKING LOTS)
@@ -1752,11 +1958,9 @@ func refresh_stage_event_performers(target_stage: Node3D = null) -> void:
 
 	# 1. Clean existing performers and decor nodes IMMEDIATELY from tree
 	for child in stage_node.get_children():
-		if child.name.begins_with("StagePerformers") or child.name.begins_with("StageCyberBand") or child.name.begins_with("StageDecor") or "@StagePerformers" in child.name or "@StageDecor" in child.name:
+		if child.name.begins_with("StagePerformers") or child.name.begins_with("StageCyberBand") or child.name.begins_with("StageDecor") or child.name.begins_with("StageConcertAudio") or "@StagePerformers" in child.name or "@StageDecor" in child.name:
 			stage_node.remove_child(child)
 			child.queue_free()
-
-
 
 	# 2. Determine active event ID for today (or rotate by day number)
 	var stage_event_mgr_script = preload("res://ParkStageEventManager.gd")
@@ -2089,4 +2293,28 @@ func refresh_stage_event_performers(target_stage: Node3D = null) -> void:
 			decor_node.add_child(footlight)
 
 	stage_node.add_child(decor_node)
+
+	# 6. Positional 3D Stage Concert Audio with Natural Rolloff
+	if resolved_event_id == "PARK_CONCERT":
+		var concert_audio = AudioStreamPlayer3D.new()
+		concert_audio.name = "StageConcertAudioPlayer"
+		concert_audio.position = Vector3(1.0, 2.5, 0.0) # Center stage PA speakers
+		var audio_path: String = event_cfg.get("audio_track", "res://music/shadowrun_the_cage.mp3")
+		if ResourceLoader.exists(audio_path):
+			var track_stream = load(audio_path)
+			concert_audio.stream = track_stream
+			concert_audio.volume_db = float(event_cfg.get("audio_volume_db", 6.0))
+			concert_audio.unit_size = float(event_cfg.get("audio_unit_size", 18.0))
+			concert_audio.max_distance = float(event_cfg.get("audio_max_distance", 110.0))
+			concert_audio.attenuation_model = AudioStreamPlayer3D.ATTENUATION_INVERSE_DISTANCE
+			concert_audio.panning_strength = 1.0
+			concert_audio.autoplay = true
+			concert_audio.finished.connect(func():
+				if is_instance_valid(concert_audio):
+					concert_audio.play()
+			)
+			stage_node.add_child(concert_audio)
+			concert_audio.play()
+			print("[STAGE AUDIO] 🎸 Positional 3D Rock Concert Audio active: ", audio_path)
+
 	print("[CITY GENERATOR] 🎭 Stage event refreshed with custom props for Day %d: %s" % [current_day_num, resolved_event_id])

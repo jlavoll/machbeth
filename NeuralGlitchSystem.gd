@@ -11,15 +11,17 @@ signal banquo_ghost_hallucination_triggered
 
 # Glitch severity gauge (0.0 = completely sane, 100.0 = total cyber-psychosis)
 var neural_glitch_potency: float = 0.0
+var glitch_potency_baseline: float = 0.0
 
 # Rate at which glitch potency decays naturally over time
 @export var passive_cooldown_rate: float = 2.0
 
 func _process(delta: float) -> void:
-	var baseline: float = 0.0
+	var baseline: float = glitch_potency_baseline
 	var cyborg_mgr = get_parent().get_node_or_null("CyborgModdingManager")
 	if is_instance_valid(cyborg_mgr):
-		baseline = cyborg_mgr.get_total_baseline_glitch()
+		baseline = max(baseline, cyborg_mgr.get_total_baseline_glitch())
+
 
 	if neural_glitch_potency > baseline:
 		neural_glitch_potency = max(baseline, neural_glitch_potency - passive_cooldown_rate * delta)

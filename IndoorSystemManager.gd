@@ -54,9 +54,24 @@ var indoor_title_label: Label = null
 var indoor_view_label: Label = null
 var _indoor_prompt_label: Label = null
 
+# Duncan Penthouse Live Surveillance TV Screen Viewport & Camera (North Wall - Broadway Street View)
+var duncan_tv_viewport: SubViewport = null
+var duncan_surv_camera: Camera3D = null
+var _duncan_cam_pan_time: float = 0.0
+
+# Duncan Penthouse Surveillance Drone Gimbal TV (East Wall - Drone Cycling View)
+var duncan_drone_tv_viewport: SubViewport = null
+var duncan_drone_cam: Camera3D = null
+var duncan_drone_header_lbl: Label3D = null
+var duncan_drone_telemetry_lbl: Label3D = null
+var _duncan_drone_cycle_timer: float = 0.0
+var _current_surv_drone_idx: int = 0
+
 # References
 @onready var player_car: CharacterBody3D = $"../PlayerCar"
 @onready var city_gen = $"../CityGenerator"
+
+
 
 func _ready() -> void:
 	_build_lobby_floor()
@@ -147,9 +162,17 @@ func _build_penthouse_floor() -> void:
 	_build_interior_desk(root_penthouse, Vector3(8.0, 0.6, 0.0), Vector3(4.0, 1.2, 2.0), Color(1.0, 0.1, 0.1))
 	_spawn_npc_character(root_penthouse, Vector3(8.0, 0.0, -1.5), Color(1.0, 0.1, 0.1), "CEO Duncan", Vector3(8.0, 0.0, 0.0))
 
+	# Giant Wall-Mounted TV Monitor (North Wall - Live Broadway City Street Surveillance Feed)
+	_build_duncan_surveillance_tv(root_penthouse)
+
+	# Second Wall-Mounted TV Monitor (East Wall - Live Surveillance Drone Cycling Gimbal Feed)
+	_build_duncan_drone_surveillance_tv(root_penthouse)
+
+
 	# Glowing Server Racks in Vault
 	for sz in [-10.0, -5.0, 0.0, 5.0, 10.0]:
 		_build_interior_desk(root_penthouse, Vector3(-14.0, 1.2, sz), Vector3(2.0, 2.4, 2.0), Color(0.0, 1.0, 0.85))
+
 
 # ==============================================================================
 # 3. MACK'S HIDEOUT (APARTMENT & TACTICAL WORKSHOP - 24m x 18m)
@@ -523,9 +546,187 @@ func _build_substation_floor() -> void:
 	_build_exit_door(root_sub, Vector3(0.0, 1.8, 9.2))
 
 # ==============================================================================
+# DUNCAN PENTHOUSE LIVE SURVEILLANCE TV SYSTEM
+# ==============================================================================
+func _build_duncan_surveillance_tv(parent: Node3D) -> void:
+	# 1. Create SubViewport rendering the City Street surveillance camera
+	duncan_tv_viewport = SubViewport.new()
+	duncan_tv_viewport.name = "DuncanSurveillanceViewport"
+	duncan_tv_viewport.size = Vector2i(768, 432)
+	duncan_tv_viewport.render_target_update_mode = SubViewport.UPDATE_ALWAYS
+	duncan_tv_viewport.own_world_3d = false # Share 3D world with main scene
+	add_child(duncan_tv_viewport)
+
+	# 2. Surveillance Camera in City overlooking Broadway traffic and street grid
+	duncan_surv_camera = Camera3D.new()
+	duncan_surv_camera.name = "DuncanSurvCamera"
+	duncan_surv_camera.current = false # Never override main player screen
+	duncan_surv_camera.fov = 68.0
+	duncan_surv_camera.position = Vector3(0.0, 34.0, 38.0)
+	duncan_surv_camera.rotation_degrees = Vector3(-35.0, 0.0, 0.0)
+	duncan_tv_viewport.add_child(duncan_surv_camera)
+
+	# 3. TV Wall Unit in Duncan's Penthouse Suite (North Wall at X=8.0, Z=-14.4)
+	var tv_root = Node3D.new()
+	tv_root.name = "DuncanSurveillanceTV"
+	tv_root.position = Vector3(8.0, 2.8, -14.4)
+	parent.add_child(tv_root)
+
+	# TV Metal Wall Frame / Mounting Case (7.0m wide, 4.0m tall, 0.15m deep)
+	var frame_inst = MeshInstance3D.new()
+	var frame_box = BoxMesh.new()
+	frame_box.size = Vector3(7.0, 4.0, 0.15)
+	frame_inst.mesh = frame_box
+	var frame_mat = StandardMaterial3D.new()
+	frame_mat.albedo_color = Color(0.04, 0.05, 0.07) # Brushed dark titanium
+	frame_mat.metallic = 0.95
+	frame_mat.roughness = 0.2
+	frame_inst.material_override = frame_mat
+	tv_root.add_child(frame_inst)
+
+	# Glowing Neon Outer Border Frame (Hot Magenta / Crimson)
+	var border_inst = MeshInstance3D.new()
+	var b_box = BoxMesh.new()
+	b_box.size = Vector3(6.8, 3.8, 0.18)
+	border_inst.mesh = b_box
+	var b_mat = StandardMaterial3D.new()
+	b_mat.albedo_color = Color(1.0, 0.0, 0.6)
+	b_mat.emission_enabled = true
+	b_mat.emission = Color(1.0, 0.0, 0.6)
+	b_mat.emission_energy_multiplier = 3.5
+	border_inst.material_override = b_mat
+	tv_root.add_child(border_inst)
+
+	# 3D Screen Surface Displaying SubViewport Texture
+	var screen_inst = MeshInstance3D.new()
+	screen_inst.name = "ScreenSurface"
+	var s_box = BoxMesh.new()
+	s_box.size = Vector3(6.5, 3.5, 0.05)
+	screen_inst.mesh = s_box
+	screen_inst.position = Vector3(0.0, 0.0, 0.08)
+
+	var screen_mat = StandardMaterial3D.new()
+	screen_mat.shading_mode = StandardMaterial3D.SHADING_MODE_UNSHADED
+	screen_mat.albedo_texture = duncan_tv_viewport.get_texture()
+	screen_mat.texture_filter = BaseMaterial3D.TEXTURE_FILTER_LINEAR
+	screen_inst.material_override = screen_mat
+	tv_root.add_child(screen_inst)
+
+	# Top Header OSD Label
+	var header_lbl = Label3D.new()
+	header_lbl.text = "📡 DUNCAN DYNAMICS // SURVEILLANCE CAM-04 [BROADWAY // LIVE GRID]"
+	header_lbl.position = Vector3(0.0, 1.85, 0.12)
+	header_lbl.font_size = 18
+	header_lbl.pixel_size = 0.005
+	header_lbl.modulate = Color(1.0, 0.0, 0.6)
+	header_lbl.outline_modulate = Color(0.0, 0.0, 0.0)
+	header_lbl.outline_size = 6
+	tv_root.add_child(header_lbl)
+
+	# Bottom Telemetry OSD Label
+	var bottom_lbl = Label3D.new()
+	bottom_lbl.text = "REC ● 1080P // 60FPS // BROADWAY INTERSECTION // TRAFFIC: MONITORED"
+	bottom_lbl.position = Vector3(0.0, -1.85, 0.12)
+	bottom_lbl.font_size = 14
+	bottom_lbl.pixel_size = 0.005
+	bottom_lbl.modulate = Color(0.0, 0.85, 1.0)
+	bottom_lbl.outline_modulate = Color(0.0, 0.0, 0.0)
+	bottom_lbl.outline_size = 6
+	tv_root.add_child(bottom_lbl)
+
+func _build_duncan_drone_surveillance_tv(parent: Node3D) -> void:
+	# 1. Create SubViewport rendering the Corporate Drone Gimbal Camera
+	duncan_drone_tv_viewport = SubViewport.new()
+	duncan_drone_tv_viewport.name = "DuncanDroneSurveillanceViewport"
+	duncan_drone_tv_viewport.size = Vector2i(768, 432)
+	duncan_drone_tv_viewport.render_target_update_mode = SubViewport.UPDATE_ALWAYS
+	duncan_drone_tv_viewport.own_world_3d = false # Share 3D world with main scene
+	add_child(duncan_drone_tv_viewport)
+
+	# 2. Surveillance Drone Gimbal Camera (tracks active patrol drone)
+	duncan_drone_cam = Camera3D.new()
+	duncan_drone_cam.name = "DuncanDroneGimbalCam"
+	duncan_drone_cam.current = false
+	duncan_drone_cam.fov = 72.0
+	duncan_drone_cam.position = Vector3(0.0, 14.0, 0.0)
+	duncan_drone_cam.rotation_degrees = Vector3(-35.0, 0.0, 0.0)
+	duncan_drone_tv_viewport.add_child(duncan_drone_cam)
+
+	# 3. TV Wall Unit on East Wall of Duncan's Penthouse Suite (X=19.4, Z=0.0, Facing West)
+	var drone_tv_root = Node3D.new()
+	drone_tv_root.name = "DuncanDroneSurveillanceTV"
+	drone_tv_root.position = Vector3(19.4, 2.8, 0.0)
+	drone_tv_root.rotation_degrees = Vector3(0.0, -90.0, 0.0) # Rotated 90 deg to face inside
+	parent.add_child(drone_tv_root)
+
+	# TV Metal Wall Frame / Mounting Case (7.0m wide, 4.0m tall, 0.15m deep)
+	var frame_inst = MeshInstance3D.new()
+	var frame_box = BoxMesh.new()
+	frame_box.size = Vector3(7.0, 4.0, 0.15)
+	frame_inst.mesh = frame_box
+	var frame_mat = StandardMaterial3D.new()
+	frame_mat.albedo_color = Color(0.04, 0.05, 0.07) # Brushed dark titanium
+	frame_mat.metallic = 0.95
+	frame_mat.roughness = 0.2
+	frame_inst.material_override = frame_mat
+	drone_tv_root.add_child(frame_inst)
+
+	# Glowing Neon Outer Border Frame (Electric Cyan / Radar Blue)
+	var border_inst = MeshInstance3D.new()
+	var b_box = BoxMesh.new()
+	b_box.size = Vector3(6.8, 3.8, 0.18)
+	border_inst.mesh = b_box
+	var b_mat = StandardMaterial3D.new()
+	b_mat.albedo_color = Color(0.0, 0.85, 1.0)
+	b_mat.emission_enabled = true
+	b_mat.emission = Color(0.0, 0.85, 1.0)
+	b_mat.emission_energy_multiplier = 3.5
+	border_inst.material_override = b_mat
+	drone_tv_root.add_child(border_inst)
+
+	# 3D Screen Surface Displaying Drone SubViewport Texture
+	var screen_inst = MeshInstance3D.new()
+	screen_inst.name = "DroneScreenSurface"
+	var s_box = BoxMesh.new()
+	s_box.size = Vector3(6.5, 3.5, 0.05)
+	screen_inst.mesh = s_box
+	screen_inst.position = Vector3(0.0, 0.0, 0.08)
+
+	var screen_mat = StandardMaterial3D.new()
+	screen_mat.shading_mode = StandardMaterial3D.SHADING_MODE_UNSHADED
+	screen_mat.albedo_texture = duncan_drone_tv_viewport.get_texture()
+	screen_mat.texture_filter = BaseMaterial3D.TEXTURE_FILTER_LINEAR
+	screen_inst.material_override = screen_mat
+	drone_tv_root.add_child(screen_inst)
+
+	# Top Header OSD Label
+	duncan_drone_header_lbl = Label3D.new()
+	duncan_drone_header_lbl.text = "🚁 PATROL DRONE [UNIT 01] // GIMBAL CAM"
+	duncan_drone_header_lbl.position = Vector3(0.0, 1.85, 0.12)
+	duncan_drone_header_lbl.font_size = 18
+	duncan_drone_header_lbl.pixel_size = 0.005
+	duncan_drone_header_lbl.modulate = Color(0.0, 0.85, 1.0)
+	duncan_drone_header_lbl.outline_modulate = Color(0.0, 0.0, 0.0)
+	duncan_drone_header_lbl.outline_size = 6
+	drone_tv_root.add_child(duncan_drone_header_lbl)
+
+	# Bottom Telemetry OSD Label
+	duncan_drone_telemetry_lbl = Label3D.new()
+	duncan_drone_telemetry_lbl.text = "ALTITUDE: 14.0M // SCAN: NOMINAL // STREET CORRIDOR PATROL"
+	duncan_drone_telemetry_lbl.position = Vector3(0.0, -1.85, 0.12)
+	duncan_drone_telemetry_lbl.font_size = 14
+	duncan_drone_telemetry_lbl.pixel_size = 0.005
+	duncan_drone_telemetry_lbl.modulate = Color(1.0, 0.85, 0.0)
+	duncan_drone_telemetry_lbl.outline_modulate = Color(0.0, 0.0, 0.0)
+	duncan_drone_telemetry_lbl.outline_size = 6
+	drone_tv_root.add_child(duncan_drone_telemetry_lbl)
+
+# ==============================================================================
 # HELPER BUILDERS: PLANES, GRIDS, WALLS, ELEVATORS, DOORS
 # ==============================================================================
 func _build_floor_plane(parent: Node3D, size: Vector2, color: Color) -> void:
+
+
 	var floor_mesh = MeshInstance3D.new()
 	var plane = PlaneMesh.new()
 	plane.size = size
@@ -1044,9 +1245,39 @@ func _process(_delta: float) -> void:
 	if not is_inside_building or not is_instance_valid(player_car):
 		return
 
+	# Animate Duncan Surveillance Camera Panning when player is inside Penthouse Suite
+	if current_floor == HQFloor.PENTHOUSE and is_instance_valid(duncan_surv_camera):
+		_duncan_cam_pan_time += _delta
+		duncan_surv_camera.rotation_degrees.y = sin(_duncan_cam_pan_time * 0.12) * 16.0
+		duncan_surv_camera.rotation_degrees.x = -35.0 + sin(_duncan_cam_pan_time * 0.18) * 2.5
+
+	# Animate & Cycle Duncan Drone Surveillance Video Wall when player is inside Penthouse Suite
+	if current_floor == HQFloor.PENTHOUSE and is_instance_valid(duncan_drone_cam):
+		var drone_system = get_parent().get_node_or_null("CorporateDronePatrolSystem")
+		if is_instance_valid(drone_system) and "active_corporate_patrol_drones" in drone_system:
+			var drones: Array = drone_system.active_corporate_patrol_drones
+			if drones.size() > 0:
+				_duncan_drone_cycle_timer += _delta
+				if _duncan_drone_cycle_timer >= 6.0:
+					_duncan_drone_cycle_timer = 0.0
+					_current_surv_drone_idx = (_current_surv_drone_idx + 1) % drones.size()
+
+				var active_drone = drones[_current_surv_drone_idx % drones.size()]
+				if is_instance_valid(active_drone):
+					var drone_pos: Vector3 = active_drone.global_position
+					duncan_drone_cam.global_position = drone_pos + Vector3(0.0, -0.4, 0.0)
+					duncan_drone_cam.global_rotation_degrees = active_drone.global_rotation_degrees + Vector3(-35.0, 0.0, 0.0)
+
+					if is_instance_valid(duncan_drone_header_lbl):
+						duncan_drone_header_lbl.text = "🚁 PATROL DRONE [UNIT 0%d] // GIMBAL CAM" % (_current_surv_drone_idx + 1)
+					if is_instance_valid(duncan_drone_telemetry_lbl):
+						duncan_drone_telemetry_lbl.text = "ALTITUDE: %.1fM // POS: [%.0f, %.0f] // STATUS: NOMINAL" % [drone_pos.y, drone_pos.x, drone_pos.z]
+
 	var player_node: Node3D = player_car.on_foot_node if (player_car.is_on_foot and is_instance_valid(player_car.on_foot_node)) else null
 	if not is_instance_valid(player_node):
 		return
+
+
 
 	var current_origin: Vector3 = _get_origin_for_floor(current_floor)
 	if indoor_view_mode == "TOPDOWN":
@@ -1268,17 +1499,29 @@ func _unhandled_input(event: InputEvent) -> void:
 					get_viewport().set_input_as_handled()
 					return
 				elif pos.distance_to(terminal_pos) <= 4.0:
+					var shop_ui = get_parent().get_node_or_null("InventoryShopUI")
+					if is_instance_valid(shop_ui) and shop_ui.has_method("open_inventory_ui"):
+						shop_ui.open_inventory_ui(0) # Open The Pit Shop
+						get_viewport().set_input_as_handled()
+						return
 					var garage_mgr = get_parent().get_node_or_null("GarageManager")
 					if is_instance_valid(garage_mgr):
 						garage_mgr.open_garage_ui()
 						get_viewport().set_input_as_handled()
 						return
 				elif pos.distance_to(cyborg_terminal_pos) <= 4.0:
+					var loadout_ui = get_parent().get_node_or_null("LoadoutGridUI")
+					if is_instance_valid(loadout_ui) and loadout_ui.has_method("open_loadout_ui"):
+						loadout_ui.open_loadout_ui()
+						get_viewport().set_input_as_handled()
+						return
 					var cyborg_mgr = get_parent().get_node_or_null("CyborgModdingManager")
 					if is_instance_valid(cyborg_mgr):
 						cyborg_mgr.open_cyborg_ui()
 						get_viewport().set_input_as_handled()
 						return
+
+
 				elif pos.distance_to(wartable_pos) <= 4.0:
 					if is_instance_valid(campaign_mgr):
 						campaign_mgr.open_deployment_ui()

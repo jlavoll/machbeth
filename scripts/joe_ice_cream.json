@@ -1,0 +1,118 @@
+{
+	"nodes": {
+		"start": {
+			"choices": [
+				{
+					"target": "collect_stipend",
+					"text": "\"Here for our daily sponsorship stipend, Joe.\""
+				},
+				{
+					"target": "king_james_whisper",
+					"text": "\"How's business today?\""
+				},
+				{
+					"target": "prototype_cyberware_intel",
+					"text": "\"Heard any valuable whispers on the street?\""
+				},
+				{
+					"target": "talk_duncan",
+					"text": "\"What do you think of Duncan Dynamics?\""
+				},
+				{
+					"target": "ice_cream_menu",
+					"text": "\"What flavors do you have today?\""
+				},
+				{
+					"target": "exit",
+					"text": "\"Got to get moving. Take care, Joe.\""
+				}
+			],
+			"text": "Hey there, Mack! Banquo! Step right up, boys! The synth-cream is fresh, cold as liquid nitrogen, and 100% on the house for my favorite street legends!"
+		},
+		"collect_stipend": {
+			"choices": [
+				{
+					"target": "king_james_whisper",
+					"text": "\"Thanks Joe. Always generous.\""
+				},
+				{
+					"target": "exit",
+					"text": "\"Appreciate the backing. See you tomorrow.\""
+				}
+			],
+			"text": "Here's your 750 credits daily backing, Mack! Cash in hand, untraceable. Consider it an investment in your future. You're destined for much bigger things than cruising alleyways, my boy."
+		},
+		"king_james_whisper": {
+			"choices": [
+				{
+					"target": "prototype_cyberware_intel",
+					"text": "\"What kind of power are you talking about?\""
+				},
+				{
+					"target": "talk_duncan",
+					"text": "\"Duncan pays the bills for now.\""
+				},
+				{
+					"target": "exit",
+					"text": "\"I make my own way. Goodbye, Joe.\""
+				}
+			],
+			"text": "Business is sweet! But watching you, Mack... it breaks my heart. A warlord of your raw caliber shouldn't be begging for table scraps from corporate CEOs. You've got the iron in your blood. The city could be yours if you had the courage to take it."
+		},
+		"prototype_cyberware_intel": {
+			"choices": [
+				{
+					"target": "accept_cyberware_heist",
+					"text": "\"Where's the convoy? I'll take it.\""
+				},
+				{
+					"target": "exit",
+					"text": "\"Sounds too reckless. I'll pass for now.\""
+				}
+			],
+			"text": "I intercepted an encrypted Cawdor freight manifest. A covert shipment of military prototype cyberware is rolling through Sector 4. The 'Cerberus Overclock Neural Core'. Untested, military-grade black tech. It fries ordinary human brains in minutes... but on a titan like you, Mack? You'd be an unstoppable demigod!"
+		},
+		"accept_cyberware_heist": {
+			"choices": [
+				{
+					"target": "exit",
+					"text": "\"Consider it intercepted. I'm on my way.\""
+				}
+			],
+			"text": "That's the spirit, Mack! Intercept that transport in Sector 4! Don't worry about the neural heat spike—greatness always requires a little sacrifice!"
+		},
+		"talk_duncan": {
+			"choices": [
+				{
+					"target": "king_james_whisper",
+					"text": "\"You think Duncan is weak?\""
+				},
+				{
+					"target": "exit",
+					"text": "\"Careful what you say out loud, Joe.\""
+				}
+			],
+			"text": "Duncan? Old man sits up in his glass penthouse Floor 99, staring at those little TV screens, pretending he commands the storm. But the real power lives down here in the asphalt, Mack. In the guys who pull the triggers."
+		},
+		"ice_cream_menu": {
+			"choices": [
+				{
+					"target": "start",
+					"text": "\"Give me a scoop of Neon Pistachio.\""
+				},
+				{
+					"target": "start",
+					"text": "\"I'll take the Chrome Vanilla Swirl.\""
+				},
+				{
+					"target": "start",
+					"text": "\"Liquid Nitrogen Blueberry sounds refreshing.\""
+				}
+			],
+			"text": "Today's specials: Neon Pistachio Blast with real synth-glow, Chrome Vanilla Double Swirl, and Sub-Zero Nitrogen Blueberry! Guaranteed to cool your neural processor after a firefight!"
+		}
+	},
+	"speaker_color": "#00FFCC",
+	"speaker_display_name": "JOE",
+	"speaker_subtitle": "JOE'S FROZEN DELIGHTS // SPONSOR & 'FRIEND'"
+}

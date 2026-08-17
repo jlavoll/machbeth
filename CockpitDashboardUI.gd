@@ -176,18 +176,34 @@ func _construct_cockpit_dashboard_layout() -> void:
 	cockpit_overlay_panel.add_child(dash_panel)
 
 	# Grid Container for Tactile Buttons & Gauges
+	var dash_vbox = VBoxContainer.new()
+	dash_vbox.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	dash_vbox.offset_left = 30
+	dash_vbox.offset_top = 8
+	dash_vbox.offset_right = -30
+	dash_vbox.offset_bottom = -12
+	dash_vbox.add_theme_constant_override("separation", 8)
+	dash_panel.add_child(dash_vbox)
+
+	# Top Dashboard Telemetry Strip (Active Mack & Rig Loadout Slots)
+	var loadout_strip = Label.new()
+	loadout_strip.name = "LoadoutTelemetryStrip"
+	loadout_strip.text = "⚡ ACTIVE LOADOUT GRID: [MACK: 🧠 Core 👁️ Scope 🔫 Cannon 🎯 Sidearm 🛡️ Plating] | [RIG: 🚀 Turret 🚗 Chassis ⚡ Boost 📡 ECM]"
+	loadout_strip.add_theme_font_override("font", orbitron_font)
+	loadout_strip.add_theme_font_size_override("font_size", 10)
+	loadout_strip.add_theme_color_override("font_color", Color(0.0, 1.0, 0.85))
+	loadout_strip.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	dash_vbox.add_child(loadout_strip)
+
 	var grid = HBoxContainer.new()
-	grid.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
-	grid.offset_left = 30
-	grid.offset_top = 20
-	grid.offset_right = -30
-	grid.offset_bottom = -20
+	grid.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	grid.alignment = BoxContainer.ALIGNMENT_CENTER
 	grid.add_theme_constant_override("separation", 25)
-	dash_panel.add_child(grid)
+	dash_vbox.add_child(grid)
 
-	# --- MODULE 1: ORDNANCE ARRAY (Gatling/EMP) ---
-	var m1 = _create_dashboard_module("ORDNANCE ARRAY", "[1] Gatling Cannon", Color(1, 0, 0.2))
+
+	# --- MODULE 1: ORDNANCE ARRAY (Autocannon/Gatling) ---
+	var m1 = _create_dashboard_module("ORDNANCE ARRAY", "[1] Autocannon", Color(1, 0.3, 0.1))
 	gatling_button = m1["button"]
 	gatling_atb_gauge = m1["gauge"]
 	gatling_button.pressed.connect(func():
@@ -207,7 +223,7 @@ func _construct_cockpit_dashboard_layout() -> void:
 	grid.add_child(m2["container"])
 
 	# --- MODULE 3: ENGINE CORE (Nitrous Booster) ---
-	var m3 = _create_dashboard_module("ENGINE CORE", "[3] Nitrous Boost", Color(1, 0.8, 0))
+	var m3 = _create_dashboard_module("ENGINE CORE", "[3] Nitrous Overdrive", Color(1, 0.8, 0))
 	nitrous_button = m3["button"]
 	nitrous_atb_gauge = m3["gauge"]
 	nitrous_button.pressed.connect(func():
@@ -217,7 +233,7 @@ func _construct_cockpit_dashboard_layout() -> void:
 	grid.add_child(m3["container"])
 
 	# --- MODULE 4: OVERCLOCK LEVER (Limit Break) ---
-	var m4 = _create_dashboard_module("OVERCLOCK LEVER", "[4] Neural Overclock", Color(1, 0, 0.8))
+	var m4 = _create_dashboard_module("LIMIT BREAK", "[4] Neural Overclock", Color(1, 0, 0.8))
 	overclock_button = m4["button"]
 	overclock_atb_gauge = m4["gauge"]
 	overclock_button.pressed.connect(func():
@@ -225,6 +241,19 @@ func _construct_cockpit_dashboard_layout() -> void:
 			overclock_lever_engaged.emit()
 	)
 	grid.add_child(m4["container"])
+
+	# --- MODULE 5: RADAR UPLINK (Tactical Telemetry Console) ---
+	var m5 = _create_dashboard_module("RADAR UPLINK", "[U] Radar Console", Color(0.0, 1.0, 0.85))
+	var radar_btn = m5["button"]
+	var radar_gauge = m5["gauge"]
+	radar_gauge.value = 100.0
+	radar_btn.pressed.connect(func():
+		var radar_ui = get_parent().get_node_or_null("BattleTelemetryRadarUI")
+		if is_instance_valid(radar_ui) and radar_ui.has_method("_toggle_unified_console"):
+			radar_ui._toggle_unified_console()
+	)
+	grid.add_child(m5["container"])
+
 
 	# --------------------------------------------------------------------------
 	# 3. STATIC GLITCH OVERLAY & B_ANKES_GHOST.EXE PHANTOM BUTTON
@@ -281,6 +310,11 @@ func _unhandled_input(event: InputEvent) -> void:
 				if consume_atb_charge("overclock"):
 					print("[HOTKEY 4] Engaged Neural Overclock via key 4!")
 					overclock_lever_engaged.emit()
+			KEY_U:
+				var radar_ui = get_parent().get_node_or_null("BattleTelemetryRadarUI")
+				if is_instance_valid(radar_ui) and radar_ui.has_method("_toggle_unified_console"):
+					radar_ui._toggle_unified_console()
+
 
 
 # Helper to manufacture tactile UI module boxes with LED gauges

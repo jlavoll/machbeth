@@ -446,6 +446,21 @@ func _unhandled_input(event: InputEvent) -> void:
 		if event.keycode == KEY_K and not is_on_foot:
 			_cycle_headlight_mode()
 
+		# Quick-use consumables
+		if event.keycode == KEY_H:
+			var inv_mgr = get_parent().get_node_or_null("UnifiedInventoryManager")
+			if is_instance_valid(inv_mgr):
+				inv_mgr.use_consumable("repair_nanokit")
+				get_viewport().set_input_as_handled()
+				return
+		elif event.keycode == KEY_J:
+			var inv_mgr = get_parent().get_node_or_null("UnifiedInventoryManager")
+			if is_instance_valid(inv_mgr):
+				inv_mgr.use_consumable("glitch_dampener_stim")
+				get_viewport().set_input_as_handled()
+				return
+
+
 		# 'E' key hitches tow cable to smoldering War-Rig or exits the car
 		if event.keycode == KEY_E and not is_on_foot and not _reenter_guard:
 			var campaign_mgr = get_parent().get_node_or_null("CampaignManager")

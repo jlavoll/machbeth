@@ -330,11 +330,30 @@ func _populate_mission_form() -> void:
 	obj_row.add_child(lbl_obj); obj_row.add_child(edit_obj)
 	form_fields_container.add_child(obj_row)
 
+	# Familiarity Needed Threshold
+	var fam_row = HBoxContainer.new()
+	var lbl_fam = Label.new(); lbl_fam.text = "Familiarity Needed:"; lbl_fam.custom_minimum_size.x = 140
+	var spin_fam = SpinBox.new(); spin_fam.min_value = 1; spin_fam.max_value = 5; spin_fam.value = mission.get("familiarity_needed", 1)
+	spin_fam.value_changed.connect(func(val): mission["familiarity_needed"] = int(val))
+	fam_row.add_child(lbl_fam); fam_row.add_child(spin_fam)
+	form_fields_container.add_child(fam_row)
+
+	# Failure Penalties Row
+	var penalty_row = HBoxContainer.new()
+	var lbl_fine = Label.new(); lbl_fine.text = "Fail Penalty ($):"; lbl_fine.custom_minimum_size.x = 140
+	var spin_fine = SpinBox.new(); spin_fine.min_value = 0; spin_fine.max_value = 10000; spin_fine.step = 50; spin_fine.value = mission.get("penalty_credits", 300)
+	spin_fine.value_changed.connect(func(val): mission["penalty_credits"] = int(val))
+	var lbl_aff = Label.new(); lbl_aff.text = "  Affinity Loss:"
+	var spin_aff = SpinBox.new(); spin_aff.min_value = 0; spin_aff.max_value = 50; spin_aff.value = mission.get("penalty_affinity", 5)
+	spin_aff.value_changed.connect(func(val): mission["penalty_affinity"] = int(val))
+	penalty_row.add_child(lbl_fine); penalty_row.add_child(spin_fine); penalty_row.add_child(lbl_aff); penalty_row.add_child(spin_aff)
+	form_fields_container.add_child(penalty_row)
+
 	form_fields_container.add_child(HSeparator.new())
 	
 	# --- SECTION 2: TYPE-SPECIFIC DYNAMIC PARAMETERS ---
 	var sec2_label = Label.new()
-	sec2_label.text = "⚙️ TYPE-SPECIFIC OBJECTIVE PARAMETERS (" + current_type + ")"
+	sec2_label.text = "⚙️ TYPE-SPECIFIC OBJECTIVE & GOAL-LINE PARAMETERS (" + current_type + ")"
 	sec2_label.add_theme_color_override("font_color", Color(0.0, 0.85, 1.0))
 	form_fields_container.add_child(sec2_label)
 	
@@ -356,17 +375,37 @@ func _populate_mission_form() -> void:
 		dist_row.add_child(lbl_min); dist_row.add_child(spin_min); dist_row.add_child(lbl_max); dist_row.add_child(spin_max)
 		form_fields_container.add_child(dist_row)
 
-	elif current_type == "COURIER_RUN":
+	elif current_type in ["COURIER_RUN", "REACH_DESTINATION"]:
 		var dest_row = HBoxContainer.new()
-		var lbl_dest = Label.new(); lbl_dest.text = "Destination:"; lbl_dest.custom_minimum_size.x = 140
-		var edit_dest = LineEdit.new(); edit_dest.text = mission.get("target_destination", "The Pit Garage"); edit_dest.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		var lbl_dest = Label.new(); lbl_dest.text = "Goal Destination:"; lbl_dest.custom_minimum_size.x = 140
+		var opt_dest = OptionButton.new()
+		var presets = ["The Pit Garage", "Chop Shop Garage", "Cyber Park Plaza", "West Park Plaza", "Joe's Ice Cream", "Duncan Dynamics HQ", "Custom Coordinates"]
+		for p_idx in range(presets.size()):
+			opt_dest.add_item(presets[p_idx])
+		var current_dest = mission.get("target_destination", "The Pit Garage")
+		var p_found = presets.find(current_dest)
+		if p_found >= 0:
+			opt_dest.select(p_found)
+		else:
+			opt_dest.select(presets.size() - 1)
+		
+		var edit_dest = LineEdit.new()
+		edit_dest.text = current_dest
+		edit_dest.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 		edit_dest.text_changed.connect(func(new_text): mission["target_destination"] = new_text)
-		dest_row.add_child(lbl_dest); dest_row.add_child(edit_dest)
+
+		opt_dest.item_selected.connect(func(idx):
+			var chosen = presets[idx]
+			if chosen != "Custom Coordinates":
+				edit_dest.text = chosen
+				mission["target_destination"] = chosen
+		)
+		dest_row.add_child(lbl_dest); dest_row.add_child(opt_dest); dest_row.add_child(edit_dest)
 		form_fields_container.add_child(dest_row)
 
 		var time_row = HBoxContainer.new()
 		var lbl_time = Label.new(); lbl_time.text = "Time Limit (s):"; lbl_time.custom_minimum_size.x = 140
-		var spin_time = SpinBox.new(); spin_time.min_value = 10; spin_time.max_value = 600; spin_time.step = 5; spin_time.value = mission.get("time_limit", 90.0)
+		var spin_time = SpinBox.new(); spin_time.min_value = 0; spin_time.max_value = 600; spin_time.step = 5; spin_time.value = mission.get("time_limit", 90.0)
 		spin_time.value_changed.connect(func(val): mission["time_limit"] = float(val))
 		time_row.add_child(lbl_time); time_row.add_child(spin_time)
 		form_fields_container.add_child(time_row)
@@ -386,6 +425,7 @@ func _populate_mission_form() -> void:
 		edit_chase.text_changed.connect(func(new_text): mission["target_informant"] = new_text)
 		chase_row.add_child(lbl_chase); chase_row.add_child(edit_chase)
 		form_fields_container.add_child(chase_row)
+
 
 func _update_list_item_text() -> void:
 	if not street_missions_catalog.has(active_selected_mission_id): return

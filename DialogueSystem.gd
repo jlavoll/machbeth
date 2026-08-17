@@ -252,12 +252,24 @@ func _spawn_choice_buttons() -> void:
 	var node_data:  Dictionary = nodes_dict.get(_current_node_id, {})
 	var choices:    Array      = node_data.get("choices", [])
 
+	var speaker_name: String = _active_dialogue_tree.get("speaker_display_name", "")
+	var stats_mgr = get_parent().get_node_or_null("FactionStatsManager")
+	var current_familiarity: int = 1
+	if is_instance_valid(stats_mgr) and stats_mgr.has_method("get_npc_familiarity"):
+		current_familiarity = stats_mgr.get_npc_familiarity(speaker_name)
+
 	for choice_index in range(choices.size()):
 		var choice_data: Dictionary = choices[choice_index]
 		var choice_text: String     = choice_data.get("text", "Continue")
 		var target_id:   String     = choice_data.get("target", "exit")
+		var needed_fam:  int        = choice_data.get("familiarity_needed", 0)
 
-		var cyber_button := _build_cyber_choice_button(choice_text, choice_index, target_id)
+		var is_locked: bool = needed_fam > current_familiarity
+		var display_choice_text: String = choice_text
+		if is_locked:
+			display_choice_text = "🔒 [LVL %d TRUST NEEDED] " % needed_fam + choice_text
+
+		var cyber_button := _build_cyber_choice_button(display_choice_text, choice_index, target_id, is_locked, needed_fam)
 		_choices_v_container.add_child(cyber_button)
 
 	# Focus first button so arrow keys and Enter work immediately
@@ -271,8 +283,25 @@ func _clear_choice_buttons() -> void:
 		existing_child.queue_free()
 
 func _on_choice_button_pressed(choice_index: int, target_node_id: String) -> void:
+	var nodes_dict: Dictionary = _active_dialogue_tree.get("nodes", {})
+	var node_data:  Dictionary = nodes_dict.get(_current_node_id, {})
+	var choices:    Array      = node_data.get("choices", [])
+	
+	if choice_index >= 0 and choice_index < choices.size():
+		var choice_data: Dictionary = choices[choice_index]
+		var fam_gain: int = choice_data.get("familiarity_gain", 0)
+		var speaker_name: String = _active_dialogue_tree.get("speaker_display_name", "")
+		if fam_gain > 0:
+			var stats_mgr = get_parent().get_node_or_null("FactionStatsManager")
+			if is_instance_valid(stats_mgr) and stats_mgr.has_method("modify_npc_familiarity"):
+				stats_mgr.modify_npc_familiarity(speaker_name, fam_gain)
+				var comms = get_parent().get_node_or_null("NeuralNotificationSystem")
+				if is_instance_valid(comms):
+					comms.send_message("🤝 TRUST ESTABLISHED: +%d Familiarity with %s" % [fam_gain, speaker_name], "FAMILIARITY UPGRADE")
+
 	emit_signal("dialogue_choice_selected", choice_index, target_node_id)
 	_display_node(target_node_id)
+
 
 # ==============================================================================
 # ANIMATION
@@ -584,7 +613,7 @@ func _build_dialogue_panel() -> void:
 # CHOICE BUTTON FACTORY
 # ==============================================================================
 
-func _build_cyber_choice_button(button_text: String, choice_index: int, target_id: String) -> Button:
+func _build_cyber_choice_button(button_text: String, choice_index: int, target_id: String, is_locked: bool = false, needed_fam: int = 0) -> Button:
 	var cyber_btn      := Button.new()
 	cyber_btn.name      = "ChoiceButton_%d" % choice_index
 	cyber_btn.text      = "▸  " + button_text
@@ -595,6 +624,29 @@ func _build_cyber_choice_button(button_text: String, choice_index: int, target_i
 	if ubuntu_font:
 		cyber_btn.add_theme_font_override("font", ubuntu_font)
 	cyber_btn.add_theme_font_size_override("font_size", 13)
+
+	if is_locked:
+		# Locked choice style (Dim red border and dark red background)
+		var locked_style := StyleBoxFlat.new()
+		locked_style.bg_color = Color(0.12, 0.02, 0.04, 0.85)
+		locked_style.border_width_left = 2
+		locked_style.border_color = Color(1.0, 0.2, 0.2, 0.6)
+		locked_style.corner_radius_top_left = 2
+		locked_style.corner_radius_top_right = 2
+		locked_style.corner_radius_bottom_left = 2
+		locked_style.corner_radius_bottom_right = 2
+		locked_style.content_margin_left = 12.0
+		locked_style.content_margin_top = 5.0
+		locked_style.content_margin_bottom = 5.0
+		cyber_btn.add_theme_stylebox_override("normal", locked_style)
+		cyber_btn.add_theme_color_override("font_color", Color(0.85, 0.45, 0.45, 0.75))
+
+		cyber_btn.pressed.connect(func():
+			var comms = get_parent().get_node_or_null("NeuralNotificationSystem")
+			if is_instance_valid(comms):
+				comms.send_message("🔒 LOCKED: Requires Familiarity Level %d with this contact. Complete lower contracts or talk with them to build trust!" % needed_fam, "NEURAL ACCESS DENIED")
+		)
+		return cyber_btn
 
 	# --- Normal state style ---
 	var normal_style             := StyleBoxFlat.new()
@@ -644,6 +696,7 @@ func _build_cyber_choice_button(button_text: String, choice_index: int, target_i
 
 	cyber_btn.pressed.connect(func(): _on_choice_button_pressed(choice_index, target_id))
 	return cyber_btn
+
 
 # ==============================================================================
 # FONT LOADING HELPERS

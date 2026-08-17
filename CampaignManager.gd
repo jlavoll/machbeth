@@ -147,6 +147,30 @@ var active_side_mission_name: String = ""
 var side_mission_time_left: float = 0.0
 var side_mission_active: bool = false
 
+# Joe's Ice Cream Daily Sponsorship Stipend Mechanic
+var has_collected_daily_joe_stipend: bool = false
+const JOE_DAILY_STIPEND_AMOUNT: int = 750
+
+func collect_joe_daily_stipend() -> bool:
+	if has_collected_daily_joe_stipend:
+		if is_instance_valid(neural_comms) and neural_comms.has_method("send_message"):
+			neural_comms.send_message("Joe: 'Already handed you today's sponsor credits, Mack! Come back tomorrow for the next payout!'", "JOE'S FROZEN DELIGHTS")
+		return false
+
+	has_collected_daily_joe_stipend = true
+	if is_instance_valid(quest_manager):
+		quest_manager.player_credits += JOE_DAILY_STIPEND_AMOUNT
+
+	if is_instance_valid(neural_comms) and neural_comms.has_method("send_message"):
+		neural_comms.send_message("🍦 JOE'S SPONSORSHIP // +%d CREDITS\nJoe: 'Here's your daily backing, Mack! Keep pushing your limits, you hear?'" % JOE_DAILY_STIPEND_AMOUNT, "JOE'S FROZEN DELIGHTS")
+
+	var faction_mgr = get_parent().get_node_or_null("FactionStatsManager")
+	if is_instance_valid(faction_mgr) and faction_mgr.has_method("modify_npc_affinity"):
+		faction_mgr.modify_npc_affinity("Joe", 5, "NIGHT_VENDORS")
+
+	return true
+
+
 func _input(event: InputEvent) -> void:
 	if event is InputEventKey and event.pressed and not event.echo:
 		# Legacy T/H/J standalone HUD keys are muted — 'U' is now the single unified battle screen console.
@@ -776,6 +800,61 @@ func _on_decision_choice_selected(_choice_index: int, target_node_id: String) ->
 	if battle_timer >= battle_duration:
 		is_battle_in_progress = false
 		_conclude_autonomous_battle(true)
+
+## Launches an instant battle simulation directly into the Battle Telemetry Radar HUD (U)
+func start_simulated_mission(mission_id: String, round_idx: int = 0) -> void:
+	is_battle_in_progress = true
+	battle_timer = 0.0
+	battle_duration = 180.0
+	mack_max_hp = 300.0
+	
+	var loadout_mgr = get_parent().get_node_or_null("LoadoutGridManager")
+	if is_instance_valid(loadout_mgr) and loadout_mgr.has_method("calculate_total_shielding"):
+		mack_max_hp += loadout_mgr.calculate_total_shielding()
+	mack_current_hp = mack_max_hp
+	mack_current_action = "Engaging Simulated Hostile Convoy"
+	active_enemy_units.clear()
+
+	# Read missions.json for custom round configurations
+	var enemy_count: int = 3
+	var enemy_names: Array[String] = ["CAWDOR VANGUARD", "FIFE ENFORCER", "EXO-TROOPER INTERCEPTOR"]
+	if FileAccess.file_exists("res://data/missions.json"):
+		var f = FileAccess.open("res://data/missions.json", FileAccess.READ)
+		var j = JSON.new()
+		if j.parse(f.get_as_text()) == OK:
+			var m_dict = j.get_data().get("missions", {}).get(mission_id, {})
+			var rounds = m_dict.get("rounds", [])
+			if rounds.size() > round_idx:
+				var r = rounds[round_idx]
+				var e_list = r.get("enemies", [])
+				if e_list.size() > 0:
+					enemy_count = e_list.size()
+					enemy_names.clear()
+					for e in e_list:
+						enemy_names.append(e.get("enemy_id", "hostile").replace("_", " ").to_upper())
+
+	for i in range(enemy_count):
+		var e_name: String = enemy_names[i % enemy_names.size()]
+		var e_hp: int = 90 + (i * 35)
+		active_enemy_units.append({
+			"name": e_name,
+			"hp": e_hp,
+			"max_hp": e_hp,
+			"ac": 12 + i,
+			"atk_bonus": 3 + i,
+			"weapon": "Twin 20mm Autocannon",
+			"weakness": "EMP / ICE-Breaker Hacks",
+			"threat": "LEVEL %d" % (i + 2)
+		})
+
+	# Open the Battle Telemetry Radar Screen
+	var radar_ui = get_parent().get_node_or_null("BattleTelemetryRadarUI")
+	if is_instance_valid(radar_ui) and radar_ui.has_method("open_telemetry_console"):
+		radar_ui.open_telemetry_console()
+
+	if is_instance_valid(neural_comms) and neural_comms.has_method("send_message"):
+		neural_comms.send_message("⚔️ BATTLE TELEMETRY CONSOLE ACTIVE: Simulating %s (Wave %d)!" % [mission_id, round_idx + 1], "BATTLE SIMULATOR")
+
 
 func _broadcast_next_rumor() -> void:
 	if rumor_index < rumor_dispatches.size():
@@ -1411,6 +1490,7 @@ func advance_to_next_day() -> void:
 	idle_day_timer = 0.0
 	mack_nag_stage = 0
 	current_lighting_phase = DayLightingPhase.DAWN_STAGE_3
+	has_collected_daily_joe_stipend = false
 	
 	# Roll a new Daily Special City Event
 	var rng = RandomNumberGenerator.new()
@@ -1460,12 +1540,20 @@ func _trigger_sequential_daily_calls() -> void:
 			neural_comms.send_message("Mack: 'My neural stack is primed for Day %d! Banquo, drive us to The Pit or launch the convoy hit when you're ready!'" % current_day, "MACK // WAR-RIG EXECUTOR")
 	)
 
-	# Call 3: The 3 Norns Prophecy (After 18.0 seconds)
-	var t3 = get_tree().create_timer(18.0)
+	# Call 3: Joe's Ice Cream Sponsor Reminder (After 14.0 seconds)
+	var t3 = get_tree().create_timer(14.0)
 	t3.timeout.connect(func():
+		if is_instance_valid(neural_comms) and neural_comms.has_method("send_message"):
+			neural_comms.send_message("Joe: 'Morning, boys! Fresh synth-cream is chilled and your daily sponsor credits (+%d CR) are ready at the parlor!'" % JOE_DAILY_STIPEND_AMOUNT, "JOE'S FROZEN DELIGHTS")
+	)
+
+	# Call 4: The 3 Norns Prophecy (After 20.0 seconds)
+	var t4 = get_tree().create_timer(20.0)
+	t4.timeout.connect(func():
 		if is_instance_valid(neural_comms) and neural_comms.has_method("send_message"):
 			neural_comms.send_message("The 3 Norns: 'Beware the Thane of Fife! Macduff's security forces shadow our movement today... Event: %s!'" % event_title, "THE 3 NORNS // PROPHECY")
 	)
+
 
 func notify_daily_quests_exhausted() -> void:
 	current_lighting_phase = DayLightingPhase.NIGHT_STAGE_3

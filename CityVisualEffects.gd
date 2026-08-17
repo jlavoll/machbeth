@@ -564,5 +564,14 @@ func _update_stage_lights_and_band_animation(delta: float) -> void:
 				var boil_pulse: float = abs(sin(_stage_anim_time * 6.0))
 				s_mat.emission_energy_multiplier = lerp(3.5, 7.5, boil_pulse)
 
+	# 5. Animate Joe's Neon Ice Cream Cone Sign
+	var joe_building = get_parent().get_node_or_null("CityGenerator/JoeIceCreamStoreBuilding")
+	if is_instance_valid(joe_building):
+		var cone_sign = joe_building.find_child("NeonIceCreamConeSign", true, false)
+		if is_instance_valid(cone_sign):
+			cone_sign.rotation_degrees.y = sin(_stage_anim_time * 1.5) * 12.0
+			cone_sign.position.y = 5.2 + sin(_stage_anim_time * 2.5) * 0.15
+
+
 
 

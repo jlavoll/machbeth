@@ -7,8 +7,13 @@ all dialogue things should be in json files simialr to the one that is triggered
 - Dialogs & Dialogue Editor:
   - Add a "Familiarity" threshold for dialogue lines (e.g. initial talk with NPC like Mr. Dodgy has Familiarity = 1; npc won't offer missions until familiarity is higher).
   - Add dialogue "Familiarity Score Modifier" per line (+1, +2, max +5).
-- Battle Editor:
-  - Add a "Simulate Now" option with an equipment screen to equip Mack first for testing various configurations.
+- Battle Editor & Loadout Grid System:
+  - Add a "Simulate Now" instant test button to jump straight into combat simulations.
+  - Visual Grid Slot Equipment UI for both MACK (Cyborg cyberware, primary/secondary weapons, neural augmentations, subdermal armor) and his VEHICLE (turrets, plating, nitro boost modules, ECM countermeasure pods).
+  - Clearly shows total available slots, locked/unlocked slots, and currently equipped loadout items with stat bonuses/glitch penalties.
+  - Full interactive equipment/tuning available in The Pit (Porter's black-market tuning garage) and directly inside the Battle Editor.
+  - Live active loadout slot monitoring reflected on the Cockpit Dashboard / Combat HUD.
+
 - Timed Missions & Penalties:
   - Timed mission pop-ups must include a countdown timer that automatically fails the mission when it reaches 0.
   - Add mission failure penalties options: fee to pay, faction score penalty / lower liking, or mission giver's familiarity score reduction.
@@ -23,6 +28,12 @@ all dialogue things should be in json files simialr to the one that is triggered
   - After Mack's daily Grand Battle, drop down to Stage 2 (LOW_LIGHT 25% - dusk).
   - After daily available side missions/quests are exhausted, drop down to Stage 3 (DIM 5% - deep night).
   - Stages 4 (DARK_BUILDINGS) and 5 (PITCH_BLACK) remain dedicated to special narrative/ambush/blackout events.
+
+- 💡 Story & Mission Idea: Banquo Takes the Wheel of the War-Rig:
+  - In a pivotal mid-game / emergency mission, Mack is incapacitated, undergoing black-market cyberware surgery, or ambushed off-grid.
+  - Banquo must physically take the driver's seat of Mack's heavy dreadnought War-Rig ("WAR-RIG EXECUTOR") to smash through a corporate blockade, extract high-value convoy cargo, or rescue Fleance.
+  - Banquo gets to unleash the War-Rig's heavy kinetic cannons, pneumatic ramming overdrive, and dual roof turrets firsthand from the cockpit, giving the player direct control over the monstrous war-machine!
+
 
 
 also:

@@ -47,22 +47,37 @@ func _unhandled_input(event: InputEvent) -> void:
 		if event.keycode == KEY_U:
 			_toggle_unified_console()
 
+func open_telemetry_console() -> void:
+	is_telemetry_open = true
+	visible = true
+	_update_console_data()
+
+func close_telemetry_console() -> void:
+	is_telemetry_open = false
+	visible = false
+
 func _toggle_unified_console() -> void:
 	var neural_comms = get_parent().get_node_or_null("NeuralNotificationSystem")
 	var campaign_mgr = get_parent().get_node_or_null("CampaignManager")
+	var battle_mgr = get_parent().get_node_or_null("BattleSystemManager")
 	
 	var is_battle_active: bool = false
-	if is_instance_valid(campaign_mgr):
-		is_battle_active = campaign_mgr.is_battle_in_progress
+	if is_instance_valid(campaign_mgr) and campaign_mgr.is_battle_in_progress:
+		is_battle_active = true
+	elif is_instance_valid(battle_mgr) and battle_mgr.is_in_combat:
+		is_battle_active = true
 		
 	if not is_battle_active:
 		if is_instance_valid(neural_comms) and neural_comms.has_method("send_message"):
-			neural_comms.send_message("📡 BATTLE CONSOLE STANDBY. Deploy Mack's War-Rig at The Pit War-Table to initialize live battlefield uplink.", "UPLINK STANDBY")
+			neural_comms.send_message("📡 BATTLE CONSOLE STANDBY. Deploy Mack's War-Rig at The Pit War-Table or simulate battle in F2 to initialize live uplink.", "UPLINK STANDBY")
 		return
 		
-	is_telemetry_open = not is_telemetry_open
-	visible = is_telemetry_open
-	_update_console_data()
+	if is_telemetry_open:
+		close_telemetry_console()
+	else:
+		open_telemetry_console()
+
+
 
 func spawn_damage_popup(amount: int, is_mack_target: bool, target_enemy_index: int = 0) -> void:
 	if is_mack_target:

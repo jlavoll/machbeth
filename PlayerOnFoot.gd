@@ -498,11 +498,24 @@ func _unhandled_input(event: InputEvent) -> void:
 					player_car.on_foot_reenter(camera, _foot_zoom)
 					get_viewport().set_input_as_handled()
 
-		# F key: interact with nearby NPC / object (opens dialogue overlay)
+		# F key: interact with nearby NPC / dialogue, or perform punch attack
 		elif event.keycode == KEY_F and not dialogue_blocking_input:
 			if _nearby_dialogue_source != "" and is_instance_valid(dialogue_system):
 				dialogue_system.start_dialogue(_nearby_dialogue_source)
+			else:
+				_perform_punch_attack()
+			get_viewport().set_input_as_handled()
+		elif event.keycode == KEY_H and not dialogue_blocking_input:
+			var inv_mgr = get_parent().get_node_or_null("UnifiedInventoryManager")
+			if is_instance_valid(inv_mgr):
+				inv_mgr.use_consumable("repair_nanokit")
 				get_viewport().set_input_as_handled()
+		elif event.keycode == KEY_J and not dialogue_blocking_input:
+			var inv_mgr = get_parent().get_node_or_null("UnifiedInventoryManager")
+			if is_instance_valid(inv_mgr):
+				inv_mgr.use_consumable("glitch_dampener_stim")
+				get_viewport().set_input_as_handled()
+
 
 # ------------------------------------------------------------------------------
 # CAMERA — orbital offset with yaw+pitch, lerped each frame, always looks at head

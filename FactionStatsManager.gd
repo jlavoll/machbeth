@@ -57,9 +57,19 @@ func modify_npc_affinity(npc_id: String, amount: int, faction_id: String = "") -
 func get_npc_affinity(npc_id: String) -> int:
 	return npc_affinity_db.get(npc_id, 0)
 
+## Returns NPC Familiarity level (1 to 5 stars) based on affinity score
+func get_npc_familiarity(npc_id: String) -> int:
+	var aff: int = get_npc_affinity(npc_id)
+	return clampi(int(aff / 10.0) + 1, 1, 5)
+
+## Modifies NPC Familiarity score directly (+1 to +5 levels)
+func modify_npc_familiarity(npc_id: String, levels: int, faction_id: String = "") -> void:
+	modify_npc_affinity(npc_id, levels * 10, faction_id)
+
 ## Returns aggregate Faction Standing score
 func get_faction_standing(faction_id: String) -> int:
 	return faction_standing_db.get(faction_id, 0)
+
 
 # ==============================================================================
 # INTERNAL FACTION STANDING RECALCULATION
