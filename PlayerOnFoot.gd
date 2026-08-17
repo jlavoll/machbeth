@@ -516,10 +516,22 @@ func _unhandled_input(event: InputEvent) -> void:
 				inv_mgr.use_consumable("glitch_dampener_stim")
 				get_viewport().set_input_as_handled()
 
+func _perform_punch_attack() -> void:
+	# Check for nearby pedestrian in melee range (2.5m)
+	var ped_system = get_parent().get_node_or_null("PedestrianSystem")
+	var hit_anyone: bool = false
+	if is_instance_valid(ped_system) and "active_pedestrians" in ped_system:
+		for ped in ped_system.active_pedestrians:
+			if is_instance_valid(ped) and global_position.distance_to(ped.global_position) < 2.5:
+				hit_anyone = true
+				break
+	
+	print("[COMBAT] Banquo executed melee punch! (Target within 2.5m: %s)" % hit_anyone)
 
 # ------------------------------------------------------------------------------
 # CAMERA — orbital offset with yaw+pitch, lerped each frame, always looks at head
 # ------------------------------------------------------------------------------
+
 func _update_camera(delta: float) -> void:
 	if not is_instance_valid(camera):
 		return
