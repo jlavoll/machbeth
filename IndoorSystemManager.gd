@@ -1372,7 +1372,9 @@ func _process(_delta: float) -> void:
 				else:
 					prompt_text = "[E] CLOSE SIDE ENTRANCE DOOR"
 			elif pos.distance_to(terminal_pos) <= 4.0:
-				prompt_text = "[E] ACCESS PIT GARAGE & FLEET MANAGER"
+				prompt_text = "[E] ACCESS PIT GARAGE & FLEET MANAGER (VEHICLE & TELEMETRY UPGRADES)"
+			elif pos.distance_to(porter_pit_origin + Vector3(26.0, 0.0, 0.0) + Vector3(4.0, 0.0, -4.0)) <= 4.0:
+				prompt_text = "[E] ACCESS BLACK-MARKET CYBERWARE & PARTS SHOP"
 			elif pos.distance_to(cyborg_terminal_pos) <= 4.0:
 				prompt_text = "[E] ACCESS MACK'S NEURAL CYBORG MODDING SUITE"
 			elif pos.distance_to(wartable_pos) <= 4.0:
@@ -1381,6 +1383,7 @@ func _process(_delta: float) -> void:
 				prompt_text = "[E] SLEEP & ADVANCE TO NEXT DAY"
 			elif pos.distance_to(floor_exit_pos) <= 4.5:
 				prompt_text = "[E] EXIT TO CITY STREETS"
+
 		elif current_floor == HQFloor.BANKES_LOGISTICS:
 			var bankes_server_pos: Vector3 = bankes_logistics_origin + Vector3(0.0, 0.0, -2.0)
 			if pos.distance_to(bankes_server_pos) <= 4.0:
@@ -1543,16 +1546,18 @@ func _unhandled_input(event: InputEvent) -> void:
 					get_viewport().set_input_as_handled()
 					return
 				elif pos.distance_to(terminal_pos) <= 4.0:
-					var shop_ui = get_parent().get_node_or_null("InventoryShopUI")
-					if is_instance_valid(shop_ui) and shop_ui.has_method("open_inventory_ui"):
-						shop_ui.open_inventory_ui(0) # Open The Pit Shop
-						get_viewport().set_input_as_handled()
-						return
 					var garage_mgr = get_parent().get_node_or_null("GarageManager")
 					if is_instance_valid(garage_mgr):
 						garage_mgr.open_garage_ui()
 						get_viewport().set_input_as_handled()
 						return
+				elif pos.distance_to(porter_pit_origin + Vector3(26.0, 0.0, 0.0) + Vector3(4.0, 0.0, -4.0)) <= 4.0: # Backroom Cyber Parts Rack
+					var shop_ui = get_parent().get_node_or_null("InventoryShopUI")
+					if is_instance_valid(shop_ui) and shop_ui.has_method("open_inventory_ui"):
+						shop_ui.open_inventory_ui(0) # Open The Pit Shop
+						get_viewport().set_input_as_handled()
+						return
+
 				elif pos.distance_to(cyborg_terminal_pos) <= 4.0:
 					var loadout_ui = get_parent().get_node_or_null("LoadoutGridUI")
 					if is_instance_valid(loadout_ui) and loadout_ui.has_method("open_loadout_ui"):
