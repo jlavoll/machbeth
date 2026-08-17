@@ -8,8 +8,11 @@ class_name QuestManager
 # Decouples quest state tracking, objective triggers, reward payouts, map blips,
 # and neural communications from DialogueSystem and PedestrianSystem.
 
-# Preloaded Orbitron font
+# Preloaded Fonts
 var orbitron_font: Font = preload("res://fonts/Orbitron/Orbitron-VariableFont_wght.ttf")
+var sharetech_font: Font = preload("res://fonts/ShareTechMono-Regular.ttf")
+var geist_font: Font = preload("res://fonts/GeistPixel-Regular-VariableFont_ELSH.ttf")
+
 
 signal quest_started(quest_id: String)
 signal quest_objective_updated(quest_id: String, objective_text: String)
@@ -460,17 +463,19 @@ func _build_quest_hud() -> void:
 	quest_objective_label = Label.new()
 	quest_objective_label.text = ""
 	quest_objective_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	quest_objective_label.add_theme_font_size_override("font_size", 10)
+	quest_objective_label.add_theme_font_override("font", sharetech_font)
+	quest_objective_label.add_theme_font_size_override("font_size", 11)
 	quest_objective_label.add_theme_color_override("font_color", Color(0.85, 0.9, 0.95))
 	vbox.add_child(quest_objective_label)
 
 	quest_timer_label = Label.new()
 	quest_timer_label.text = ""
-	quest_timer_label.add_theme_font_override("font", orbitron_font)
-	quest_timer_label.add_theme_font_size_override("font_size", 10)
+	quest_timer_label.add_theme_font_override("font", sharetech_font)
+	quest_timer_label.add_theme_font_size_override("font_size", 11)
 	quest_timer_label.add_theme_color_override("font_color", Color(1.0, 0.85, 0.0))
 	quest_timer_label.visible = false
 	vbox.add_child(quest_timer_label)
+
 
 func _show_quest_hud(title: String, desc: String) -> void:
 	quest_title_label.text = "MISSION // " + title

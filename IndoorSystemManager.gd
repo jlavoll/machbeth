@@ -71,6 +71,12 @@ var _current_surv_drone_idx: int = 0
 @onready var player_car: CharacterBody3D = $"../PlayerCar"
 @onready var city_gen = $"../CityGenerator"
 
+# Preloaded Fonts
+var orbitron_font: Font = preload("res://fonts/Orbitron/Orbitron-VariableFont_wght.ttf")
+var sharetech_font: Font = preload("res://fonts/ShareTechMono-Regular.ttf")
+var geist_font: Font = preload("res://fonts/GeistPixel-Regular-VariableFont_ELSH.ttf")
+
+
 
 
 func _ready() -> void:
@@ -396,6 +402,7 @@ func _build_porter_pit_floor() -> void:
 	scr1_label.name = "PitMonitorVitalsLabel"
 	scr1_label.position = Vector3(-9.0, 3.2, -11.35)
 	scr1_label.text = "💻 TELEMETRY VITALS\nMACK HP: 100 / 100\nCORE TEMP: 75.0°C\nENGINE RPM: 4200"
+	scr1_label.font = sharetech_font
 	scr1_label.font_size = 22
 	scr1_label.pixel_size = 0.004
 	scr1_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
@@ -410,6 +417,7 @@ func _build_porter_pit_floor() -> void:
 	scr2_label.name = "PitMonitorTacticalLabel"
 	scr2_label.position = Vector3(0.0, 3.4, -11.35)
 	scr2_label.text = "🎥 LIVE TACTICAL VIDEO FEED\nPHASE I: HIGHWAY ENGAGEMENT\n[CAM UPLINK ACTIVE]"
+	scr2_label.font = sharetech_font
 	scr2_label.font_size = 24
 	scr2_label.pixel_size = 0.004
 	scr2_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
@@ -424,6 +432,7 @@ func _build_porter_pit_floor() -> void:
 	scr3_label.name = "PitMonitorMathLabel"
 	scr3_label.position = Vector3(9.0, 3.2, -11.35)
 	scr3_label.text = "🎲 COMBAT MATH MATRIX\n[MACK ATK] d20(16)+8=24 -> 38 DMG\n[ENEMY ATK] d20(12) -> 24 DMG\nArmor Absorbed: -8 HP"
+	scr3_label.font = sharetech_font
 	scr3_label.font_size = 20
 	scr3_label.pixel_size = 0.004
 	scr3_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
@@ -431,6 +440,7 @@ func _build_porter_pit_floor() -> void:
 	scr3_label.modulate = Color(1.0, 0.85, 0.0)
 	scr3_label.outline_render_priority = 1
 	root_pit.add_child(scr3_label)
+
 
 	# Interactive Pit Garage Fleet Terminal Console (West Bay)
 	_build_interior_desk(root_pit, Vector3(-10.0, 0.6, 0.0), Vector3(3.0, 1.2, 4.0), Color(1.0, 0.5, 0.0))
@@ -702,6 +712,7 @@ func _build_duncan_drone_surveillance_tv(parent: Node3D) -> void:
 	# Top Header OSD Label
 	duncan_drone_header_lbl = Label3D.new()
 	duncan_drone_header_lbl.text = "🚁 PATROL DRONE [UNIT 01] // GIMBAL CAM"
+	duncan_drone_header_lbl.font = orbitron_font
 	duncan_drone_header_lbl.position = Vector3(0.0, 1.85, 0.12)
 	duncan_drone_header_lbl.font_size = 18
 	duncan_drone_header_lbl.pixel_size = 0.005
@@ -713,6 +724,7 @@ func _build_duncan_drone_surveillance_tv(parent: Node3D) -> void:
 	# Bottom Telemetry OSD Label
 	duncan_drone_telemetry_lbl = Label3D.new()
 	duncan_drone_telemetry_lbl.text = "ALTITUDE: 14.0M // SCAN: NOMINAL // STREET CORRIDOR PATROL"
+	duncan_drone_telemetry_lbl.font = sharetech_font
 	duncan_drone_telemetry_lbl.position = Vector3(0.0, -1.85, 0.12)
 	duncan_drone_telemetry_lbl.font_size = 14
 	duncan_drone_telemetry_lbl.pixel_size = 0.005
@@ -720,6 +732,7 @@ func _build_duncan_drone_surveillance_tv(parent: Node3D) -> void:
 	duncan_drone_telemetry_lbl.outline_modulate = Color(0.0, 0.0, 0.0)
 	duncan_drone_telemetry_lbl.outline_size = 6
 	drone_tv_root.add_child(duncan_drone_telemetry_lbl)
+
 
 # ==============================================================================
 # HELPER BUILDERS: PLANES, GRIDS, WALLS, ELEVATORS, DOORS

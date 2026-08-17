@@ -7,9 +7,13 @@ class_name NeuralNotificationSystem
 # Displays incoming neural communications from "Lady M" top-left on screen.
 # Styled as a futuristic cyberpunk encrypted head-up comms message.
 
-# Preloaded Orbitron and Ubuntu fonts
+# Preloaded Fonts
 var orbitron_font: Font = preload("res://fonts/Orbitron/Orbitron-VariableFont_wght.ttf")
 var ubuntu_font: Font = preload("res://fonts/Ubuntu/Ubuntu-Regular.ttf")
+var sharetech_font: Font = preload("res://fonts/ShareTechMono-Regular.ttf")
+var geist_font: Font = preload("res://fonts/GeistPixel-Regular-VariableFont_ELSH.ttf")
+
+
 
 @export var popup_display_duration: float = 9.5
 @export var random_message_interval: float = 45.0 # Seconds between ambient transmissions
@@ -205,10 +209,11 @@ func _build_comms_ui() -> void:
 	# Sub-header: Encryption Tag
 	status_sub_label = Label.new()
 	status_sub_label.text = "SECURE NEURAL TEXT // BANQUO CHIP-ID: 0x99A"
-	status_sub_label.add_theme_font_override("font", ubuntu_font)
+	status_sub_label.add_theme_font_override("font", sharetech_font)
 	status_sub_label.add_theme_font_size_override("font_size", 9)
-	status_sub_label.add_theme_color_override("font_color", Color(0.5, 0.9, 0.9, 0.6))
+	status_sub_label.add_theme_color_override("font_color", Color(0.5, 0.9, 0.9, 0.75))
 	text_vbox.add_child(status_sub_label)
+
 
 	# Message Body
 	message_body_label = RichTextLabel.new()

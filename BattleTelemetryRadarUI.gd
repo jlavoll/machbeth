@@ -35,9 +35,13 @@ var slot_drone_offline_lbl: Label = null
 # Visual Animations
 var active_damage_popups: Array[Dictionary] = []
 var mack_shake_timer: float = 0.0
-var active_enemy_shakes: Dictionary = {}
+# Preloaded Cyberpunk Fonts
+var orbitron_font: Font = preload("res://fonts/Orbitron/Orbitron-VariableFont_wght.ttf")
+var sharetech_font: Font = preload("res://fonts/ShareTechMono-Regular.ttf")
+var geist_font: Font = preload("res://fonts/GeistPixel-Regular-VariableFont_ELSH.ttf")
 
 func _ready() -> void:
+
 	layer = 120 # Standard overlay depth
 	_build_unified_telemetry_console()
 	visible = false
@@ -180,6 +184,7 @@ func _build_unified_telemetry_console() -> void:
 	
 	title_label = Label.new()
 	title_label.text = "🖥️ UNIFIED BATTLEFIELD COMMAND CONSOLE [U]"
+	title_label.add_theme_font_override("font", orbitron_font)
 	title_label.add_theme_color_override("font_color", Color(1.0, 0.35, 0.0))
 	title_label.add_theme_font_size_override("font_size", 13)
 	header_hbox.add_child(title_label)
@@ -188,6 +193,7 @@ func _build_unified_telemetry_console() -> void:
 	
 	battle_status_label = Label.new()
 	battle_status_label.text = "LIVE SATELLITE UPLINK ACTIVE"
+	battle_status_label.add_theme_font_override("font", sharetech_font)
 	battle_status_label.add_theme_color_override("font_color", Color(0.0, 0.85, 1.0))
 	header_hbox.add_child(battle_status_label)
 	
@@ -213,6 +219,8 @@ func _build_unified_telemetry_console() -> void:
 	
 	var math_hdr = Label.new()
 	math_hdr.text = "🎲 SLOT 4: COMBAT MATH MATRIX [TELEMETRY L2]"
+	math_hdr.add_theme_font_override("font", orbitron_font)
+	math_hdr.add_theme_font_size_override("font_size", 10)
 	math_hdr.add_theme_color_override("font_color", Color(0.0, 1.0, 0.85))
 	col1_vbox.add_child(math_hdr)
 	
@@ -230,7 +238,8 @@ func _build_unified_telemetry_console() -> void:
 	math_log_text.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	math_log_text.bbcode_enabled = true
 	math_log_text.scroll_following = false # Top is always newest
-	math_log_text.add_theme_font_size_override("normal_font_size", 9)
+	math_log_text.add_theme_font_override("normal_font", sharetech_font)
+	math_log_text.add_theme_font_size_override("normal_font_size", 10)
 	math_panel.add_child(math_log_text)
 	
 	# --- COLUMN 2 (CENTER): SLOT 1 - VECTOR BATTLE RADAR ---
@@ -241,8 +250,11 @@ func _build_unified_telemetry_console() -> void:
 	
 	var radar_hdr = Label.new()
 	radar_hdr.text = "📡 SLOT 1: VECTOR BATTLE RADAR"
+	radar_hdr.add_theme_font_override("font", orbitron_font)
+	radar_hdr.add_theme_font_size_override("font_size", 10)
 	radar_hdr.add_theme_color_override("font_color", Color(0.0, 0.85, 1.0))
 	col2_vbox.add_child(radar_hdr)
+
 	
 	var radar_panel = PanelContainer.new()
 	radar_panel.size_flags_vertical = Control.SIZE_EXPAND_FILL
@@ -268,6 +280,8 @@ func _build_unified_telemetry_console() -> void:
 	# Sub-Slot 3A: War-Rig Hull & Core Temp (Telemetry Upgrade L1)
 	var vitals_hdr = Label.new()
 	vitals_hdr.text = "🚜 SLOT 3: MACK WAR-RIG VITALS [TELEMETRY L1]"
+	vitals_hdr.add_theme_font_override("font", orbitron_font)
+	vitals_hdr.add_theme_font_size_override("font_size", 10)
 	vitals_hdr.add_theme_color_override("font_color", Color(1.0, 0.85, 0.0))
 	col3_vbox.add_child(vitals_hdr)
 	
@@ -289,7 +303,8 @@ func _build_unified_telemetry_console() -> void:
 	
 	side_vitals_label = Label.new()
 	side_vitals_label.text = "CORE TEMP: 75.0°C | ENGINE RPM: 4200"
-	side_vitals_label.add_theme_font_size_override("font_size", 9)
+	side_vitals_label.add_theme_font_override("font", sharetech_font)
+	side_vitals_label.add_theme_font_size_override("font_size", 10)
 	side_vitals_label.add_theme_color_override("font_color", Color(0.9, 0.95, 1.0))
 	vitals_vbox.add_child(side_vitals_label)
 	
@@ -305,8 +320,11 @@ func _build_unified_telemetry_console() -> void:
 	# Sub-Slot 2: Hostile Threat Scanner
 	var enemy_hdr = Label.new()
 	enemy_hdr.text = "🎯 SLOT 2: HOSTILE THREAT SCANNER"
+	enemy_hdr.add_theme_font_override("font", orbitron_font)
+	enemy_hdr.add_theme_font_size_override("font_size", 10)
 	enemy_hdr.add_theme_color_override("font_color", Color(1.0, 0.2, 0.3))
 	col3_vbox.add_child(enemy_hdr)
+
 	
 	var enemy_scroll = ScrollContainer.new()
 	enemy_scroll.size_flags_vertical = Control.SIZE_EXPAND_FILL

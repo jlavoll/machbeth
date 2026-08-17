@@ -8,8 +8,11 @@ extends Node
 # Renders a top-right PIP (Picture-In-Picture) live feed box of the most zoomed-in
 # perspective, and preserves/restores the player's custom camera settings upon exit.
 
-# Preloaded Orbitron font for HUD overlay text
+# Preloaded Fonts for HUD overlay text
 var orbitron_font: Font = preload("res://fonts/Orbitron/Orbitron-VariableFont_wght.ttf")
+var sharetech_font: Font = preload("res://fonts/ShareTechMono-Regular.ttf")
+var geist_font: Font = preload("res://fonts/GeistPixel-Regular-VariableFont_ELSH.ttf")
+
 
 @onready var player_car: CharacterBody3D = $"../PlayerCar"
 @onready var main_camera: Camera3D = $"../PlayerCar/Camera3D"
@@ -332,13 +335,13 @@ func _update_poi_legend() -> void:
 		# Label Text
 		var lbl = Label.new()
 		lbl.text = item["name"]
-		if font:
-			lbl.add_theme_font_override("font", font)
+		lbl.add_theme_font_override("font", sharetech_font)
 		lbl.add_theme_font_size_override("font_size", 9)
 		lbl.add_theme_color_override("font_color", Color(0.85, 0.9, 1.0))
 		row.add_child(lbl)
 		
 		vbox.add_child(row)
+
 
 # ==============================================================================
 # INPUT LISTENER & MAP TOGGLE LOOP

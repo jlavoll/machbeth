@@ -552,6 +552,7 @@ func _build_dialogue_panel() -> void:
 
 	var orbitron_font: FontFile = _load_orbitron_font()
 	var ubuntu_font:   FontFile = _load_ubuntu_font()
+	var sharetech_font: FontFile = _load_sharetech_font()
 
 	# Speaker name label
 	_speaker_name_label      = Label.new()
@@ -565,11 +566,13 @@ func _build_dialogue_panel() -> void:
 	# Speaker subtitle / neural-ID
 	_speaker_subtitle_label      = Label.new()
 	_speaker_subtitle_label.name = "SpeakerSubtitleLabel"
-	if ubuntu_font:
+	if sharetech_font:
+		_speaker_subtitle_label.add_theme_font_override("font", sharetech_font)
+	elif ubuntu_font:
 		_speaker_subtitle_label.add_theme_font_override("font", ubuntu_font)
 	_speaker_subtitle_label.add_theme_font_size_override("font_size", 10)
-	_speaker_subtitle_label.add_theme_color_override("font_color", Color(0.5, 0.9, 0.9, 0.7))
-	_speaker_subtitle_label.modulate.a = 0.75
+	_speaker_subtitle_label.add_theme_color_override("font_color", Color(0.5, 0.9, 0.9, 0.75))
+	_speaker_subtitle_label.modulate.a = 0.8
 	panel_v_box.add_child(_speaker_subtitle_label)
 
 	# Thin divider line
@@ -603,11 +606,14 @@ func _build_dialogue_panel() -> void:
 	_continue_hint_label.name = "ContinueHintLabel"
 	_continue_hint_label.text = "[SPACE] — Skip"
 	_continue_hint_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
-	if ubuntu_font:
+	if sharetech_font:
+		_continue_hint_label.add_theme_font_override("font", sharetech_font)
+	elif ubuntu_font:
 		_continue_hint_label.add_theme_font_override("font", ubuntu_font)
 	_continue_hint_label.add_theme_font_size_override("font_size", 10)
 	_continue_hint_label.add_theme_color_override("font_color", Color(0.4, 0.8, 0.8, 0.5))
 	panel_v_box.add_child(_continue_hint_label)
+
 
 # ==============================================================================
 # CHOICE BUTTON FACTORY
@@ -709,12 +715,23 @@ func _load_orbitron_font() -> FontFile:
 	return null
 
 func _load_ubuntu_font() -> FontFile:
-	# Locate any Ubuntu .ttf in the fonts/Ubuntu/ directory
 	var ubuntu_regular_path: String = "res://fonts/Ubuntu/Ubuntu-Regular.ttf"
 	if ResourceLoader.exists(ubuntu_regular_path):
 		return load(ubuntu_regular_path) as FontFile
-	# Fallback: any .ttf in the Ubuntu folder (Godot will find it)
 	var ubuntu_bold_path: String = "res://fonts/Ubuntu/Ubuntu-Bold.ttf"
 	if ResourceLoader.exists(ubuntu_bold_path):
 		return load(ubuntu_bold_path) as FontFile
 	return null
+
+func _load_sharetech_font() -> FontFile:
+	var sharetech_path: String = "res://fonts/ShareTechMono-Regular.ttf"
+	if ResourceLoader.exists(sharetech_path):
+		return load(sharetech_path) as FontFile
+	return null
+
+func _load_geist_font() -> FontFile:
+	var geist_path: String = "res://fonts/GeistPixel-Regular-VariableFont_ELSH.ttf"
+	if ResourceLoader.exists(geist_path):
+		return load(geist_path) as FontFile
+	return null
+
