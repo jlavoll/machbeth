@@ -1368,6 +1368,21 @@ func _start_actual_combat_engagement(location_name: String) -> void:
 		"Fife Logistics Manifest Fragment (Sector " + str(randi() % 9 + 1) + ")"
 	]
 
+	# Reset & filter decision event pool for current day's narrative context
+	decision_event_pool.clear()
+	decision_event_pool.append_array([
+		"LADY_M_HACK",
+		"POLICE_CORDON_BLOCKADE",
+		"CHOP_SHOP_DROPSHIP",
+		"FIFE_REINFORCEMENT_INTERCEPT"
+	])
+	# Unlock deeper netrunner/conspiracy events only on Day 2+
+	if current_day >= 2:
+		decision_event_pool.append("NORNS_PHANTOMS")
+		decision_event_pool.append("BANKES_SERVER_SHUTDOWN")
+
+
+
 	# Fetch Mack stats and Engine Cooling Level from GarageManager
 	var mack_engine_lvl: int = 1
 	var garage_mgr = get_parent().get_node_or_null("GarageManager")

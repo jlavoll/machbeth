@@ -25,3 +25,5 @@
   - Health/stamina meters, impact sound effects, hit reactions/flinches, and takedowns.
 
 
+fix fonts in shop screen
+
