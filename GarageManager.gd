@@ -54,6 +54,11 @@ var fleet: Dictionary = {
 	}
 }
 
+# Preloaded Typography Hierarchy
+var orbitron_font: Font = preload("res://fonts/Orbitron/Orbitron-VariableFont_wght.ttf")
+var sharetech_font: Font = preload("res://fonts/ShareTechMono-Regular.ttf")
+var ubuntu_font: Font = preload("res://fonts/Ubuntu/Ubuntu-Regular.ttf")
+
 # UI Nodes
 var garage_hud_layer: CanvasLayer = null
 var _garage_root_control: Control = null
@@ -65,6 +70,7 @@ var is_garage_open: bool = false
 
 func _ready() -> void:
 	_build_garage_ui()
+
 
 func _input(event: InputEvent) -> void:
 	if not is_garage_open:
@@ -277,7 +283,8 @@ func _build_garage_ui() -> void:
 
 	var title_lbl = Label.new()
 	title_lbl.text = "🔧 THE PIT // VEHICLE FLEET & GARAGE HUB"
-	title_lbl.add_theme_font_size_override("font_size", 20)
+	title_lbl.add_theme_font_override("font", orbitron_font)
+	title_lbl.add_theme_font_size_override("font_size", 18)
 	title_lbl.add_theme_color_override("font_color", Color(1.0, 0.45, 0.0))
 	header_hbox.add_child(title_lbl)
 
@@ -287,12 +294,15 @@ func _build_garage_ui() -> void:
 
 	_credits_label = Label.new()
 	_credits_label.text = "CREDITS: 0 C"
+	_credits_label.add_theme_font_override("font", sharetech_font)
 	_credits_label.add_theme_font_size_override("font_size", 18)
 	_credits_label.add_theme_color_override("font_color", Color(1.0, 0.85, 0.0))
 	header_hbox.add_child(_credits_label)
 
 	var close_btn = Button.new()
 	close_btn.text = " [X] CLOSE (ESC) "
+	close_btn.add_theme_font_override("font", orbitron_font)
+	close_btn.add_theme_font_size_override("font_size", 11)
 	close_btn.pressed.connect(close_garage_ui)
 	header_hbox.add_child(close_btn)
 
@@ -308,12 +318,16 @@ func _build_garage_ui() -> void:
 
 	_btn_banquo = Button.new()
 	_btn_banquo.text = " 🏎️ BANQUO'S SPECTRE INTERCEPTOR "
+	_btn_banquo.add_theme_font_override("font", orbitron_font)
+	_btn_banquo.add_theme_font_size_override("font_size", 12)
 	_btn_banquo.custom_minimum_size = Vector2(240, 40)
 	_btn_banquo.pressed.connect(func(): _select_vehicle(VehicleID.BANQUO_CAR))
 	tabs_hbox.add_child(_btn_banquo)
 
 	_btn_mack = Button.new()
 	_btn_mack.text = " 🚜 MACK'S WAR-RIG EXECUTOR "
+	_btn_mack.add_theme_font_override("font", orbitron_font)
+	_btn_mack.add_theme_font_size_override("font_size", 12)
 	_btn_mack.custom_minimum_size = Vector2(240, 40)
 	_btn_mack.pressed.connect(func(): _select_vehicle(VehicleID.MACK_RIG))
 	tabs_hbox.add_child(_btn_mack)
@@ -332,13 +346,15 @@ func _build_garage_ui() -> void:
 
 	_veh_name_label = Label.new()
 	_veh_name_label.text = "VEHICLE NAME"
-	_veh_name_label.add_theme_font_size_override("font_size", 16)
+	_veh_name_label.add_theme_font_override("font", orbitron_font)
+	_veh_name_label.add_theme_font_size_override("font_size", 15)
 	_veh_name_label.add_theme_color_override("font_color", Color(0.0, 0.85, 1.0))
 	left_vbox.add_child(_veh_name_label)
 
 	_veh_tagline_label = Label.new()
 	_veh_tagline_label.text = "Vehicle description..."
 	_veh_tagline_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	_veh_tagline_label.add_theme_font_override("font", ubuntu_font)
 	_veh_tagline_label.add_theme_font_size_override("font_size", 12)
 	_veh_tagline_label.add_theme_color_override("font_color", Color(0.7, 0.8, 0.85))
 	left_vbox.add_child(_veh_tagline_label)
@@ -359,7 +375,8 @@ func _build_garage_ui() -> void:
 
 	var stats_hdr = Label.new()
 	stats_hdr.text = "PERFORMANCE TELEMETRY"
-	stats_hdr.add_theme_font_size_override("font_size", 13)
+	stats_hdr.add_theme_font_override("font", orbitron_font)
+	stats_hdr.add_theme_font_size_override("font_size", 12)
 	stats_hdr.add_theme_color_override("font_color", Color(1.0, 0.85, 0.0))
 	stats_vbox.add_child(stats_hdr)
 
@@ -377,7 +394,8 @@ func _build_garage_ui() -> void:
 
 	var upg_hdr = Label.new()
 	upg_hdr.text = "AVAILABLE PIT GARAGE UPGRADES"
-	upg_hdr.add_theme_font_size_override("font_size", 15)
+	upg_hdr.add_theme_font_override("font", orbitron_font)
+	upg_hdr.add_theme_font_size_override("font_size", 13)
 	upg_hdr.add_theme_color_override("font_color", Color(1.0, 0.35, 0.0))
 	right_vbox.add_child(upg_hdr)
 
@@ -406,6 +424,7 @@ func _add_stat_row(parent: Control, label_text: String, default_val: String) -> 
 	parent.add_child(hbox)
 	var lbl = Label.new()
 	lbl.text = label_text
+	lbl.add_theme_font_override("font", sharetech_font)
 	lbl.add_theme_font_size_override("font_size", 12)
 	lbl.add_theme_color_override("font_color", Color(0.7, 0.8, 0.85))
 	hbox.add_child(lbl)
@@ -413,6 +432,7 @@ func _add_stat_row(parent: Control, label_text: String, default_val: String) -> 
 	val_lbl.text = default_val
 	val_lbl.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	val_lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
+	val_lbl.add_theme_font_override("font", sharetech_font)
 	val_lbl.add_theme_font_size_override("font_size", 12)
 	val_lbl.add_theme_color_override("font_color", Color(0.0, 1.0, 0.85))
 	hbox.add_child(val_lbl)
@@ -442,25 +462,31 @@ func _build_upgrade_card(parent: Control, slot_title: String, slot_desc: String,
 
 	var title = Label.new()
 	title.text = slot_title
-	title.add_theme_font_size_override("font_size", 13)
+	title.add_theme_font_override("font", orbitron_font)
+	title.add_theme_font_size_override("font_size", 12)
 	title.add_theme_color_override("font_color", Color(0.0, 1.0, 0.85))
 	vbox.add_child(title)
 
 	var desc = Label.new()
 	desc.text = slot_desc
+	desc.add_theme_font_override("font", ubuntu_font)
 	desc.add_theme_font_size_override("font_size", 11)
 	desc.add_theme_color_override("font_color", Color(0.65, 0.75, 0.8))
 	vbox.add_child(desc)
 
 	info_label.text = "Level 1 / 3"
+	info_label.add_theme_font_override("font", sharetech_font)
 	info_label.add_theme_font_size_override("font_size", 11)
 	info_label.add_theme_color_override("font_color", Color(1.0, 0.85, 0.0))
 	vbox.add_child(info_label)
 
 	upg_button.text = " UPGRADE (250 C) "
-	upg_button.custom_minimum_size = Vector2(160, 36)
+	upg_button.add_theme_font_override("font", orbitron_font)
+	upg_button.add_theme_font_size_override("font_size", 11)
+	upg_button.custom_minimum_size = Vector2(170, 36)
 	upg_button.pressed.connect(on_click)
 	hbox.add_child(upg_button)
+
 
 func _select_vehicle(veh_id: VehicleID) -> void:
 	active_fleet_selection = veh_id

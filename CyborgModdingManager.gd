@@ -46,10 +46,16 @@ var cyberware_slots: Dictionary = {
 	}
 }
 
+# Preloaded Typography Hierarchy
+var orbitron_font: Font = preload("res://fonts/Orbitron/Orbitron-VariableFont_wght.ttf")
+var sharetech_font: Font = preload("res://fonts/ShareTechMono-Regular.ttf")
+var ubuntu_font: Font = preload("res://fonts/Ubuntu/Ubuntu-Regular.ttf")
+
 # UI Overlay Nodes
 var cyborg_hud_layer: CanvasLayer = null
 var _cyborg_root_control: Control = null
 var is_cyborg_ui_open: bool = false
+
 
 # Component References
 @onready var quest_manager = $"../QuestManager"
@@ -217,7 +223,8 @@ func _build_cyborg_ui() -> void:
 
 	var title_lbl = Label.new()
 	title_lbl.text = "⚡ MACK'S NEURAL CYBORG MODDING SUITE"
-	title_lbl.add_theme_font_size_override("font_size", 20)
+	title_lbl.add_theme_font_override("font", orbitron_font)
+	title_lbl.add_theme_font_size_override("font_size", 18)
 	title_lbl.add_theme_color_override("font_color", Color(1.0, 0.0, 0.6))
 	header_hbox.add_child(title_lbl)
 
@@ -227,12 +234,15 @@ func _build_cyborg_ui() -> void:
 
 	_credits_label = Label.new()
 	_credits_label.text = "CREDITS: 0 C"
+	_credits_label.add_theme_font_override("font", sharetech_font)
 	_credits_label.add_theme_font_size_override("font_size", 18)
 	_credits_label.add_theme_color_override("font_color", Color(1.0, 0.85, 0.0))
 	header_hbox.add_child(_credits_label)
 
 	var close_btn = Button.new()
 	close_btn.text = " [X] CLOSE (ESC) "
+	close_btn.add_theme_font_override("font", orbitron_font)
+	close_btn.add_theme_font_size_override("font_size", 11)
 	close_btn.pressed.connect(close_cyborg_ui)
 	header_hbox.add_child(close_btn)
 
@@ -248,7 +258,8 @@ func _build_cyborg_ui() -> void:
 
 	var warn_lbl = Label.new()
 	warn_lbl.text = "🧠 NEURAL GLITCH BASELINE:"
-	warn_lbl.add_theme_font_size_override("font_size", 13)
+	warn_lbl.add_theme_font_override("font", orbitron_font)
+	warn_lbl.add_theme_font_size_override("font_size", 12)
 	warn_lbl.add_theme_color_override("font_color", Color(1.0, 0.2, 0.4))
 	warning_box.add_child(warn_lbl)
 
@@ -260,6 +271,7 @@ func _build_cyborg_ui() -> void:
 
 	_glitch_meter_val = Label.new()
 	_glitch_meter_val.text = "0.0% (STABLE)"
+	_glitch_meter_val.add_theme_font_override("font", sharetech_font)
 	_glitch_meter_val.add_theme_font_size_override("font_size", 13)
 	_glitch_meter_val.add_theme_color_override("font_color", Color(1.0, 0.85, 0.0))
 	warning_box.add_child(_glitch_meter_val)
@@ -268,6 +280,7 @@ func _build_cyborg_ui() -> void:
 	warn_note.text = "⚠️ Higher cyberware tiers increase combat static & Bankes ghost hallucinations."
 	warn_note.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	warn_note.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
+	warn_note.add_theme_font_override("font", ubuntu_font)
 	warn_note.add_theme_font_size_override("font_size", 11)
 	warn_note.add_theme_color_override("font_color", Color(0.7, 0.6, 0.75))
 	warning_box.add_child(warn_note)
@@ -318,31 +331,38 @@ func _build_cyberware_card(parent: Control, slot_key: String, info_label: Label,
 
 	var title = Label.new()
 	title.text = slot_data["name"]
-	title.add_theme_font_size_override("font_size", 14)
+	title.add_theme_font_override("font", orbitron_font)
+	title.add_theme_font_size_override("font_size", 13)
 	title.add_theme_color_override("font_color", Color(1.0, 0.0, 0.6))
 	vbox.add_child(title)
 
 	var desc = Label.new()
 	desc.text = slot_data["description"]
+	desc.add_theme_font_override("font", ubuntu_font)
 	desc.add_theme_font_size_override("font_size", 11)
 	desc.add_theme_color_override("font_color", Color(0.7, 0.75, 0.85))
 	vbox.add_child(desc)
 
 	var bonus = Label.new()
 	bonus.text = "STATS: " + slot_data["stat_bonus_desc"] + " | Glitch Risk: +" + str(slot_data["glitch_per_tier"]) + "%"
+	bonus.add_theme_font_override("font", sharetech_font)
 	bonus.add_theme_font_size_override("font_size", 11)
 	bonus.add_theme_color_override("font_color", Color(0.0, 1.0, 0.85))
 	vbox.add_child(bonus)
 
 	info_label.text = "Tier 1 / 3"
+	info_label.add_theme_font_override("font", sharetech_font)
 	info_label.add_theme_font_size_override("font_size", 11)
 	info_label.add_theme_color_override("font_color", Color(1.0, 0.85, 0.0))
 	vbox.add_child(info_label)
 
 	upg_button.text = " INSTALL CYBERWARE "
-	upg_button.custom_minimum_size = Vector2(180, 38)
+	upg_button.add_theme_font_override("font", orbitron_font)
+	upg_button.add_theme_font_size_override("font_size", 11)
+	upg_button.custom_minimum_size = Vector2(190, 38)
 	upg_button.pressed.connect(func(): install_cyberware(slot_key))
 	hbox.add_child(upg_button)
+
 
 func _update_ui_contents() -> void:
 	if not is_instance_valid(_cyborg_root_control):

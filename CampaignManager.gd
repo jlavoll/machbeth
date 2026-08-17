@@ -21,11 +21,17 @@ var max_grand_battles_per_day: int = 1
 var side_missions_today: int = 0
 var max_side_missions_per_day: int = 2
 
+# Preloaded Typography Hierarchy
+var orbitron_font: Font = preload("res://fonts/Orbitron/Orbitron-VariableFont_wght.ttf")
+var sharetech_font: Font = preload("res://fonts/ShareTechMono-Regular.ttf")
+var ubuntu_font: Font = preload("res://fonts/Ubuntu/Ubuntu-Regular.ttf")
+
 # Day Cycle Lighting Stages:
 # Stage 3 (DIM 5% - Dawn) -> Stage 2 (LOW_LIGHT 25% - Morning) -> Stage 1 (NORMAL 100% - Midday)
 # -> Post-Mack Battle: Stage 2 (LOW_LIGHT 25% - Dusk) -> Quests Exhausted: Stage 3 (DIM 5% - Night)
 enum DayLightingPhase { DAWN_STAGE_3, MORNING_STAGE_2, MIDDAY_STAGE_1, DUSK_STAGE_2, NIGHT_STAGE_3 }
 var current_lighting_phase: DayLightingPhase = DayLightingPhase.MIDDAY_STAGE_1
+
 
 
 # Daily Special City Events Tracking
@@ -1961,7 +1967,8 @@ func _build_deployment_ui() -> void:
 
 	var title_lbl = Label.new()
 	title_lbl.text = "⚔️ WAR-TABLE // GRAND CAMPAIGN DEPLOYMENT"
-	title_lbl.add_theme_font_size_override("font_size", 20)
+	title_lbl.add_theme_font_override("font", orbitron_font)
+	title_lbl.add_theme_font_size_override("font_size", 18)
 	title_lbl.add_theme_color_override("font_color", Color(0.0, 1.0, 0.85))
 	header_hbox.add_child(title_lbl)
 
@@ -1971,6 +1978,8 @@ func _build_deployment_ui() -> void:
 
 	var close_btn = Button.new()
 	close_btn.text = " [X] CLOSE (ESC) "
+	close_btn.add_theme_font_override("font", orbitron_font)
+	close_btn.add_theme_font_size_override("font_size", 11)
 	close_btn.pressed.connect(close_deployment_ui)
 	header_hbox.add_child(close_btn)
 
@@ -1993,13 +2002,15 @@ func _build_deployment_ui() -> void:
 
 	_act_title_label = Label.new()
 	_act_title_label.text = "ACT TITLE"
-	_act_title_label.add_theme_font_size_override("font_size", 18)
+	_act_title_label.add_theme_font_override("font", orbitron_font)
+	_act_title_label.add_theme_font_size_override("font_size", 16)
 	_act_title_label.add_theme_color_override("font_color", Color(1.0, 0.85, 0.0))
 	left_vbox.add_child(_act_title_label)
 
 	_act_desc_label = Label.new()
 	_act_desc_label.text = "Act description..."
 	_act_desc_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	_act_desc_label.add_theme_font_override("font", ubuntu_font)
 	_act_desc_label.add_theme_font_size_override("font_size", 12)
 	_act_desc_label.add_theme_color_override("font_color", Color(0.75, 0.85, 0.9))
 	left_vbox.add_child(_act_desc_label)
@@ -2017,6 +2028,7 @@ func _build_deployment_ui() -> void:
 	_convoy_info_label = Label.new()
 	_convoy_info_label.text = "CONVOY TARGET: ..."
 	_convoy_info_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	_convoy_info_label.add_theme_font_override("font", sharetech_font)
 	_convoy_info_label.add_theme_font_size_override("font_size", 13)
 	_convoy_info_label.add_theme_color_override("font_color", Color(1.0, 0.35, 0.0))
 	convoy_card.add_child(_convoy_info_label)
@@ -2027,6 +2039,8 @@ func _build_deployment_ui() -> void:
 
 	_launch_btn = Button.new()
 	_launch_btn.text = " 🚀 DEPLOY MACK'S WAR-RIG TO GRAND HIT "
+	_launch_btn.add_theme_font_override("font", orbitron_font)
+	_launch_btn.add_theme_font_size_override("font_size", 12)
 	_launch_btn.custom_minimum_size = Vector2(340, 48)
 	_launch_btn.pressed.connect(launch_grand_deployment)
 	left_vbox.add_child(_launch_btn)
@@ -2039,7 +2053,8 @@ func _build_deployment_ui() -> void:
 
 	var grid_hdr = Label.new()
 	grid_hdr.text = "CYBERPUNK CITY // 9-SECTOR CONTROL MAP"
-	grid_hdr.add_theme_font_size_override("font_size", 14)
+	grid_hdr.add_theme_font_override("font", orbitron_font)
+	grid_hdr.add_theme_font_size_override("font_size", 13)
 	grid_hdr.add_theme_color_override("font_color", Color(0.0, 1.0, 0.85))
 	right_vbox.add_child(grid_hdr)
 
@@ -2065,10 +2080,12 @@ func _build_sector_grid_boxes() -> void:
 		lbl.text = "SECTOR 0%d\nUNKNOWN" % (i + 1)
 		lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 		lbl.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+		lbl.add_theme_font_override("font", sharetech_font)
 		lbl.add_theme_font_size_override("font_size", 11)
 		box.add_child(lbl)
 		
 		_sector_grid_container.add_child(box)
+
 
 func _update_ui_contents() -> void:
 	if not is_instance_valid(_deployment_root_control):
