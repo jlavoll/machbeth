@@ -25,7 +25,13 @@ var file_option_button: OptionButton = null
 var mode_toggle_button: Button = null
 var status_banner_label: Label = null
 
+# Preloaded Fonts
+var orbitron_font: Font = preload("res://fonts/Orbitron/Orbitron-VariableFont_wght.ttf")
+var sharetech_font: Font = preload("res://fonts/ShareTechMono-Regular.ttf")
+var ubuntu_font: Font = preload("res://fonts/Ubuntu/Ubuntu-Regular.ttf")
+
 # Containers for Dual-Mode View
+
 var graph_editor_container: Control = null
 var list_editor_container: Control = null
 
@@ -153,6 +159,7 @@ func _build_dual_mode_ui_hierarchy() -> void:
 	
 	# Global UI theme font sizing for compact display (11px)
 	var custom_theme = Theme.new()
+	custom_theme.default_font = sharetech_font
 	custom_theme.default_font_size = 11
 	root_overlay_panel.theme = custom_theme
 
@@ -166,19 +173,22 @@ func _build_dual_mode_ui_hierarchy() -> void:
 	
 	var title_label = Label.new()
 	title_label.text = "DIALOGUE EDITOR [F3]"
+	title_label.add_theme_font_override("font", orbitron_font)
 	title_label.add_theme_color_override("font_color", Color(1.0, 0.45, 0.1))
-	title_label.add_theme_font_size_override("font_size", 14)
+	title_label.add_theme_font_size_override("font_size", 13)
 	header_hbox.add_child(title_label)
 	
 	header_hbox.add_child(VSeparator.new())
 	
 	var file_lbl = Label.new(); file_lbl.text = "File:"
+	file_lbl.add_theme_font_override("font", sharetech_font)
 	header_hbox.add_child(file_lbl)
 	file_option_button = OptionButton.new()
 	file_option_button.item_selected.connect(_on_dialogue_file_selected)
 	header_hbox.add_child(file_option_button)
 	
 	var new_file_btn = Button.new(); new_file_btn.text = "➕ New File"
+	new_file_btn.add_theme_font_override("font", sharetech_font)
 	new_file_btn.pressed.connect(_on_create_new_story_file_pressed)
 	header_hbox.add_child(new_file_btn)
 	
@@ -187,11 +197,15 @@ func _build_dual_mode_ui_hierarchy() -> void:
 	# Mode Toggle Button
 	mode_toggle_button = Button.new()
 	mode_toggle_button.text = "🔀 SWITCH TO LIST VIEW"
+	mode_toggle_button.add_theme_font_override("font", orbitron_font)
+	mode_toggle_button.add_theme_font_size_override("font_size", 10)
 	mode_toggle_button.pressed.connect(_on_toggle_view_mode_pressed)
 	header_hbox.add_child(mode_toggle_button)
 
 	var add_node_btn = Button.new(); add_node_btn.text = "➕ Add Node"
+	add_node_btn.add_theme_font_override("font", sharetech_font)
 	add_node_btn.pressed.connect(_on_add_new_node_pressed)
+
 	header_hbox.add_child(add_node_btn)
 
 	var save_btn = Button.new(); save_btn.text = "💾 Save All"

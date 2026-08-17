@@ -26,7 +26,15 @@ var round_tabs_bar: TabBar = null
 var round_detail_container: VBoxContainer = null
 var status_banner_label: Label = null
 
+
+# Preloaded Fonts
+var orbitron_font: Font = preload("res://fonts/Orbitron/Orbitron-VariableFont_wght.ttf")
+var sharetech_font: Font = preload("res://fonts/ShareTechMono-Regular.ttf")
+var ubuntu_font: Font = preload("res://fonts/Ubuntu/Ubuntu-Regular.ttf")
+
 func _ready() -> void:
+
+
 	process_mode = Node.PROCESS_MODE_ALWAYS
 	layer = 121 # Above DatabaseEditorUI (120)
 	_build_ui_hierarchy()
@@ -106,6 +114,7 @@ func _build_ui_hierarchy() -> void:
 	
 	# Global UI theme font sizing for compact display (11px)
 	var custom_theme = Theme.new()
+	custom_theme.default_font = sharetech_font
 	custom_theme.default_font_size = 11
 	root_overlay_panel.theme = custom_theme
 	
@@ -119,14 +128,16 @@ func _build_ui_hierarchy() -> void:
 	
 	var title_label = Label.new()
 	title_label.text = "MACK BATTLES EDITOR [F2]"
+	title_label.add_theme_font_override("font", orbitron_font)
 	title_label.add_theme_color_override("font_color", Color(1.0, 0.2, 0.5))
-	title_label.add_theme_font_size_override("font_size", 14)
+	title_label.add_theme_font_size_override("font_size", 13)
 	header_hbox.add_child(title_label)
 	
 	header_hbox.add_child(VSeparator.new())
 	
 	status_banner_label = Label.new()
 	status_banner_label.text = "READY"
+	status_banner_label.add_theme_font_override("font", sharetech_font)
 	status_banner_label.add_theme_color_override("font_color", Color(0.2, 0.9, 1.0))
 	header_hbox.add_child(status_banner_label)
 
@@ -134,6 +145,8 @@ func _build_ui_hierarchy() -> void:
 
 	var loadout_btn = Button.new()
 	loadout_btn.text = "⚡ LOADOUT GRID"
+	loadout_btn.add_theme_font_override("font", orbitron_font)
+	loadout_btn.add_theme_font_size_override("font_size", 10)
 	loadout_btn.add_theme_color_override("font_color", Color(0.0, 1.0, 0.85))
 	loadout_btn.pressed.connect(func():
 		var l_ui = get_parent().get_node_or_null("LoadoutGridUI") as LoadoutGridUI
@@ -144,6 +157,8 @@ func _build_ui_hierarchy() -> void:
 
 	var sim_btn = Button.new()
 	sim_btn.text = "⚔️ SIMULATE BATTLE NOW"
+	sim_btn.add_theme_font_override("font", orbitron_font)
+	sim_btn.add_theme_font_size_override("font_size", 10)
 	sim_btn.add_theme_color_override("font_color", Color(1.0, 0.2, 0.4))
 	sim_btn.pressed.connect(func():
 		_toggle_mission_overlay()
@@ -156,9 +171,11 @@ func _build_ui_hierarchy() -> void:
 	
 	var close_btn = Button.new()
 	close_btn.text = " CLOSE "
+	close_btn.add_theme_font_override("font", sharetech_font)
 	close_btn.size_flags_horizontal = Control.SIZE_SHRINK_END
 	close_btn.pressed.connect(_toggle_mission_overlay)
 	header_hbox.add_child(close_btn)
+
 	
 	main_vbox.add_child(HSeparator.new())
 

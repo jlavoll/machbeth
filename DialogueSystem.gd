@@ -734,4 +734,3 @@ func _load_geist_font() -> FontFile:
 	if ResourceLoader.exists(geist_path):
 		return load(geist_path) as FontFile
 	return null
-

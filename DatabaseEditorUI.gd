@@ -28,7 +28,13 @@ var catalog_item_list: ItemList = null
 var form_fields_container: VBoxContainer = null
 var status_banner_label: Label = null
 
+# Preloaded Fonts
+var orbitron_font: Font = preload("res://fonts/Orbitron/Orbitron-VariableFont_wght.ttf")
+var sharetech_font: Font = preload("res://fonts/ShareTechMono-Regular.ttf")
+var ubuntu_font: Font = preload("res://fonts/Ubuntu/Ubuntu-Regular.ttf")
+
 func _ready() -> void:
+
 	process_mode = Node.PROCESS_MODE_ALWAYS # Allows overlay to run while game tree is paused
 	layer = 120 # High Z-index above HUD elements
 	_build_ui_hierarchy()
@@ -119,6 +125,7 @@ func _build_ui_hierarchy() -> void:
 	
 	# Global UI theme font sizing for compact display (11px)
 	var custom_theme = Theme.new()
+	custom_theme.default_font = sharetech_font
 	custom_theme.default_font_size = 11
 	root_overlay_panel.theme = custom_theme
 	outer_margin.add_child(root_overlay_panel)
@@ -133,7 +140,8 @@ func _build_ui_hierarchy() -> void:
 
 	var title_lbl = Label.new()
 	title_lbl.text = "DATABASE EDITOR [F1]"
-	title_lbl.add_theme_font_size_override("font_size", 14)
+	title_lbl.add_theme_font_override("font", orbitron_font)
+	title_lbl.add_theme_font_size_override("font_size", 13)
 	title_lbl.add_theme_color_override("font_color", Color(0.0, 0.85, 1.0))
 	header_hbox.add_child(title_lbl)
 
@@ -143,8 +151,10 @@ func _build_ui_hierarchy() -> void:
 
 	var exit_btn = Button.new()
 	exit_btn.text = " CLOSE "
+	exit_btn.add_theme_font_override("font", sharetech_font)
 	exit_btn.pressed.connect(_toggle_database_overlay)
 	header_hbox.add_child(exit_btn)
+
 
 	# Category Tab Bar
 	category_tab_bar = TabBar.new()

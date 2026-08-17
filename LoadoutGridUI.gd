@@ -24,8 +24,11 @@ var item_picker_title: Label = null
 var selected_grid_target: String = ""
 var selected_slot_target: String = ""
 
-# Font
+# Fonts
 var orbitron_font: Font = preload("res://fonts/Orbitron/Orbitron-VariableFont_wght.ttf")
+var sharetech_font: Font = preload("res://fonts/ShareTechMono-Regular.ttf")
+var ubuntu_font: Font = preload("res://fonts/Ubuntu/Ubuntu-Regular.ttf")
+
 
 func _ready() -> void:
 	process_mode = Node.PROCESS_MODE_ALWAYS
@@ -157,8 +160,11 @@ func _build_ui() -> void:
 
 	stats_summary_label = RichTextLabel.new()
 	stats_summary_label.bbcode_enabled = true
+	stats_summary_label.add_theme_font_override("normal_font", sharetech_font)
+	stats_summary_label.add_theme_font_size_override("normal_font_size", 12)
 	stats_summary_label.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	center_inner.add_child(stats_summary_label)
+
 
 	# Instant Simulation Button in Center Column
 	var sim_btn = Button.new()
@@ -216,8 +222,11 @@ func _build_ui() -> void:
 
 	item_picker_title = Label.new()
 	item_picker_title.text = "📦 SELECT A SLOT ABOVE TO SWAP / EQUIP FROM INVENTORY"
-	item_picker_title.add_theme_color_override("font_color", Color(0.7, 0.8, 0.9))
+	item_picker_title.add_theme_font_override("font", sharetech_font)
+	item_picker_title.add_theme_font_size_override("font_size", 11)
+	item_picker_title.add_theme_color_override("font_color", Color(0.7, 0.85, 0.95))
 	pick_vbox.add_child(item_picker_title)
+
 
 	var scroll = ScrollContainer.new()
 	scroll.size_flags_vertical = Control.SIZE_EXPAND_FILL

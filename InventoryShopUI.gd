@@ -17,8 +17,11 @@ var currency_header_label: RichTextLabel = null
 var tab_bar: TabBar = null
 var items_scroll_container: VBoxContainer = null
 
-# Preloaded Orbitron Font
+# Preloaded Fonts
 var orbitron_font: Font = preload("res://fonts/Orbitron/Orbitron-VariableFont_wght.ttf")
+var sharetech_font: Font = preload("res://fonts/ShareTechMono-Regular.ttf")
+var ubuntu_font: Font = preload("res://fonts/Ubuntu/Ubuntu-Regular.ttf")
+
 
 func _ready() -> void:
 	process_mode = Node.PROCESS_MODE_ALWAYS
@@ -233,7 +236,9 @@ func _build_item_card(item: Dictionary, context: String, inv_mgr: UnifiedInvento
 
 	var sub_lbl = Label.new()
 	sub_lbl.text = item.get("description", "")
-	sub_lbl.add_theme_color_override("font_color", Color(0.7, 0.8, 0.9))
+	sub_lbl.add_theme_font_override("font", sharetech_font)
+	sub_lbl.add_theme_font_size_override("font_size", 10)
+	sub_lbl.add_theme_color_override("font_color", Color(0.7, 0.85, 0.95))
 	desc_vbox.add_child(sub_lbl)
 
 	# Action Buttons depending on Context
@@ -246,11 +251,13 @@ func _build_item_card(item: Dictionary, context: String, inv_mgr: UnifiedInvento
 		var cost_s = item.get("buy_scrap", 0)
 		var btn_buy = Button.new()
 		btn_buy.text = "🛒 BUY (%d CR + %d SCRAP)" % [cost_c, cost_s]
+		btn_buy.add_theme_font_override("font", sharetech_font)
 		btn_buy.pressed.connect(func():
 			if inv_mgr.buy_item_from_pit(item["id"]):
 				_refresh_items_view()
 		)
 		action_hbox.add_child(btn_buy)
+
 
 	elif context == "STASH":
 		if item.get("category", "") == "CONSUMABLE":
