@@ -218,13 +218,16 @@ func _on_dialogue_choice_selected(_choice_index: int, target_node_id: String) ->
 		start_quest("street_02_data_drop")
 	elif target_node_id == "accept_cyberware_heist":
 		start_quest("limo_intercept")
+	elif target_node_id == "accept_mission":
+		start_quest("act1_m1_dead_end_convoy")
 	else:
 		for q_id in quest_registry:
 			var q_data: Dictionary = quest_registry[q_id]
-			if target_node_id == q_data.get("start_dialogue_target", ""):
+			if target_node_id == q_data.get("start_dialogue_target", "") or target_node_id == q_id:
 				start_quest(q_id)
 			elif target_node_id == q_data.get("complete_dialogue_target", ""):
 				_pending_completion_quest_id = q_id
+
 
 func _on_dialogue_ended() -> void:
 	if _pending_completion_quest_id != "":
