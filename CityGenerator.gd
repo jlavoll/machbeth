@@ -1622,83 +1622,11 @@ func _spawn_cyber_park(center: Vector3, b_size: Vector2, neon_colors: Array, par
 			stage_node.add_child(beam_spot)
 
 		# LIVE 3D STAGE PERFORMERS (Cyber-Punk Band / Charismatic Preacher & Disciples / Shakespeare Actors)
-		if is_stage_event_today:
-			var performers_node = Node3D.new()
-			performers_node.name = "StagePerformers"
-			performers_node.position = Vector3(1.0, 1.2, 0.0)
-			performers_node.set_meta("event_id", active_event_id)
+		refresh_stage_event_performers(stage_node)
 
-			var band_members: Array = event_cfg.get("performers", [])
-
-			for member in band_members:
-				var char_body = Node3D.new()
-				char_body.name = member["name"]
-				char_body.position = member["pos"]
-				char_body.set_meta("base_pos", member["pos"])
-
-				var g_color: Color = member["color"]
-				var char_mat = StandardMaterial3D.new()
-				char_mat.albedo_color = Color(0.05, 0.05, 0.08)
-
-				var glow_mat = StandardMaterial3D.new()
-				glow_mat.albedo_color = g_color
-				glow_mat.emission_enabled = true
-				glow_mat.emission = g_color
-				glow_mat.emission_energy_multiplier = 3.5
-
-				var body_inst = MeshInstance3D.new()
-				var b_capsule = CapsuleMesh.new()
-				b_capsule.radius = 0.22
-				b_capsule.height = 1.2
-				body_inst.mesh = b_capsule
-				body_inst.position = Vector3(0.0, 0.6, 0.0)
-				body_inst.material_override = char_mat
-				char_body.add_child(body_inst)
-
-				var head_inst = MeshInstance3D.new()
-				head_inst.name = "HeadMesh"
-				var h_sphere = SphereMesh.new()
-				h_sphere.radius = 0.25
-				h_sphere.height = 0.5
-				head_inst.mesh = h_sphere
-				head_inst.position = Vector3(0.0, 1.4, 0.0)
-				head_inst.material_override = glow_mat
-				char_body.add_child(head_inst)
-
-				if member.get("armor", false):
-					# Heavy Dron Cyber-Armor Shoulders & Chest Plate
-					var armor_mesh = MeshInstance3D.new()
-					var a_box = BoxMesh.new()
-					a_box.size = Vector3(0.65, 0.5, 0.75)
-					armor_mesh.mesh = a_box
-					armor_mesh.position = Vector3(0.0, 0.75, 0.0)
-					armor_mesh.material_override = glow_mat
-					char_body.add_child(armor_mesh)
-
-				if member["mic"]:
-					var mic_stand = MeshInstance3D.new()
-					var m_rod = CylinderMesh.new()
-					m_rod.top_radius = 0.04
-					m_rod.bottom_radius = 0.04
-					m_rod.height = 1.4
-					mic_stand.mesh = m_rod
-					mic_stand.position = Vector3(0.4, 0.7, 0.0)
-					mic_stand.material_override = glow_mat
-					char_body.add_child(mic_stand)
-				elif active_event_id == "PARK_CONCERT":
-					var inst_mesh = MeshInstance3D.new()
-					var i_box = BoxMesh.new()
-					i_box.size = Vector3(0.18, 0.4, 1.1)
-					inst_mesh.mesh = i_box
-					inst_mesh.position = Vector3(0.2, 0.7, 0.0)
-					inst_mesh.material_override = glow_mat
-					char_body.add_child(inst_mesh)
-
-				performers_node.add_child(char_body)
-
-			stage_node.add_child(performers_node)
 
 	# 3. Corner Streetlights
+
 	var scenery_props_script = preload("res://CitySceneryProps.gd")
 	var scenery_props = scenery_props_script.new()
 	var park_offset_half_width: float = b_size.x / 2.0 - 1.5
@@ -1815,3 +1743,350 @@ func _spawn_parking_lot(center: Vector3, b_size: Vector2, neon_colors: Array) ->
 
 		var parked_car_node = scenery_props.create_parked_vehicle(car_pos, facing, car_color)
 		add_child(parked_car_node)
+
+# Dynamically clears and rebuilds the Cyber Park Stage performers & lighting for today's active event
+func refresh_stage_event_performers(target_stage: Node3D = null) -> void:
+	var stage_node = target_stage if is_instance_valid(target_stage) else find_child("CyberParkConcertStage", true, false)
+	if not is_instance_valid(stage_node):
+		return
+
+	# 1. Clean existing performers and decor nodes IMMEDIATELY from tree
+	for child in stage_node.get_children():
+		if child.name.begins_with("StagePerformers") or child.name.begins_with("StageCyberBand") or child.name.begins_with("StageDecor") or "@StagePerformers" in child.name or "@StageDecor" in child.name:
+			stage_node.remove_child(child)
+			child.queue_free()
+
+
+
+	# 2. Determine active event ID for today (or rotate by day number)
+	var stage_event_mgr_script = preload("res://ParkStageEventManager.gd")
+	var campaign_mgr = get_parent().get_node_or_null("CampaignManager")
+	var active_event_id: String = "PARK_CONCERT"
+	var current_day_num: int = 1
+	if is_instance_valid(campaign_mgr):
+		current_day_num = campaign_mgr.current_day
+		if campaign_mgr.active_daily_event.has("id"):
+			active_event_id = campaign_mgr.active_daily_event.get("id", "PARK_CONCERT")
+
+	var event_cfg: Dictionary = stage_event_mgr_script.get_event_config_for_day(active_event_id, current_day_num)
+	var resolved_event_id: String = event_cfg.get("id", "PARK_CONCERT")
+	var is_shakespeare_today: bool = (resolved_event_id == "SHAKESPEARE_PARK")
+
+	# 3. Update side Par Can spotlights colors based on event
+	for child in stage_node.get_children():
+		if child is SpotLight3D and child.name == "ParCanSpotlight":
+			if is_shakespeare_today:
+				child.light_color = Color(1.0, 0.75, 0.2)
+			else:
+				child.light_color = Color(1.0, 0.0, 0.8) if child.position.z < 0 else Color(0.0, 0.85, 1.0)
+			child.light_energy = 9.0
+
+	# 4. Spawn today's performers
+	var performers_node = Node3D.new()
+	performers_node.name = "StagePerformers"
+	performers_node.position = Vector3(1.0, 1.2, 0.0)
+	performers_node.set_meta("event_id", resolved_event_id)
+
+	var band_members: Array = event_cfg.get("performers", [])
+	for member in band_members:
+		var char_body = Node3D.new()
+		char_body.name = member["name"]
+		char_body.position = member["pos"]
+		char_body.set_meta("base_pos", member["pos"])
+
+		var g_color: Color = member["color"]
+		var char_mat = StandardMaterial3D.new()
+		char_mat.albedo_color = Color(0.05, 0.05, 0.08)
+
+		var glow_mat = StandardMaterial3D.new()
+		glow_mat.albedo_color = g_color
+		glow_mat.emission_enabled = true
+		glow_mat.emission = g_color
+		glow_mat.emission_energy_multiplier = 3.5
+
+		var body_inst = MeshInstance3D.new()
+		var b_capsule = CapsuleMesh.new()
+		b_capsule.radius = 0.22
+		b_capsule.height = 1.2
+		body_inst.mesh = b_capsule
+		body_inst.position = Vector3(0.0, 0.6, 0.0)
+		body_inst.material_override = char_mat
+		char_body.add_child(body_inst)
+
+		var head_inst = MeshInstance3D.new()
+		head_inst.name = "HeadMesh"
+		var h_sphere = SphereMesh.new()
+		h_sphere.radius = 0.25
+		h_sphere.height = 0.5
+		head_inst.mesh = h_sphere
+		head_inst.position = Vector3(0.0, 1.4, 0.0)
+		head_inst.material_override = glow_mat
+		char_body.add_child(head_inst)
+
+		if member.get("armor", false):
+			var armor_mesh = MeshInstance3D.new()
+			var a_box = BoxMesh.new()
+			a_box.size = Vector3(0.65, 0.5, 0.75)
+			armor_mesh.mesh = a_box
+			armor_mesh.position = Vector3(0.0, 0.75, 0.0)
+			armor_mesh.material_override = glow_mat
+			char_body.add_child(armor_mesh)
+
+		if member.get("mic", false):
+			var mic_stand = MeshInstance3D.new()
+			var m_rod = CylinderMesh.new()
+			m_rod.top_radius = 0.04
+			m_rod.bottom_radius = 0.04
+			m_rod.height = 1.4
+			mic_stand.mesh = m_rod
+			mic_stand.position = Vector3(0.4, 0.7, 0.0)
+			mic_stand.material_override = glow_mat
+			char_body.add_child(mic_stand)
+		elif resolved_event_id == "PARK_CONCERT":
+			var inst_mesh = MeshInstance3D.new()
+			var i_box = BoxMesh.new()
+			i_box.size = Vector3(0.18, 0.4, 1.1)
+			inst_mesh.mesh = i_box
+			inst_mesh.position = Vector3(0.2, 0.7, 0.0)
+			inst_mesh.material_override = glow_mat
+			char_body.add_child(inst_mesh)
+
+		performers_node.add_child(char_body)
+
+	stage_node.add_child(performers_node)
+
+	# 5. Spawn Dynamic Stage Scenery, Props & Thematic Backdrops
+	var decor_node = Node3D.new()
+	decor_node.name = "StageDecor"
+
+	if resolved_event_id == "PARK_CONCERT":
+		# A. Visible 3D Par Can Lanterns on Overhead Truss
+		var par_can_z: Array[float] = [-4.0, -1.3, 1.3, 4.0]
+		for idx in range(par_can_z.size()):
+			var pz: float = par_can_z[idx]
+			var par_body = MeshInstance3D.new()
+			par_body.name = "ParCanFixture_%d" % idx
+			var cyl = CylinderMesh.new()
+			cyl.top_radius = 0.22
+			cyl.bottom_radius = 0.22
+			cyl.height = 0.5
+			par_body.mesh = cyl
+			par_body.position = Vector3(3.5, 6.0, pz)
+			par_body.rotation_degrees = Vector3(-55.0, 0.0, 0.0)
+
+			var can_mat = StandardMaterial3D.new()
+			can_mat.albedo_color = Color(0.12, 0.14, 0.18) # Brushed dark steel
+			can_mat.metallic = 0.9
+			par_body.material_override = can_mat
+
+			# Glowing Luminous Front Lens
+			var lens = MeshInstance3D.new()
+			lens.name = "ParCanLens"
+			var l_cyl = CylinderMesh.new()
+			l_cyl.top_radius = 0.19
+			l_cyl.bottom_radius = 0.19
+			l_cyl.height = 0.05
+			lens.mesh = l_cyl
+			lens.position = Vector3(0.0, -0.24, 0.0)
+
+			var l_mat = StandardMaterial3D.new()
+			var l_col: Color = Color(1.0, 0.0, 0.8) if (idx % 2 == 0) else Color(0.0, 0.85, 1.0)
+			l_mat.albedo_color = l_col
+			l_mat.emission_enabled = true
+			l_mat.emission = l_col
+			l_mat.emission_energy_multiplier = 4.0
+			lens.material_override = l_mat
+			par_body.add_child(lens)
+			decor_node.add_child(par_body)
+
+		# B. Giant Graphic Equalizer Backdrop Screen
+		var eq_board = Node3D.new()
+		eq_board.name = "ConcertEqualizerBoard"
+		eq_board.position = Vector3(-3.2, 3.8, 0.0)
+
+		var back_panel = MeshInstance3D.new()
+		var p_box = BoxMesh.new()
+		p_box.size = Vector3(0.3, 4.5, 9.6)
+		back_panel.mesh = p_box
+		var p_mat = StandardMaterial3D.new()
+		p_mat.albedo_color = Color(0.02, 0.02, 0.04) # Deep black LED display board
+		back_panel.material_override = p_mat
+		eq_board.add_child(back_panel)
+
+		# 10 Equalizer Columns that bounce to music BPM
+		var eq_cols: int = 10
+		var col_spacing: float = 0.85
+		var col_start_z: float = -((float(eq_cols) - 1.0) * col_spacing) / 2.0
+		var eq_colors: Array[Color] = [
+			Color(0.2, 1.0, 0.4),  # Green base
+			Color(1.0, 0.85, 0.0), # Gold mid
+			Color(1.0, 0.0, 0.8),  # Pink high
+			Color(0.0, 0.85, 1.0)  # Cyan peak
+		]
+		for c in range(eq_cols):
+			var col_node = MeshInstance3D.new()
+			col_node.name = "EQCol_%d" % c
+			var col_box = BoxMesh.new()
+			col_box.size = Vector3(0.12, 1.8, 0.6)
+			col_node.mesh = col_box
+			col_node.position = Vector3(0.2, -0.6, col_start_z + float(c) * col_spacing)
+			
+			var c_mat = StandardMaterial3D.new()
+			var c_col: Color = eq_colors[c % eq_colors.size()]
+			c_mat.albedo_color = c_col
+			c_mat.emission_enabled = true
+			c_mat.emission = c_col
+			c_mat.emission_energy_multiplier = 3.5
+			col_node.material_override = c_mat
+			eq_board.add_child(col_node)
+
+		decor_node.add_child(eq_board)
+
+		# C. Dual Subwoofer Speaker Towers (North and South stage wings)
+		for side_z in [-4.8, 4.8]:
+			var sub_tower = MeshInstance3D.new()
+			var sub_box = BoxMesh.new()
+			sub_box.size = Vector3(1.8, 3.2, 1.6)
+			sub_tower.mesh = sub_box
+			sub_tower.position = Vector3(0.5, 2.8, side_z)
+			var sub_mat = StandardMaterial3D.new()
+			sub_mat.albedo_color = Color(0.06, 0.06, 0.08)
+			sub_tower.material_override = sub_mat
+			decor_node.add_child(sub_tower)
+
+	elif resolved_event_id == "RELIGIOUS_RALLY":
+		# A. Giant Glowing Holy Halo Suspended Over Stage
+		var halo_node = MeshInstance3D.new()
+		halo_node.name = "GiantFloatingHalo"
+		var torus = TorusMesh.new()
+		torus.inner_radius = 2.4
+		torus.outer_radius = 2.9
+		halo_node.mesh = torus
+		halo_node.position = Vector3(0.0, 8.2, 0.0)
+		halo_node.rotation_degrees = Vector3(90.0, 0.0, 0.0)
+
+		var halo_mat = StandardMaterial3D.new()
+		halo_mat.albedo_color = Color(1.0, 0.85, 0.0) # Celestial Gold
+		halo_mat.emission_enabled = true
+		halo_mat.emission = Color(1.0, 0.85, 0.0)
+		halo_mat.emission_energy_multiplier = 6.0
+		halo_node.material_override = halo_mat
+
+		# Holy Aura OmniLight
+		var halo_omni = OmniLight3D.new()
+		halo_omni.light_color = Color(1.0, 0.85, 0.2)
+		halo_omni.light_energy = 5.0
+		halo_omni.omni_range = 18.0
+		halo_node.add_child(halo_omni)
+		decor_node.add_child(halo_node)
+
+		# B. Radiant Cathedral Stained-Glass Hologram Arch Backdrop
+		var arch_node = MeshInstance3D.new()
+		arch_node.name = "CathedralHoloArch"
+		var arch_box = BoxMesh.new()
+		arch_box.size = Vector3(0.3, 5.0, 8.5)
+		arch_node.mesh = arch_box
+		arch_node.position = Vector3(-3.2, 4.2, 0.0)
+
+		var arch_mat = StandardMaterial3D.new()
+		arch_mat.albedo_color = Color(0.15, 0.12, 0.05)
+		arch_mat.emission_enabled = true
+		arch_mat.emission = Color(1.0, 0.75, 0.0)
+		arch_mat.emission_energy_multiplier = 2.5
+		arch_node.material_override = arch_mat
+		decor_node.add_child(arch_node)
+
+		# C. Preacher's Glowing Holographic Pulpit / Podium
+		var podium = MeshInstance3D.new()
+		podium.name = "PreacherPulpit"
+		var pod_box = BoxMesh.new()
+		pod_box.size = Vector3(0.7, 1.1, 1.2)
+		podium.mesh = pod_box
+		podium.position = Vector3(2.4, 1.75, 0.0)
+		var pod_mat = StandardMaterial3D.new()
+		pod_mat.albedo_color = Color(0.08, 0.08, 0.12)
+		pod_mat.emission_enabled = true
+		pod_mat.emission = Color(1.0, 0.85, 0.0)
+		pod_mat.emission_energy_multiplier = 3.0
+		podium.material_override = pod_mat
+		decor_node.add_child(podium)
+
+	elif resolved_event_id == "SHAKESPEARE_PARK":
+		# A. Gothic Cyber Castle Battlement & Royal Velvet Banners
+		var castle_back = MeshInstance3D.new()
+		castle_back.name = "CastleBattlementBackdrop"
+		var c_box = BoxMesh.new()
+		c_box.size = Vector3(0.3, 4.2, 9.6)
+		castle_back.mesh = c_box
+		castle_back.position = Vector3(-3.2, 3.8, 0.0)
+
+		var c_mat = StandardMaterial3D.new()
+		c_mat.albedo_color = Color(0.12, 0.02, 0.04) # Royal Crimson Velvet
+		c_mat.emission_enabled = true
+		c_mat.emission = Color(0.6, 0.05, 0.1)
+		c_mat.emission_energy_multiplier = 2.0
+		castle_back.material_override = c_mat
+		decor_node.add_child(castle_back)
+
+		# B. Bubbling Eerie Cyber-Cauldron (Center-Stage behind actors)
+		var cauldron_node = Node3D.new()
+		cauldron_node.name = "WitchCauldronNode"
+		cauldron_node.position = Vector3(-1.0, 1.2, 0.0)
+
+		var pot = MeshInstance3D.new()
+		var pot_cyl = CylinderMesh.new()
+		pot_cyl.top_radius = 0.55
+		pot_cyl.bottom_radius = 0.35
+		pot_cyl.height = 0.7
+		pot.mesh = pot_cyl
+		pot.position = Vector3(0.0, 0.35, 0.0)
+		var pot_mat = StandardMaterial3D.new()
+		pot_mat.albedo_color = Color(0.04, 0.04, 0.05) # Cast iron black
+		pot_mat.metallic = 0.95
+		pot.material_override = pot_mat
+		cauldron_node.add_child(pot)
+
+		# Glowing Witch Plasma Soup
+		var soup = MeshInstance3D.new()
+		soup.name = "CauldronPlasmaSoup"
+		var s_cyl = CylinderMesh.new()
+		s_cyl.top_radius = 0.50
+		s_cyl.bottom_radius = 0.50
+		s_cyl.height = 0.05
+		soup.mesh = s_cyl
+		soup.position = Vector3(0.0, 0.68, 0.0)
+		var s_mat = StandardMaterial3D.new()
+		s_mat.albedo_color = Color(0.7, 0.1, 1.0) # Witch Violet Plasma
+		s_mat.emission_enabled = true
+		s_mat.emission = Color(0.7, 0.1, 1.0)
+		s_mat.emission_energy_multiplier = 5.0
+		soup.material_override = s_mat
+		cauldron_node.add_child(soup)
+
+		# Eerie Cauldron Glow Light
+		var c_light = OmniLight3D.new()
+		c_light.light_color = Color(0.7, 0.1, 1.0)
+		c_light.light_energy = 4.0
+		c_light.omni_range = 6.0
+		c_light.position = Vector3(0.0, 0.9, 0.0)
+		cauldron_node.add_child(c_light)
+		decor_node.add_child(cauldron_node)
+
+		# C. Warm Amber Theatrical Footlights along front stage edge
+		for f_idx in range(6):
+			var foot_z: float = -4.5 + float(f_idx) * 1.8
+			var footlight = MeshInstance3D.new()
+			var fl_box = BoxMesh.new()
+			fl_box.size = Vector3(0.15, 0.1, 0.4)
+			footlight.mesh = fl_box
+			footlight.position = Vector3(3.9, 1.25, foot_z)
+			var fl_mat = StandardMaterial3D.new()
+			fl_mat.albedo_color = Color(1.0, 0.75, 0.2) # Warm golden amber
+			fl_mat.emission_enabled = true
+			fl_mat.emission = Color(1.0, 0.75, 0.2)
+			fl_mat.emission_energy_multiplier = 4.5
+			footlight.material_override = fl_mat
+			decor_node.add_child(footlight)
+
+	stage_node.add_child(decor_node)
+	print("[CITY GENERATOR] 🎭 Stage event refreshed with custom props for Day %d: %s" % [current_day_num, resolved_event_id])

@@ -235,6 +235,14 @@ func complete_quest(quest_id: String) -> void:
 
 	emit_signal("quest_completed", quest_id, reward)
 
+	# 6. Notify CampaignManager of completed side mission & check daily quota
+	var campaign_mgr = get_parent().get_node_or_null("CampaignManager")
+	if is_instance_valid(campaign_mgr):
+		campaign_mgr.side_missions_today += 1
+		if campaign_mgr.side_missions_today >= campaign_mgr.max_side_missions_per_day:
+			campaign_mgr.notify_daily_quests_exhausted()
+
+
 # ==============================================================================
 # QUEST HUD BANNER UI (Top Right Compact HUD)
 # ==============================================================================

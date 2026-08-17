@@ -220,6 +220,10 @@ func _trigger_city_wave_ripple() -> void:
 	# Pick a subtle energy color for the ripple wave front
 	wave_ripple_color = Color(1.0, 0.0, 0.8) if rng.randf() > 0.5 else Color(0.0, 1.0, 0.9)
 
+# Smooth lighting transition tracking
+var _light_tween: Tween = null
+var _current_smooth_mult: float = 1.0
+
 # Helper to get current energy multiplier for active city lighting stage
 func _get_current_light_multiplier() -> float:
 	match current_city_light_stage:
@@ -230,28 +234,47 @@ func _get_current_light_multiplier() -> float:
 		CityLightStage.PITCH_BLACK:    return 0.0
 		_: return 1.0
 
+# Set a specific city lighting stage directly (with optional smooth fading)
+func set_city_light_stage(target_stage: CityLightStage, smooth: bool = true, duration: float = 2.0) -> void:
+	current_city_light_stage = target_stage
+	var target_mult: float = _get_current_light_multiplier()
+	
+	var stage_name: String = ""
+	match current_city_light_stage:
+		CityLightStage.NORMAL:         stage_name = "NORMAL (100% - Midday)"
+		CityLightStage.LOW_LIGHT:      stage_name = "LOW LIGHT (25% - Morning / Dusk)"
+		CityLightStage.DIM:            stage_name = "VERY DARK / DIM (5% - Dawn / Night)"
+		CityLightStage.DARK_BUILDINGS: stage_name = "DARK BUILDINGS / LIT GRID (0% Buildings, 5% Road Grid)"
+		CityLightStage.PITCH_BLACK:    stage_name = "PITCH BLACK (0% - Special Blackout)"
+
+	print("[CITY VISUALS] Transitioning to Light Stage: ", stage_name, " (Smooth: ", smooth, ")")
+
+	if is_instance_valid(_light_tween) and _light_tween.is_running():
+		_light_tween.kill()
+
+	if smooth and is_inside_tree():
+		_light_tween = create_tween()
+		_light_tween.set_trans(Tween.TRANS_SINE)
+		_light_tween.set_ease(Tween.EASE_IN_OUT)
+		_light_tween.tween_method(_apply_custom_light_multiplier, _current_smooth_mult, target_mult, duration)
+	else:
+		_apply_custom_light_multiplier(target_mult)
+
 # Cycles through city ambient lighting stages (L key shortcut)
 func cycle_city_light_stage() -> void:
 	match current_city_light_stage:
-		CityLightStage.NORMAL:         current_city_light_stage = CityLightStage.LOW_LIGHT
-		CityLightStage.LOW_LIGHT:      current_city_light_stage = CityLightStage.DIM
-		CityLightStage.DIM:            current_city_light_stage = CityLightStage.DARK_BUILDINGS
-		CityLightStage.DARK_BUILDINGS: current_city_light_stage = CityLightStage.PITCH_BLACK
-		CityLightStage.PITCH_BLACK:    current_city_light_stage = CityLightStage.NORMAL
-
-	_apply_city_lighting_stage()
+		CityLightStage.NORMAL:         set_city_light_stage(CityLightStage.LOW_LIGHT, true, 1.2)
+		CityLightStage.LOW_LIGHT:      set_city_light_stage(CityLightStage.DIM, true, 1.2)
+		CityLightStage.DIM:            set_city_light_stage(CityLightStage.DARK_BUILDINGS, true, 1.2)
+		CityLightStage.DARK_BUILDINGS: set_city_light_stage(CityLightStage.PITCH_BLACK, true, 1.2)
+		CityLightStage.PITCH_BLACK:    set_city_light_stage(CityLightStage.NORMAL, true, 1.2)
 
 func _apply_city_lighting_stage() -> void:
-	var dark_mult: float = _get_current_light_multiplier()
-	var building_mult: float = 0.0 if current_city_light_stage == CityLightStage.DARK_BUILDINGS else dark_mult
-	var stage_name: String = ""
+	_apply_custom_light_multiplier(_get_current_light_multiplier())
 
-	match current_city_light_stage:
-		CityLightStage.NORMAL:         stage_name = "NORMAL (100%)"
-		CityLightStage.LOW_LIGHT:      stage_name = "LOW LIGHT (25%)"
-		CityLightStage.DIM:            stage_name = "VERY DARK / DIM (5%)"
-		CityLightStage.DARK_BUILDINGS: stage_name = "DARK BUILDINGS / LIT GRID (0% Buildings, 5% Road Grid)"
-		CityLightStage.PITCH_BLACK:    stage_name = "PITCH BLACK (0% - ONLY CAR LIGHTS)"
+func _apply_custom_light_multiplier(dark_mult: float) -> void:
+	_current_smooth_mult = dark_mult
+	var building_mult: float = 0.0 if current_city_light_stage == CityLightStage.DARK_BUILDINGS else dark_mult
 
 	# Update emission energy multipliers on all building meshes, grass, water, and street lights
 	if is_instance_valid(city_generator):
@@ -259,13 +282,12 @@ func _apply_city_lighting_stage() -> void:
 
 	# Ensure ground wireframe grid is set to dark_mult (5% in DARK_BUILDINGS stage, 0% in PITCH_BLACK)
 	if is_instance_valid(grid_material_ref):
-		if dark_mult <= 0.0:
+		if dark_mult <= 0.001:
 			grid_material_ref.emission_enabled = false
 		else:
 			grid_material_ref.emission_enabled = true
 			grid_material_ref.emission_energy_multiplier = 3.0 * dark_mult
 
-	print("[CITY VISUALS] City Lighting Stage: ", stage_name)
 
 # ==============================================================================
 # CITYWIDE RED-ALERT LOCKDOWN MODE (TOGGLED VIA 'K' KEY)
@@ -370,10 +392,12 @@ func _update_stage_lights_and_band_animation(delta: float) -> void:
 		if child.name == "ParCanSpotlight":
 			child.light_color = hue2
 
-	# Animate Stage Performers (Cyber Band vs Charismatic Preacher + Quiet Disciples)
-	var performers_node = stage_node.get_node_or_null("StagePerformers")
-	if not is_instance_valid(performers_node):
-		performers_node = stage_node.get_node_or_null("StageCyberBand") # Backward compatibility fallback
+	# Animate Stage Performers (Cyber Band vs Charismatic Preacher + Quiet Disciples vs Shakespeare in the Park)
+	var performers_node: Node3D = null
+	for child in stage_node.get_children():
+		if child is Node3D and (child.name.begins_with("StagePerformers") or child.name.begins_with("StageCyberBand")):
+			performers_node = child
+			break
 
 	# Check active event ID directly from StagePerformers metadata or CampaignManager
 	var active_event_id: String = "PARK_CONCERT"
@@ -383,7 +407,9 @@ func _update_stage_lights_and_band_animation(delta: float) -> void:
 		var campaign_mgr = get_parent().get_node_or_null("CampaignManager")
 		if is_instance_valid(campaign_mgr) and "active_daily_event" in campaign_mgr and campaign_mgr.active_daily_event is Dictionary and campaign_mgr.active_daily_event.has("id"):
 			active_event_id = campaign_mgr.active_daily_event.get("id", "PARK_CONCERT")
+
 	if is_instance_valid(performers_node):
+
 		if active_event_id == "SHAKESPEARE_PARK":
 			# SHAKESPEARE IN THE PARK ANIMATION ENGINE:
 			# - Holographic Macbeth in Dron armor declaims dramatically at stage front
@@ -498,5 +524,45 @@ func _update_stage_lights_and_band_animation(delta: float) -> void:
 					member.position = Vector3(base_p.x, base_p.y + bounce_y, base_p.z + sway_z)
 					member.rotation_degrees.z = sin(_stage_anim_time * 12.0 + member_idx) * 15.0
 					member_idx += 1
+
+	# ==========================================================================
+	# DYNAMIC STAGE DECOR & PROPS ANIMATIONS (Par Cans, Equalizer, Halo, Cauldron)
+	# ==========================================================================
+	var decor_node = stage_node.get_node_or_null("StageDecor")
+	if is_instance_valid(decor_node):
+		# 1. Animate Visible Par Can Lenses in tempo with music BPM
+		var beat_pulse: float = (sin(_stage_anim_time * 12.0) + 1.0) * 0.5
+		for child in decor_node.get_children():
+			if child.name.begins_with("ParCanFixture"):
+				var lens = child.get_node_or_null("ParCanLens")
+				if is_instance_valid(lens) and is_instance_valid(lens.material_override):
+					var l_mat = lens.material_override as StandardMaterial3D
+					l_mat.emission_energy_multiplier = lerp(2.0, 7.5, beat_pulse)
+
+		# 2. Animate Graphic Equalizer Columns on Concert Backdrop
+		var eq_board = decor_node.get_node_or_null("ConcertEqualizerBoard")
+		if is_instance_valid(eq_board):
+			for c_idx in range(10):
+				var col = eq_board.get_node_or_null("EQCol_%d" % c_idx)
+				if is_instance_valid(col):
+					var eq_h: float = 0.5 + abs(sin(_stage_anim_time * 8.0 + float(c_idx) * 1.4)) * 2.2
+					col.scale.y = eq_h
+					col.position.y = -1.5 + (eq_h * 0.9)
+
+		# 3. Rotate Giant Floating Golden Halo above Preacher
+		var halo_node = decor_node.get_node_or_null("GiantFloatingHalo")
+		if is_instance_valid(halo_node):
+			halo_node.rotation_degrees.z += delta * 25.0
+			halo_node.position.y = 8.2 + sin(_stage_anim_time * 2.0) * 0.25 # Gentle holy hover
+
+		# 4. Animate Bubbling Witch Cauldron Plasma
+		var cauldron = decor_node.get_node_or_null("WitchCauldronNode")
+		if is_instance_valid(cauldron):
+			var soup = cauldron.get_node_or_null("CauldronPlasmaSoup")
+			if is_instance_valid(soup) and is_instance_valid(soup.material_override):
+				var s_mat = soup.material_override as StandardMaterial3D
+				var boil_pulse: float = abs(sin(_stage_anim_time * 6.0))
+				s_mat.emission_energy_multiplier = lerp(3.5, 7.5, boil_pulse)
+
 
 

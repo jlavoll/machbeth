@@ -9,11 +9,17 @@ class_name PlayerCar
 # Maximum forward driving speed in meters per second
 @export var max_speed: float = 24.0
 
+# Boost / Sprint forward driving speed (holding Shift) in meters per second
+@export var boost_max_speed: float = 38.0
+
 # Maximum reverse driving speed in meters per second
 @export var reverse_speed: float = 12.0
 
 # How quickly the vehicle speeds up (meters per second squared)
 @export var acceleration: float = 30.0
+
+# How quickly the vehicle speeds up while boosting (Shift held)
+@export var boost_acceleration: float = 50.0
 
 # Passive deceleration rate when no throttle/brake key is pressed
 @export var friction: float = 15.0
@@ -23,6 +29,15 @@ class_name PlayerCar
 
 # Current forward/backward velocity of the vehicle
 var current_speed: float = 0.0
+
+# Whether the player is actively boosting with Shift
+var is_boosting: bool = false
+
+# Skid SFX sound player & path
+const SKID_SFX_PATH: String = "res://sfx/outrun_skid.wav"
+var skid_audio_player: AudioStreamPlayer3D = null
+var is_skidding: bool = false
+
 
 # ==============================================================================
 # ON-FOOT STATE
@@ -166,12 +181,28 @@ func _ready() -> void:
 		camera.fov = ultra_min_fov + 5.0 * zoom_step
 	_update_camera_transform()
 	_setup_3d_headlights()
+	_setup_skid_audio()
 	_build_towing_hud()
 	# Cache tail-light material for brake-light emission updates
 	if is_instance_valid(tail_light_mesh):
 		_tail_mat = tail_light_mesh.get_surface_override_material(0) as StandardMaterial3D
 	# Cache WeatherAmbienceManager reference for cabin filter transitions
 	_weather_ambience = get_node_or_null("../WeatherAmbienceManager")
+
+func _setup_skid_audio() -> void:
+	skid_audio_player = AudioStreamPlayer3D.new()
+	skid_audio_player.name = "SkidAudioPlayer3D"
+	var sfx_bus_idx: int = AudioServer.get_bus_index("SFX")
+	skid_audio_player.bus = "SFX" if sfx_bus_idx != -1 else "Master"
+	skid_audio_player.unit_size = 12.0
+	skid_audio_player.max_distance = 80.0
+	skid_audio_player.volume_db = -80.0
+	if ResourceLoader.exists(SKID_SFX_PATH):
+		var stream = load(SKID_SFX_PATH)
+		if stream:
+			skid_audio_player.stream = stream
+	add_child(skid_audio_player)
+
 
 func _setup_3d_headlights() -> void:
 	# Create 3D SpotLight3D projectors for left and right headlights
@@ -311,10 +342,16 @@ func _physics_process(delta: float) -> void:
 		rotation.y += steer_input * steer_speed * steer_dir * delta
 
 	# --------------------------------------------------------------------------
-	# 4. SPEED ACCELERATION / BRAKING / FRICTION
+	# 4. SPEED ACCELERATION / BRAKING / FRICTION (SHIFT TO BOOST)
 	# --------------------------------------------------------------------------
+	var is_shift_pressed: bool = Input.is_key_pressed(KEY_SHIFT)
+	is_boosting = is_shift_pressed and (throttle_input > 0.0)
+
+	var target_forward_speed: float = boost_max_speed if is_shift_pressed else max_speed
+	var active_accel: float = boost_acceleration if is_shift_pressed else acceleration
+
 	if throttle_input > 0:
-		current_speed = move_toward(current_speed, max_speed, acceleration * delta)
+		current_speed = move_toward(current_speed, target_forward_speed, active_accel * delta)
 	elif throttle_input < 0:
 		current_speed = move_toward(current_speed, -reverse_speed, acceleration * delta)
 	else:
@@ -328,10 +365,13 @@ func _physics_process(delta: float) -> void:
 		var max_bank_rad: float = deg_to_rad(max_bank_angle_degrees)
 		var speed_ratio: float = clamp(abs(current_speed) / max_speed, 0.2, 1.0)
 		_target_bank_roll = steer_input * max_bank_rad * speed_ratio
+		if is_boosting:
+			_target_bank_roll *= 1.25 # Extra aggressive lean in boost turns
 
 		# Pitch (X axis): W acceleration -> nose lifts (-X pitch); S braking/reverse -> nose dips (+X pitch)
 		var max_pitch_rad: float = deg_to_rad(max_pitch_angle_degrees)
-		_target_pitch = -throttle_input * max_pitch_rad
+		var pitch_boost_mult: float = 1.35 if is_boosting else 1.0
+		_target_pitch = -throttle_input * max_pitch_rad * pitch_boost_mult
 
 		# Smoothly lerp local mesh rotation so banking feels responsive and organic
 		var lerp_t: float = clamp(body_tilt_speed * delta, 0.0, 1.0)
@@ -355,6 +395,46 @@ func _physics_process(delta: float) -> void:
 		var target_emission: float = tail_emission_drive if throttle_input > 0.0 else tail_emission_brake
 		_tail_mat.emission_energy_multiplier = move_toward(
 			_tail_mat.emission_energy_multiplier, target_emission, tail_emission_speed * delta)
+
+	# --------------------------------------------------------------------------
+	# 8. TIRE SKID AUDIO DYNAMICS (outrun_skid.wav)
+	# --------------------------------------------------------------------------
+	var want_skid: bool = false
+	var skid_intensity: float = 0.0
+
+	# Condition A: High-speed sharp turn / drift
+	if abs(current_speed) > 9.0 and abs(steer_input) > 0.35:
+		want_skid = true
+		skid_intensity = clamp((abs(current_speed) / max_speed) * abs(steer_input), 0.5, 1.2)
+	# Condition B: High-speed boost turn
+	elif is_shift_pressed and abs(current_speed) > 6.0 and abs(steer_input) > 0.2:
+		want_skid = true
+		skid_intensity = 1.3
+	# Condition C: Burnout launch from stop/low speed with Shift held
+	elif throttle_input > 0.0 and is_shift_pressed and current_speed < 10.0:
+		want_skid = true
+		skid_intensity = 1.1
+	# Condition D: Hard braking at speed
+	elif throttle_input < 0.0 and current_speed > 7.0:
+		want_skid = true
+		skid_intensity = 1.0
+
+	is_skidding = want_skid
+
+	if is_instance_valid(skid_audio_player):
+		if want_skid:
+			if not skid_audio_player.playing:
+				skid_audio_player.pitch_scale = randf_range(0.96, 1.05)
+				skid_audio_player.play()
+			var target_vol: float = lerp(-8.0, 3.0, clamp(skid_intensity, 0.0, 1.3) / 1.3)
+			skid_audio_player.volume_db = lerp(skid_audio_player.volume_db, target_vol, delta * 18.0)
+		else:
+			if skid_audio_player.playing:
+				skid_audio_player.volume_db = lerp(skid_audio_player.volume_db, -60.0, delta * 14.0)
+				if skid_audio_player.volume_db < -35.0:
+					skid_audio_player.stop()
+					skid_audio_player.volume_db = -80.0
+
 
 # ==============================================================================
 # MOUSE WHEEL CAMERA ZOOM HANDLER

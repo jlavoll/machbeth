@@ -18,6 +18,12 @@ all dialogue things should be in json files simialr to the one that is triggered
   - Hold Shift to speed up/boost in the player car.
   - Skidding sound effect for sharp turns at high speeds.
   - Short tire skid audio effect when accelerating from a stop/low speed.
+- Dynamic Day-Night Lighting Cycle:
+  - Day start at Stage 3 (DIM 5% - early dawn), easing to Stage 2 (LOW_LIGHT 25%) and Stage 1 (NORMAL 100% - peak day).
+  - After Mack's daily Grand Battle, drop down to Stage 2 (LOW_LIGHT 25% - dusk).
+  - After daily available side missions/quests are exhausted, drop down to Stage 3 (DIM 5% - deep night).
+  - Stages 4 (DARK_BUILDINGS) and 5 (PITCH_BLACK) remain dedicated to special narrative/ambush/blackout events.
+
 
 also:
 Well, acktually: to make this system far more scalable, readable, and performant, the biggest win lies in moving away from a single monolithic script (PedestrianSystem.gd) that handles generation, state management, movement, geometry checks, array filtering, and UI dialogue for every archetype.  Here are the key structural improvements for refactoring:1. Extract Archetypes into Dedicated State Classes or Sub-NodesRight now, _process and _update_archetype_behaviors iterate through separate tracking arrays (active_pedestrians, active_park_dancers, active_fixers, etc.) and branch using meta-variables.  The Refactor: Create a base PedestrianAgent class (extending CharacterBody3D) with its own internal State Machine (or State pattern sub-nodes).Why: Each agent handles its own physics, timer updates, and state transitions locally (_physics_process). PedestrianSystem transitions into a clean manager/factory responsible solely for spawning, pooling, and spatial distribution.  res://
@@ -388,3 +394,27 @@ When combined with your dynamic light stages (L key) and street floodlights (Cit
     2. Enter the apartment and approach the **Interactive Wardrobe Cupboard**.
     3. Press `E` to cycle head color outfit to a new stealth palette (*e.g., Deep Crimson or Emerald Green*).
     4. The security checkpoint scanner unlocks, allowing Banquo to slip past Fife Security patrols unnoticed to execute the stealth infiltration!
+
+---
+
+## 🍦 SPECIAL MAP LOCATIONS & NARRATIVE TWISTS
+
+### Joe's Ice Cream Store ("The King James" Twist)
+* **Location on Map**: A neon-lit street-front parlor called **"Joe's Ice Cream Store"** located within the city grid.
+* **Daily Sponsorship Mechanic**:
+  * Joe's Ice Cream acts as a regular corporate sponsor, depositing a recurring daily stipend of credits/cash directly to you each in-game day.
+  * Provides early-game economic relief, funds for vehicle mods, and a seemingly benign, quirky ally in a cold dystopia.
+* **The "King James" Twist**:
+  * Later in the campaign, the dark truth is revealed: Joe / the Ice Cream operation is our adaptation's **"King James"** figure (the historical patron/puppeteer in Shakespearean context).
+  * The daily support, specific food/neural additives, and financial sponsorship were never genuine charity—it is a sinister, calculated long game designed to subtly manipulate, overheat, and drive Machbeth completely insane into paranoia and thermal breakdown.
+* **Dialogue Dynamics & Psychological Goading**:
+  * Whenever Banquo/Mack talks with Joe, Joe subtly strokes Mack's ego and pushes him to take on increasingly dangerous, reckless, and high-difficulty contracts ("A legend like Mack shouldn't be doing petty courier work... you belong in the big leagues").
+  * Constantly feeds rumors about bleeding-edge, untested experimental combat cyberware, urging Mack to install it to stay ahead of the curve.
+* **Special Quest Line: "The Experimental Shipment Intercept"**:
+  * **Joe's Intel Tip-off**: Joe provides insider telemetry on a high-security corporate convoy carrying a prototype, unreleased cyberware implant moving through the Spire Grid.
+  * **Highway Intercept Mission**: Player must chase down and ambush the heavily armored convoy to hijack the shipment.
+  * **The Faustian Trade-off**:
+    * **Combat Boon**: The prototype cyberware provides massive, game-changing stat boosts (overclocked ATB speed, devastating ordnance output, extreme damage resistance).
+    * **Severe Health/Neural Cost**: The tech is brutally taxing on Mack's bio-chassis—causing permanent baseline max HP reduction, erratic glitch gauge spikes, random combat HUD distortions, and accelerated neural degradation.
+
+

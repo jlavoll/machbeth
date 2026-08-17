@@ -1,9 +1,12 @@
-when we end a day, all the pedestrians should despawn and respawn, i am hoping this will shif tout th eentertainment in the park properly
+- [x] when we end a day, all the pedestrians should despawn and respawn, shifting out entertainment in the park properly
+- [x] shift to drive faster (boost max speed 38m/s), also add skid mark sounds (res://sfx/outrun_skid.wav)
+- [x] Day lighting cycle progression (with F6 debug stepper):
+  - Day starts at Stage 3 (DIM 5% - early morning dawn)
+  - Transitions to Stage 2 (LOW_LIGHT 25% - morning) and then Stage 1 (NORMAL 100% - peak daytime)
+  - After completing Mack's daily Grand Battle, lights step down to Stage 2 (LOW_LIGHT 25% - evening dusk)
+  - When that day's available side missions/quests are exhausted, lights step down to Stage 3 (DIM 5% - deep night)
+  - Stages 4 (DARK_BUILDINGS) and 5 (PITCH_BLACK) are reserved for special story events (blackouts, ambushes, infiltration)
 
-shift to drive faster, also add skid mark sounds
-
-
-after acks daily fight, the lights of the city goes down a step, and then we we are also out of quests for the day, they go down even one more
 
 instant simulations of battles from the battle editor
 

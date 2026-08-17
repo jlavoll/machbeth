@@ -95,6 +95,42 @@ func _ready() -> void:
 	# Wire quest event listener to DialogueSystem
 	call_deferred("_connect_dialogue_signals")
 
+func refresh_crowds_for_new_day() -> void:
+	print("[PEDESTRIAN SYSTEM] 🌅 Refreshing crowd and rotating park stage entertainment for the new day...")
+	# Clean up concert audience and park performers
+	for p in active_concert_crowd:
+		if is_instance_valid(p):
+			p.queue_free()
+	active_concert_crowd.clear()
+
+	for p in active_park_dancers:
+		if is_instance_valid(p):
+			p.queue_free()
+	active_park_dancers.clear()
+
+	for p in active_buskers:
+		if is_instance_valid(p):
+			p.queue_free()
+	active_buskers.clear()
+
+	# Despawn ambient walking crowd to re-seed positions across the city
+	for p in active_pedestrians:
+		if is_instance_valid(p):
+			p.queue_free()
+	active_pedestrians.clear()
+
+	# Re-spawn fresh crowd & park events for today
+	var city_gen = get_parent().get_node_or_null("CityGenerator")
+	if is_instance_valid(city_gen) and city_gen.has_method("refresh_stage_event_performers"):
+		city_gen.refresh_stage_event_performers()
+
+	_spawn_initial_pedestrians()
+	call_deferred("_spawn_park_dance_groups")
+	call_deferred("_spawn_concert_crowd")
+	call_deferred("_spawn_new_archetypes")
+
+
+
 func _setup_emergency_gathering_points() -> void:
 	active_emergency_gathering_points.clear()
 	var city_gen = get_parent().get_node_or_null("CityGenerator")
@@ -1008,15 +1044,15 @@ func _spawn_concert_crowd() -> void:
 	var stage_event_mgr_script = preload("res://ParkStageEventManager.gd")
 	var campaign_mgr = get_parent().get_node_or_null("CampaignManager")
 	var active_event_id: String = "PARK_CONCERT"
-	if is_instance_valid(campaign_mgr) and campaign_mgr.active_daily_event.has("id"):
-		active_event_id = campaign_mgr.active_daily_event.get("id", "PARK_CONCERT")
+	var current_day_num: int = 1
+	if is_instance_valid(campaign_mgr):
+		current_day_num = campaign_mgr.current_day
+		if campaign_mgr.active_daily_event.has("id"):
+			active_event_id = campaign_mgr.active_daily_event.get("id", "PARK_CONCERT")
 
-	# Check if today's event is a registered stage event
-	if not stage_event_mgr_script.is_stage_event(active_event_id):
-		return
-
-	var event_cfg: Dictionary = stage_event_mgr_script.get_event_config(active_event_id)
+	var event_cfg: Dictionary = stage_event_mgr_script.get_event_config_for_day(active_event_id, current_day_num)
 	var aud_cfg: Dictionary = event_cfg.get("audience", {})
+
 	
 	var city_gen = get_parent().get_node_or_null("CityGenerator")
 	var stage_pos: Vector3 = Vector3(-80.0, 0.0, 0.0) # Default
@@ -1043,14 +1079,49 @@ func _spawn_concert_crowd() -> void:
 		Color(0.1, 1.0, 0.4)   # Laser Green
 	]
 
+	var behavior: String = aud_cfg.get("behavior", "ROCK_HYPED")
 	var acc_type: String = aud_cfg.get("accessory", "VISOR")
 
-	for i in range(crowd_count):
-		# Spread crowd across audience plaza (8m to 25m in front of stage edge)
-		var cx: float = stage_pos.x + 6.0 + rng.randf_range(2.0, 22.0)
-		var cz: float = stage_pos.z + rng.randf_range(-12.0, 12.0)
-		var pos: Vector3 = Vector3(cx, 0.0, cz)
+	# Compute audience member positions based on behavior layout
+	var audience_positions: Array[Vector3] = []
 
+	if behavior == "THEATER_PATRONS":
+		# Cultured Outdoor Amphitheater Curved Seating/Standing Arcs (Shakespeare in the Park)
+		var arc_rows: Array[Dictionary] = [
+			{"radius": 7.5, "count": 5, "angle_spread": 0.55},
+			{"radius": 10.5, "count": 6, "angle_spread": 0.65},
+			{"radius": 13.5, "count": 5, "angle_spread": 0.70}
+		]
+		for row in arc_rows:
+			var r_dist: float = row["radius"]
+			var r_count: int = row["count"]
+			var spread: float = row["angle_spread"]
+			for k in range(r_count):
+				var t_frac: float = 0.0 if r_count <= 1 else (float(k) / float(r_count - 1) - 0.5) * 2.0
+				var angle: float = t_frac * spread + rng.randf_range(-0.06, 0.06)
+				var px: float = stage_pos.x + r_dist * cos(angle)
+				var pz: float = stage_pos.z + r_dist * sin(angle) * 1.3
+				audience_positions.append(Vector3(px, 0.0, pz))
+
+	elif behavior == "CALL_AND_RESPONSE":
+		# Structured Congregation Columns & Rows for Religious Revival Rally
+		var rows: int = 5
+		var cols: int = 6
+		for r in range(rows):
+			for c in range(cols):
+				var px: float = stage_pos.x + 7.0 + float(r) * 2.8 + rng.randf_range(-0.25, 0.25)
+				var pz: float = stage_pos.z - 6.0 + float(c) * 2.4 + rng.randf_range(-0.25, 0.25)
+				audience_positions.append(Vector3(px, 0.0, pz))
+
+	else:
+		# Dense Energetic Mosh Pit Cluster for Cyberpunk Rock Concert
+		for i in range(crowd_count):
+			var cx: float = stage_pos.x + 6.0 + rng.randf_range(1.5, 16.0)
+			var cz: float = stage_pos.z + rng.randf_range(-9.0, 9.0)
+			audience_positions.append(Vector3(cx, 0.0, cz))
+
+	for i in range(audience_positions.size()):
+		var pos: Vector3 = audience_positions[i]
 		var crowd_guy = CharacterBody3D.new()
 		crowd_guy.name = "ConcertCrowdFan_%d" % i
 
@@ -1088,18 +1159,19 @@ func _spawn_concert_crowd() -> void:
 			var v_box = BoxMesh.new()
 			v_box.size = Vector3(0.26, 0.08, 0.16)
 			visor.mesh = v_box
-			visor.position = Vector3(-0.12, 1.37, 0.0) # Facing West (-X)
+			visor.position = Vector3(-0.12, 1.37, 0.0)
 			visor.material_override = h_mat
 			crowd_guy.add_child(visor)
 
 		crowd_guy.position = pos
-		crowd_guy.look_at(stage_pos + Vector3(0.0, 1.2, 0.0), Vector3.UP) # Facing stage preacher / band!
+		crowd_guy.look_at(stage_pos + Vector3(0.0, 1.2, 0.0), Vector3.UP) # Facing stage center
 		crowd_guy.set_meta("base_pos", pos)
 		crowd_guy.set_meta("fan_idx", i)
 		crowd_guy.set_meta("event_id", active_event_id)
 
 		add_child(crowd_guy)
 		active_concert_crowd.append(crowd_guy)
+
 
 	print("[PEDESTRIANS] Spawned %d %s Fans in Cyber Park Plaza!" % [active_concert_crowd.size(), active_event_id])
 

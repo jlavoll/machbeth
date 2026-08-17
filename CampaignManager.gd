@@ -19,6 +19,13 @@ var max_grand_battles_per_day: int = 1
 var side_missions_today: int = 0
 var max_side_missions_per_day: int = 2
 
+# Day Cycle Lighting Stages:
+# Stage 3 (DIM 5% - Dawn) -> Stage 2 (LOW_LIGHT 25% - Morning) -> Stage 1 (NORMAL 100% - Midday)
+# -> Post-Mack Battle: Stage 2 (LOW_LIGHT 25% - Dusk) -> Quests Exhausted: Stage 3 (DIM 5% - Night)
+enum DayLightingPhase { DAWN_STAGE_3, MORNING_STAGE_2, MIDDAY_STAGE_1, DUSK_STAGE_2, NIGHT_STAGE_3 }
+var current_lighting_phase: DayLightingPhase = DayLightingPhase.MIDDAY_STAGE_1
+
+
 # Daily Special City Events Tracking
 var active_daily_event: Dictionary = {}
 var special_city_events: Array[Dictionary] = [
@@ -258,16 +265,28 @@ func _ready() -> void:
 	call_deferred("_connect_dialogue_signals")
 	call_deferred("_start_day_1")
 
+func _unhandled_input(event: InputEvent) -> void:
+	if event is InputEventKey and event.pressed and not event.echo:
+		if event.keycode == KEY_F6:
+			advance_debug_day_cycle()
+
 func _start_day_1() -> void:
 	# Randomize active special city event for Day 1!
 	var rng = RandomNumberGenerator.new()
 	rng.randomize()
 	active_daily_event = special_city_events[rng.randi() % special_city_events.size()]
+	current_lighting_phase = DayLightingPhase.DAWN_STAGE_3
 	
 	print("[CAMPAIGN MANAGER] Day 1 initialized | Active Daily Event: ", active_daily_event.get("title", ""))
+
+	# Start Day 1 at Stage 3 (DIM 5% - Dawn) and warm up to Midday
+	var visual_fx = get_parent().get_node_or_null("CityVisualEffects")
+	if is_instance_valid(visual_fx) and visual_fx.has_method("set_city_light_stage"):
+		visual_fx.set_city_light_stage(visual_fx.CityLightStage.DIM, false)
 	
-	# Trigger sequential top-left HUD comms calls for Day 1 start!
+	# Trigger sequential top-left HUD comms calls & lighting progression for Day 1 start!
 	_trigger_sequential_daily_calls()
+
 
 func _connect_dialogue_signals() -> void:
 	var dialogue_sys = get_parent().get_node_or_null("DialogueSystem")
@@ -1338,6 +1357,14 @@ func _conclude_autonomous_battle(success: bool) -> void:
 
 		_show_after_action_summary(-penalty_repair_cost, scrap_salvaged, hp_ratio, false)
 
+	# --- DAY LIGHTING PROGRESSION: Step down to Stage 2 (LOW_LIGHT 25% - Dusk) after Mack's Battle ---
+	current_lighting_phase = DayLightingPhase.DUSK_STAGE_2
+	var visual_fx = get_parent().get_node_or_null("CityVisualEffects")
+	if is_instance_valid(visual_fx) and visual_fx.has_method("set_city_light_stage"):
+		visual_fx.set_city_light_stage(visual_fx.CityLightStage.LOW_LIGHT, true, 2.5)
+	if is_instance_valid(neural_comms) and neural_comms.has_method("send_message"):
+		neural_comms.send_message("🌇 DUSK FALLS: Mack's War-Rig battle concluded. City lighting shifted down to Stage 2 (Low Light / Dusk).", "TIME PROGRESSION // DUSK")
+
 func _spawn_norns_recovery_quest() -> void:
 	is_norns_recovery_active = true
 	# Select North City Gate Edge (Vector3(0.0, 0.0, -280.0))
@@ -1383,6 +1410,7 @@ func advance_to_next_day() -> void:
 	side_missions_today = 0
 	idle_day_timer = 0.0
 	mack_nag_stage = 0
+	current_lighting_phase = DayLightingPhase.DAWN_STAGE_3
 	
 	# Roll a new Daily Special City Event
 	var rng = RandomNumberGenerator.new()
@@ -1392,33 +1420,94 @@ func advance_to_next_day() -> void:
 	print("[CAMPAIGN MANAGER] Rested at Safehouse. Advanced to Day ", current_day, " | Today's Special Event: ", active_daily_event.get("title", ""))
 	day_advanced.emit(current_day)
 
+	# Start new day at Stage 3 (DIM 5% - Early Dawn)
+	var visual_fx = get_parent().get_node_or_null("CityVisualEffects")
+	if is_instance_valid(visual_fx) and visual_fx.has_method("set_city_light_stage"):
+		visual_fx.set_city_light_stage(visual_fx.CityLightStage.DIM, false)
+
+	# Refresh pedestrian crowds and rotate park entertainment for new day
+	_refresh_pedestrians_for_new_day()
+
 	if is_instance_valid(neural_comms) and "ambient_timer" in neural_comms:
 		neural_comms.ambient_timer = -25.0 # Reset ambient chatter grace period on new day!
 
-	# Sequential Neural Comms Calls with spaced delays
+	# Sequential Neural Comms Calls with spaced delays & gradual morning warmup
 	call_deferred("_trigger_sequential_daily_calls")
 
 func _trigger_sequential_daily_calls() -> void:
+	var visual_fx = get_parent().get_node_or_null("CityVisualEffects")
 	var event_title: String = active_daily_event.get("title", "NORMAL CITY GRID PATROL")
 	var event_text: String = active_daily_event.get("text", "Lady M: 'Standard patrol routines across central grid today.'")
 
-	# Call 1: Lady M (Immediately)
+	# Call 1: Lady M (Immediately) + Lighting warms up to Stage 2 (LOW_LIGHT 25%)
 	if is_instance_valid(neural_comms) and neural_comms.has_method("send_message"):
 		neural_comms.send_message("Lady M: 'Good morning, Banquo. Day %d is starting across the city grid. Check intel: %s!'" % [current_day, event_text], "LADY M // MISSION CONTROL")
 
-	# Call 2: Mack (After 10.0 seconds)
-	var t2 = get_tree().create_timer(10.0)
+	var t1 = get_tree().create_timer(3.0)
+	t1.timeout.connect(func():
+		current_lighting_phase = DayLightingPhase.MORNING_STAGE_2
+		if is_instance_valid(visual_fx) and visual_fx.has_method("set_city_light_stage"):
+			visual_fx.set_city_light_stage(visual_fx.CityLightStage.LOW_LIGHT, true, 2.5)
+	)
+
+	# Call 2: Mack (After 8.0 seconds) + Lighting peaks at Stage 1 (NORMAL 100% - Midday)
+	var t2 = get_tree().create_timer(8.0)
 	t2.timeout.connect(func():
+		current_lighting_phase = DayLightingPhase.MIDDAY_STAGE_1
+		if is_instance_valid(visual_fx) and visual_fx.has_method("set_city_light_stage"):
+			visual_fx.set_city_light_stage(visual_fx.CityLightStage.NORMAL, true, 2.5)
 		if is_instance_valid(neural_comms) and neural_comms.has_method("send_message"):
 			neural_comms.send_message("Mack: 'My neural stack is primed for Day %d! Banquo, drive us to The Pit or launch the convoy hit when you're ready!'" % current_day, "MACK // WAR-RIG EXECUTOR")
 	)
 
-	# Call 3: The 3 Norns Prophecy (After 20.0 seconds)
-	var t3 = get_tree().create_timer(20.0)
+	# Call 3: The 3 Norns Prophecy (After 18.0 seconds)
+	var t3 = get_tree().create_timer(18.0)
 	t3.timeout.connect(func():
 		if is_instance_valid(neural_comms) and neural_comms.has_method("send_message"):
 			neural_comms.send_message("The 3 Norns: 'Beware the Thane of Fife! Macduff's security forces shadow our movement today... Event: %s!'" % event_title, "THE 3 NORNS // PROPHECY")
 	)
+
+func notify_daily_quests_exhausted() -> void:
+	current_lighting_phase = DayLightingPhase.NIGHT_STAGE_3
+	var visual_fx = get_parent().get_node_or_null("CityVisualEffects")
+	if is_instance_valid(visual_fx) and visual_fx.has_method("set_city_light_stage"):
+		visual_fx.set_city_light_stage(visual_fx.CityLightStage.DIM, true, 2.5)
+	if is_instance_valid(neural_comms) and neural_comms.has_method("send_message"):
+		neural_comms.send_message("🌃 NIGHTFALL: Daily district contracts exhausted. City grid entering night power-save mode (Stage 3). Return to your Safehouse to rest and advance to Day %d." % (current_day + 1), "TIME PROGRESSION // NIGHT")
+
+func _refresh_pedestrians_for_new_day() -> void:
+	var ped_sys = get_parent().get_node_or_null("PedestrianSystem")
+	if is_instance_valid(ped_sys) and ped_sys.has_method("refresh_crowds_for_new_day"):
+		ped_sys.refresh_crowds_for_new_day()
+
+func advance_debug_day_cycle() -> void:
+	var visual_fx = get_parent().get_node_or_null("CityVisualEffects")
+	match current_lighting_phase:
+		DayLightingPhase.DAWN_STAGE_3, DayLightingPhase.MORNING_STAGE_2:
+			current_lighting_phase = DayLightingPhase.MIDDAY_STAGE_1
+			if is_instance_valid(visual_fx) and visual_fx.has_method("set_city_light_stage"):
+				visual_fx.set_city_light_stage(visual_fx.CityLightStage.NORMAL, true, 1.5)
+			if is_instance_valid(neural_comms) and neural_comms.has_method("send_message"):
+				neural_comms.send_message("☀️ [DEBUG F6] TIME SHIFT: Peak Midday reached. City lighting set to Stage 1 (NORMAL 100%).", "DAY CYCLE // DEBUG")
+		DayLightingPhase.MIDDAY_STAGE_1:
+			current_lighting_phase = DayLightingPhase.DUSK_STAGE_2
+			grand_battles_today = 1
+			if is_instance_valid(visual_fx) and visual_fx.has_method("set_city_light_stage"):
+				visual_fx.set_city_light_stage(visual_fx.CityLightStage.LOW_LIGHT, true, 1.5)
+			if is_instance_valid(neural_comms) and neural_comms.has_method("send_message"):
+				neural_comms.send_message("🌇 [DEBUG F6] TIME SHIFT: Mack Battle Finished! City lights dimmed to Stage 2 (LOW LIGHT 25% - Dusk).", "DAY CYCLE // DEBUG")
+		DayLightingPhase.DUSK_STAGE_2:
+			current_lighting_phase = DayLightingPhase.NIGHT_STAGE_3
+			side_missions_today = max_side_missions_per_day
+			if is_instance_valid(visual_fx) and visual_fx.has_method("set_city_light_stage"):
+				visual_fx.set_city_light_stage(visual_fx.CityLightStage.DIM, true, 1.5)
+			if is_instance_valid(neural_comms) and neural_comms.has_method("send_message"):
+				neural_comms.send_message("🌃 [DEBUG F6] TIME SHIFT: Quests Exhausted! City lights dimmed to Stage 3 (DIM 5% - Deep Night). Return to Safehouse.", "DAY CYCLE // DEBUG")
+		DayLightingPhase.NIGHT_STAGE_3:
+			if is_instance_valid(neural_comms) and neural_comms.has_method("send_message"):
+				neural_comms.send_message("🌅 [DEBUG F6] TIME SHIFT: Resting at Safehouse & Advancing to Day %d..." % (current_day + 1), "DAY CYCLE // DEBUG")
+			advance_to_next_day()
+
 
 # ------------------------------------------------------------------------------
 # SAFEHOUSE END-OF-DAY CINEMATIC COMMS HUB MODAL

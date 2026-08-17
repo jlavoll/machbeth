@@ -24,6 +24,7 @@ The city is an all-encompassing, hyper-dense megastructure grid governed by **Du
 | **Porter** | Subterranean Mechanic | Operates **The Pit** (Underground Garage Hub). Installs vehicle mods, chassis armor, engine overclocks, and black-market cyborg parts. |
 | **CEO Duncan** | Head of Duncan Dynamics | Target of the executive assassination plot. |
 | **Macduff** | Fife Security Commander | Operates an un-networked synth-cyborg war-rig ("born of a lab-vat, not of woman"). Main adversary in Act V. |
+| **Joe ("Joe's Ice Cream Store")** | Shadow Patron / "King James" Archetype | Daily benefactor paying stipends; manipulates Mack into higher-risk missions, testing bleeding-edge untested cyberware, and provides intel on an experimental prototype cyberware shipment that grants god-tier stats at the cost of Mack's health and sanity. |
 
 ---
 

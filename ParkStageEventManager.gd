@@ -65,12 +65,27 @@ const EVENT_REGISTRY: Dictionary = {
 	}
 }
 
-# Returns full event configuration dictionary for any event ID (with fallback to PARK_CONCERT)
+const STAGE_EVENT_IDS: Array[String] = [
+	"PARK_CONCERT",
+	"RELIGIOUS_RALLY",
+	"SHAKESPEARE_PARK"
+]
+
+# Returns full event configuration dictionary for any event ID (with daily cycling fallback)
 static func get_event_config(event_id: String) -> Dictionary:
 	if EVENT_REGISTRY.has(event_id):
 		return EVENT_REGISTRY[event_id]
 	return EVENT_REGISTRY["PARK_CONCERT"]
 
+# Returns event configuration taking into account active event or daily rotation
+static func get_event_config_for_day(event_id: String, day_number: int = 1) -> Dictionary:
+	if EVENT_REGISTRY.has(event_id):
+		return EVENT_REGISTRY[event_id]
+	# If daily event is non-stage (e.g. TRAVELING_MERCHANT, FIFE_RALLY, NORNS_RITUAL), rotate stage entertainment by day
+	var fallback_id: String = STAGE_EVENT_IDS[abs(day_number - 1) % STAGE_EVENT_IDS.size()]
+	return EVENT_REGISTRY[fallback_id]
+
 # Checks if the given event ID is a valid stage event
 static func is_stage_event(event_id: String) -> bool:
 	return EVENT_REGISTRY.has(event_id)
+

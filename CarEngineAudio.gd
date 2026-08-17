@@ -161,12 +161,15 @@ func _update_speed_pitch_and_volume(delta: float) -> void:
 	raw_speed = abs(raw_speed) if respond_to_reverse else max(raw_speed, 0.0)
 
 	var effective_speed: float = max(raw_speed - speed_deadzone, 0.0)
-	var effective_max: float = max(_player.max_speed - speed_deadzone, 0.001)
-	var speed_ratio: float = clamp(effective_speed / effective_max, 0.0, 1.0)
+	var base_max: float = max(_player.max_speed - speed_deadzone, 0.001)
+	var boost_max: float = _player.boost_max_speed if ("boost_max_speed" in _player) else _player.max_speed
+	var speed_ratio: float = clamp(effective_speed / base_max, 0.0, 1.4)
 
-	var target_semitones: float = lerp(idle_semitone_shift, full_speed_semitone_shift, speed_ratio)
+	var boost_pitch_bonus: float = 3.0 if ("is_boosting" in _player and _player.is_boosting) else 0.0
+	var target_semitones: float = lerp(idle_semitone_shift, full_speed_semitone_shift + boost_pitch_bonus, min(speed_ratio, 1.2))
 	var target_pitch_scale: float = _semitones_to_pitch_scale(target_semitones)
-	var target_volume_db: float = lerp(idle_volume_db, full_speed_volume_db, speed_ratio)
+	var target_volume_db: float = lerp(idle_volume_db, full_speed_volume_db + (2.0 if boost_pitch_bonus > 0.0 else 0.0), min(speed_ratio, 1.0))
+
 
 	var t: float = clamp(response_speed * delta, 0.0, 1.0)
 	_player_node.pitch_scale = lerp(_player_node.pitch_scale, target_pitch_scale, t)
