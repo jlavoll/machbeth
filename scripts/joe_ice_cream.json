@@ -4,7 +4,8 @@
 			"choices": [
 				{
 					"target": "collect_stipend",
-					"text": "\"Here for our daily sponsorship stipend, Joe.\""
+					"text": "\"Here for our daily sponsorship stipend, Joe.\"",
+					"familiarity_gain": 1
 				},
 				{
 					"target": "king_james_whisper",
@@ -12,11 +13,13 @@
 				},
 				{
 					"target": "prototype_cyberware_intel",
-					"text": "\"Heard any valuable whispers on the street?\""
+					"text": "\"Heard any valuable whispers on the street?\"",
+					"familiarity_needed": 2
 				},
 				{
 					"target": "talk_duncan",
-					"text": "\"What do you think of Duncan Dynamics?\""
+					"text": "\"What do you think of Duncan Dynamics?\"",
+					"familiarity_needed": 3
 				},
 				{
 					"target": "ice_cream_menu",
@@ -29,6 +32,7 @@
 			],
 			"text": "Hey there, Mack! Banquo! Step right up, boys! The synth-cream is fresh, cold as liquid nitrogen, and 100% on the house for my favorite street legends!"
 		},
+
 		"collect_stipend": {
 			"choices": [
 				{

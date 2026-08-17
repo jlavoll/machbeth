@@ -218,6 +218,14 @@ func buy_item_from_pit(item_id: String) -> bool:
 	var cost_c: int = item.get("buy_credits", 500)
 	var cost_s: int = item.get("buy_scrap", 20)
 
+	# Check Familiarity Discount from Porter (Up to 20% discount at Level 5 Trust)
+	var stats_mgr = get_parent().get_node_or_null("FactionStatsManager")
+	var fam_level: int = 1
+	if is_instance_valid(stats_mgr) and stats_mgr.has_method("get_npc_familiarity"):
+		fam_level = stats_mgr.get_npc_familiarity("Porter")
+	var discount: float = (fam_level - 1) * 0.05 # 5% per level above 1 (max 20%)
+	cost_c = int(cost_c * (1.0 - discount))
+
 	var quest_mgr = get_parent().get_node_or_null("QuestManager")
 	if not is_instance_valid(quest_mgr) or quest_mgr.player_credits < cost_c:
 		_notify_error("INSUFFICIENT CREDITS // NEED %d CR" % cost_c)
@@ -230,6 +238,10 @@ func buy_item_from_pit(item_id: String) -> bool:
 	# Deduct costs
 	quest_mgr.player_credits -= cost_c
 	player_scrap_salvage -= cost_s
+
+	# Award Porter Affinity for doing business
+	if is_instance_valid(stats_mgr) and stats_mgr.has_method("modify_npc_affinity"):
+		stats_mgr.modify_npc_affinity("Porter", 2, "NEON_SYNDICATE")
 
 	# Add to appropriate inventory
 	if item.get("category", "") == "CONSUMABLE":
@@ -246,6 +258,7 @@ func buy_item_from_pit(item_id: String) -> bool:
 	shop_transaction_completed.emit(item_id, true, cost_c, cost_s)
 	_notify_success("PURCHASED %s (-%d CR, -%d SCRAP)" % [item.get("name", ""), cost_c, cost_s])
 	return true
+
 
 func sell_item_to_pit(item_id: String, source_inv: String = "BANQUO_STASH") -> bool:
 	if not master_catalog.has(item_id):

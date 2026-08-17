@@ -62,10 +62,12 @@ var _portrait_label_initials:   Label           # Large character initial/sigil
 
 var _dialogue_panel:            Panel           # Bottom dialogue box
 var _speaker_name_label:        Label           # Speaker name (Orbitron, neon styled)
+var _familiarity_badge_label:   Label           # Dynamic Neon Trust Badge (ShareTechMono)
 var _speaker_subtitle_label:    Label           # Role/neural-ID subtitle line
 var _dialogue_rich_label:       RichTextLabel   # Main dialogue text (typewriter)
 var _choices_v_container:       VBoxContainer   # Holds dynamically spawned choice buttons
 var _continue_hint_label:       Label           # "[SPACE to skip / advance]" hint
+
 
 # Panel slide animation position targets
 var _panel_hidden_y_offset:     float = 340.0   # Pixels below screen when hidden
@@ -199,6 +201,25 @@ func _display_node(node_id: String) -> void:
 	_speaker_name_label.text    = _active_dialogue_tree.get("speaker_display_name", "???")
 	_speaker_subtitle_label.text = _active_dialogue_tree.get("speaker_subtitle", "")
 
+	# --- Dynamic Familiarity Trust Badge update ---
+	var speaker_name: String = _active_dialogue_tree.get("speaker_display_name", "")
+	var stats_mgr = get_parent().get_node_or_null("FactionStatsManager")
+	if is_instance_valid(_familiarity_badge_label):
+		if is_instance_valid(stats_mgr) and stats_mgr.has_method("get_npc_familiarity") and not speaker_name.is_empty():
+			var fam_lvl: int = stats_mgr.get_npc_familiarity(speaker_name)
+			var stars: String = "★".repeat(fam_lvl) + "☆".repeat(5 - fam_lvl)
+			var rank_title: String = "STRANGER"
+			match fam_lvl:
+				1: rank_title = "STRANGER"
+				2: rank_title = "ACQUAINTANCE"
+				3: rank_title = "CONFIDANT"
+				4: rank_title = "SYNDICATE ALLY"
+				5: rank_title = "INNER CIRCLE"
+			_familiarity_badge_label.text = "⭐ [%s] TRUST LVL %d // %s" % [stars, fam_lvl, rank_title]
+			_familiarity_badge_label.visible = true
+		else:
+			_familiarity_badge_label.visible = false
+
 	# --- Portrait accent color from tree-level speaker_color ---
 	var speaker_hex: String = _active_dialogue_tree.get("speaker_color", "#00FFD5")
 	var portrait_accent_color := Color(speaker_hex)
@@ -209,6 +230,7 @@ func _display_node(node_id: String) -> void:
 	var display_name: String = _active_dialogue_tree.get("speaker_display_name", "?")
 	_portrait_label_initials.text = display_name.left(1).to_upper()
 	_portrait_label_initials.add_theme_color_override("font_color", portrait_accent_color)
+
 
 	# --- Start typewriter for dialogue text ---
 	_typewriter_full_text   = node_data.get("text", "")
@@ -286,21 +308,39 @@ func _on_choice_button_pressed(choice_index: int, target_node_id: String) -> voi
 	var nodes_dict: Dictionary = _active_dialogue_tree.get("nodes", {})
 	var node_data:  Dictionary = nodes_dict.get(_current_node_id, {})
 	var choices:    Array      = node_data.get("choices", [])
+	var speaker_name: String = _active_dialogue_tree.get("speaker_display_name", "")
+	var stats_mgr = get_parent().get_node_or_null("FactionStatsManager")
 	
-	if choice_index >= 0 and choice_index < choices.size():
-		var choice_data: Dictionary = choices[choice_index]
-		var fam_gain: int = choice_data.get("familiarity_gain", 0)
-		var speaker_name: String = _active_dialogue_tree.get("speaker_display_name", "")
+	if is_instance_valid(stats_mgr) and not speaker_name.is_empty():
+		var old_fam: int = stats_mgr.get_npc_familiarity(speaker_name)
+		var fam_gain: int = 0
+		if choice_index >= 0 and choice_index < choices.size():
+			fam_gain = choices[choice_index].get("familiarity_gain", 0)
+		
+		# Award affinity: either explicit gain or +1 conversation affinity
 		if fam_gain > 0:
-			var stats_mgr = get_parent().get_node_or_null("FactionStatsManager")
-			if is_instance_valid(stats_mgr) and stats_mgr.has_method("modify_npc_familiarity"):
-				stats_mgr.modify_npc_familiarity(speaker_name, fam_gain)
-				var comms = get_parent().get_node_or_null("NeuralNotificationSystem")
-				if is_instance_valid(comms):
-					comms.send_message("🤝 TRUST ESTABLISHED: +%d Familiarity with %s" % [fam_gain, speaker_name], "FAMILIARITY UPGRADE")
+			stats_mgr.modify_npc_familiarity(speaker_name, fam_gain)
+		else:
+			stats_mgr.modify_npc_affinity(speaker_name, 1)
+
+		var new_fam: int = stats_mgr.get_npc_familiarity(speaker_name)
+		var comms = get_parent().get_node_or_null("NeuralNotificationSystem")
+
+		if new_fam > old_fam:
+			var rank_title: String = "ACQUAINTANCE"
+			match new_fam:
+				2: rank_title = "ACQUAINTANCE"
+				3: rank_title = "CONFIDANT"
+				4: rank_title = "SYNDICATE ALLY"
+				5: rank_title = "INNER CIRCLE"
+			if is_instance_valid(comms):
+				comms.send_message("⭐ TRUST LEVEL UP! You reached Level %d (%s) with %s!\nNew dialogue branches & black-market discounts unlocked." % [new_fam, rank_title, speaker_name], "FAMILIARITY LEVEL UP")
+		elif fam_gain > 0 and is_instance_valid(comms):
+			comms.send_message("🤝 TRUST ESTABLISHED: +%d Familiarity with %s" % [fam_gain, speaker_name], "FAMILIARITY UPGRADE")
 
 	emit_signal("dialogue_choice_selected", choice_index, target_node_id)
 	_display_node(target_node_id)
+
 
 
 # ==============================================================================
@@ -554,6 +594,12 @@ func _build_dialogue_panel() -> void:
 	var ubuntu_font:   FontFile = _load_ubuntu_font()
 	var sharetech_font: FontFile = _load_sharetech_font()
 
+	# Speaker Header Row (Name + Dynamic Trust Badge)
+	var speaker_header_hbox := HBoxContainer.new()
+	speaker_header_hbox.name = "SpeakerHeaderHBox"
+	speaker_header_hbox.add_theme_constant_override("separation", 14)
+	panel_v_box.add_child(speaker_header_hbox)
+
 	# Speaker name label
 	_speaker_name_label      = Label.new()
 	_speaker_name_label.name = "SpeakerNameLabel"
@@ -561,7 +607,17 @@ func _build_dialogue_panel() -> void:
 		_speaker_name_label.add_theme_font_override("font", orbitron_font)
 	_speaker_name_label.add_theme_font_size_override("font_size", 16)
 	_speaker_name_label.add_theme_color_override("font_color", speaker_name_glow_color)
-	panel_v_box.add_child(_speaker_name_label)
+	speaker_header_hbox.add_child(_speaker_name_label)
+
+	# Dynamic Neon Familiarity Trust Badge
+	_familiarity_badge_label      = Label.new()
+	_familiarity_badge_label.name = "FamiliarityBadgeLabel"
+	if sharetech_font:
+		_familiarity_badge_label.add_theme_font_override("font", sharetech_font)
+	_familiarity_badge_label.add_theme_font_size_override("font_size", 11)
+	_familiarity_badge_label.add_theme_color_override("font_color", Color(1.0, 0.85, 0.0))
+	_familiarity_badge_label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+	speaker_header_hbox.add_child(_familiarity_badge_label)
 
 	# Speaker subtitle / neural-ID
 	_speaker_subtitle_label      = Label.new()
@@ -581,6 +637,7 @@ func _build_dialogue_panel() -> void:
 	divider_line.color     = Color(chrome_neon_color.r, chrome_neon_color.g, chrome_neon_color.b, 0.3)
 	divider_line.custom_minimum_size = Vector2(0.0, 1.0)
 	panel_v_box.add_child(divider_line)
+
 
 	# Main dialogue RichTextLabel
 	_dialogue_rich_label        = RichTextLabel.new()
