@@ -131,7 +131,7 @@
       ],
       "hp": 2.0,
       "icon": "🚙",
-      "id": "new_enemy_42",
+      "id": "angry_seagull",
       "max_hp": 2.0,
       "name": "Angry Seagulls",
       "threat": "STANDARD",

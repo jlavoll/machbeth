@@ -27,3 +27,18 @@
 
 fix fonts in shop screen
 
+
+we are getting "assist MACK" random requests when we do our own solo mission. logical flaw. 
+also, logically, when we are in a mission fighting as banquo and we lose, does mack tow us back to the pit? is that what happens?
+i think this message popping upå in the backgroudn messed up the entire battle summary
+
+in the mission editor then, we should specify is it a mission for banquo or for mack
+
+maybe we can order some "airstrikes" frm lady m. costs momeny, so we should have a money
+readout at the HUD, and then she can say "ok i fixed this thing, but i need 20 seconds to execute it"
+
+whe need a visualiation of available equipment slots in the car, for mack and even for banqou
+maybe with a live stats readout as we change equipment
+
+
+equipped upgrades, equipped weapons etc on enemy design editor, needs to be a pull-down list

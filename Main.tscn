@@ -17,26 +17,24 @@
 [ext_resource type="Script" uid="uid://3dxvow48b5wt" path="res://TrafficSystem.gd" id="15_traffic"]
 [ext_resource type="Script" uid="uid://bflf00k1lk4sc" path="res://PedestrianSystem.gd" id="16_pedestrians"]
 [ext_resource type="Script" uid="uid://rjei6geo1tin" path="res://DialogueSystem.gd" id="17_dialogue"]
-[ext_resource type="Script" path="res://NeuralNotificationSystem.gd" id="18_neuralcomms"]
-[ext_resource type="Script" path="res://QuestManager.gd" id="19_questmgr"]
-[ext_resource type="Script" path="res://FactionStatsManager.gd" id="20_statsmgr"]
-[ext_resource type="Script" path="res://IndoorSystemManager.gd" id="21_indoormgr"]
-[ext_resource type="Script" path="res://GarageManager.gd" id="22_garagemgr"]
-[ext_resource type="Script" path="res://CyborgModdingManager.gd" id="23_cyborgmgr"]
-[ext_resource type="Script" path="res://CampaignManager.gd" id="24_campaignmgr"]
-[ext_resource type="Script" path="res://DatabaseEditorUI.gd" id="25_dbeditor"]
-[ext_resource type="Script" path="res://MissionEditorUI.gd" id="26_missioneditor"]
-[ext_resource type="Script" path="res://DialogueEditorUI.gd" id="27_dialogueeditor"]
-[ext_resource type="Script" path="res://BattleTelemetryRadarUI.gd" id="28_telemetryui"]
-[ext_resource type="Script" path="res://TransitSystem.gd" id="29_transitsystem"]
-[ext_resource type="Script" path="res://StreetMissionEditorUI.gd" id="30_streeteditor"]
-[ext_resource type="Script" path="res://CorporateDronePatrolSystem.gd" id="31_dronepatrol"]
-[ext_resource type="Script" path="res://LoadoutGridManager.gd" id="32_loadoutmgr"]
-[ext_resource type="Script" path="res://LoadoutGridUI.gd" id="33_loadoutui"]
-[ext_resource type="Script" path="res://UnifiedInventoryManager.gd" id="34_invmgr"]
-[ext_resource type="Script" path="res://InventoryShopUI.gd" id="35_invui"]
-
-
+[ext_resource type="Script" uid="uid://nhrhk1p0nfx1" path="res://NeuralNotificationSystem.gd" id="18_neuralcomms"]
+[ext_resource type="Script" uid="uid://bjmt4io1l2p75" path="res://QuestManager.gd" id="19_questmgr"]
+[ext_resource type="Script" uid="uid://codbw8xao8x5x" path="res://FactionStatsManager.gd" id="20_statsmgr"]
+[ext_resource type="Script" uid="uid://clpj65fvrjcu0" path="res://IndoorSystemManager.gd" id="21_indoormgr"]
+[ext_resource type="Script" uid="uid://c4h2rq0l30npv" path="res://GarageManager.gd" id="22_garagemgr"]
+[ext_resource type="Script" uid="uid://dyvxyqsw0ooll" path="res://CyborgModdingManager.gd" id="23_cyborgmgr"]
+[ext_resource type="Script" uid="uid://bx6lmkou1hrkh" path="res://CampaignManager.gd" id="24_campaignmgr"]
+[ext_resource type="Script" uid="uid://bwaqb0cevurrp" path="res://DatabaseEditorUI.gd" id="25_dbeditor"]
+[ext_resource type="Script" uid="uid://cmvape38j4u22" path="res://MissionEditorUI.gd" id="26_missioneditor"]
+[ext_resource type="Script" uid="uid://c1wpcsli0s8ij" path="res://DialogueEditorUI.gd" id="27_dialogueeditor"]
+[ext_resource type="Script" uid="uid://bxhuhmd6tsi34" path="res://BattleTelemetryRadarUI.gd" id="28_telemetryui"]
+[ext_resource type="Script" uid="uid://bwpsllqvml3rk" path="res://TransitSystem.gd" id="29_transitsystem"]
+[ext_resource type="Script" uid="uid://bawvcubvflif4" path="res://StreetMissionEditorUI.gd" id="30_streeteditor"]
+[ext_resource type="Script" uid="uid://egeuq5ki366q" path="res://CorporateDronePatrolSystem.gd" id="31_dronepatrol"]
+[ext_resource type="Script" uid="uid://byiu13nbubx4a" path="res://LoadoutGridManager.gd" id="32_loadoutmgr"]
+[ext_resource type="Script" uid="uid://dw0vlkg3x41vf" path="res://LoadoutGridUI.gd" id="33_loadoutui"]
+[ext_resource type="Script" uid="uid://cx6ljrvjdv572" path="res://UnifiedInventoryManager.gd" id="34_invmgr"]
+[ext_resource type="Script" uid="uid://cchhgmw7qmucl" path="res://InventoryShopUI.gd" id="35_invui"]
 
 [sub_resource type="Environment" id="Environment_1"]
 background_mode = 1
@@ -128,28 +126,28 @@ script = ExtResource("19_questmgr")
 [node name="FactionStatsManager" type="Node" parent="." unique_id=2049182049]
 script = ExtResource("20_statsmgr")
 
-[node name="IndoorSystemManager" type="Node3D" parent="." unique_id=3058192051]
+[node name="IndoorSystemManager" type="Node3D" parent="." unique_id=-1236775245]
 script = ExtResource("21_indoormgr")
 
-[node name="GarageManager" type="Node" parent="." unique_id=4091820491]
+[node name="GarageManager" type="Node" parent="." unique_id=-203146805]
 script = ExtResource("22_garagemgr")
 
-[node name="CyborgModdingManager" type="Node" parent="." unique_id=5102931502]
+[node name="CyborgModdingManager" type="Node" parent="." unique_id=807964206]
 script = ExtResource("23_cyborgmgr")
 
-[node name="CampaignManager" type="Node" parent="." unique_id=6120391823]
+[node name="CampaignManager" type="Node" parent="." unique_id=1825424527]
 script = ExtResource("24_campaignmgr")
 
-[node name="DatabaseEditorUI" type="CanvasLayer" parent="." unique_id=7182930415]
+[node name="DatabaseEditorUI" type="CanvasLayer" parent="." unique_id=-1407004177]
 script = ExtResource("25_dbeditor")
 
-[node name="MissionEditorUI" type="CanvasLayer" parent="." unique_id=8293041526]
+[node name="MissionEditorUI" type="CanvasLayer" parent="." unique_id=-296893066]
 script = ExtResource("26_missioneditor")
 
-[node name="DialogueEditorUI" type="CanvasLayer" parent="." unique_id=9304152637]
+[node name="DialogueEditorUI" type="CanvasLayer" parent="." unique_id=714218045]
 script = ExtResource("27_dialogueeditor")
 
-[node name="StreetMissionEditorUI" type="CanvasLayer" parent="." unique_id=9812730415]
+[node name="StreetMissionEditorUI" type="CanvasLayer" parent="." unique_id=1222795823]
 script = ExtResource("30_streeteditor")
 
 [node name="BattleTelemetryRadarUI" type="CanvasLayer" parent="." unique_id=1041526374]
@@ -180,8 +178,6 @@ script = ExtResource("34_invmgr")
 script = ExtResource("35_invui")
 
 [node name="PlayerCar" type="CharacterBody3D" parent="." unique_id=1110453537]
-
-
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1, 0)
 script = ExtResource("2_player")
 

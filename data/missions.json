@@ -1,5 +1,35 @@
 {
   "missions": {
+    "act1_custom_mission_15862": {
+      "act": 1,
+      "act_title": "Act I: Macbeth's Ambition",
+      "description": "Custom mission created in Mission Editor overlay.",
+      "difficulty_threshold": 1,
+      "id": "act1_custom_mission_15862",
+      "name": "More bass in monitor",
+      "rewards": {
+        "credits": 750,
+        "reputation": "Street Operative (+15)",
+        "scrap": 50
+      },
+      "rounds": [
+        {
+          "enemies": [
+            {
+              "enemy_id": "new_enemy_42",
+              "equipped_upgrades": [
+                "graphene_armor_l1"
+              ],
+              "equipped_weapons": [
+                "twin_20mm_cannon"
+              ]
+            }
+          ],
+          "round_name": "Wave 1 - Initial Patrol",
+          "round_number": 1
+        }
+      ]
+    },
     "act1_limo_intercept": {
       "act": 1.0,
       "act_title": "Act I: Macbeth's Ambition",
