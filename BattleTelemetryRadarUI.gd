@@ -35,10 +35,13 @@ var slot_drone_offline_lbl: Label = null
 # Visual Animations
 var active_damage_popups: Array[Dictionary] = []
 var mack_shake_timer: float = 0.0
+var active_enemy_shakes: Dictionary = {}
+
 # Preloaded Cyberpunk Fonts
 var orbitron_font: Font = preload("res://fonts/Orbitron/Orbitron-VariableFont_wght.ttf")
 var sharetech_font: Font = preload("res://fonts/ShareTechMono-Regular.ttf")
 var geist_font: Font = preload("res://fonts/GeistPixel-Regular-VariableFont_ELSH.ttf")
+
 
 func _ready() -> void:
 
