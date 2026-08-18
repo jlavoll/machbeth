@@ -17,6 +17,15 @@ var current_floor: HQFloor = HQFloor.LOBBY
 var is_inside_building: bool = false
 var saved_player_position: Vector3 = Vector3.ZERO
 
+# Current footstep surface zone — read by PlayerOnFoot._fire_footstep() each step.
+# Uses WeatherAmbienceManager.FootstepSurface integer values (dry variants only;
+# PlayerOnFoot handles rain promotion automatically at fire time).
+#   0 = CONCRETE  (city streets — default)
+#   2 = GRASS     (park ground)
+#   4 = BALCONY   (high-rise balcony or rooftop)
+#   6 = INDOOR    (any interior pocket dimension)
+var player_surface_zone: int = 0  # FootstepSurface.CONCRETE
+
 # Playable Interior Floor Origins (offset far outside city grid to prevent rendering overlap)
 var lobby_floor_origin: Vector3 = Vector3(1000.0, 0.0, 1000.0)
 var penthouse_floor_origin: Vector3 = Vector3(2000.0, 0.0, 2000.0)
@@ -1068,6 +1077,7 @@ func enter_location(target_floor: HQFloor) -> void:
 
 	is_inside_building = true
 	current_floor = target_floor
+	player_surface_zone = 6  # FootstepSurface.INDOOR
 	print("[INDOOR SYSTEM] Entering interior location: ", target_floor)
 
 	var origin: Vector3 = _get_origin_for_floor(current_floor)
@@ -1119,6 +1129,7 @@ func exit_building_interior() -> void:
 	is_inside_building = false
 	indoor_view_mode = "TOPDOWN"
 	_fp_pitch = 0.0
+	player_surface_zone = 0  # FootstepSurface.CONCRETE — returning to city streets
 	print("[INDOOR SYSTEM] Exiting interior, returning to city street...")
 
 	if is_instance_valid(player_car) and player_car.is_on_foot and is_instance_valid(player_car.on_foot_node):
@@ -1661,6 +1672,7 @@ func _teleport_player_to_mack_balcony() -> void:
 			balcony_target_pos = balcony_node.global_position + Vector3(0.0, 0.8, 0.0)
 			
 		foot_node.global_position = balcony_target_pos
+		player_surface_zone = 4  # FootstepSurface.BALCONY — metallic high-rise grating
 		
 		var comms = get_parent().get_node_or_null("NeuralNotificationSystem")
 		if is_instance_valid(comms) and comms.has_method("send_message"):
@@ -1679,6 +1691,7 @@ func _teleport_player_to_banquo_rooftop() -> void:
 			roof_target_pos = elevator_node.global_position + Vector3(0.0, 0.8, 2.8)
 			
 		foot_node.global_position = roof_target_pos
+		player_surface_zone = 4  # FootstepSurface.BALCONY — open-air rooftop platform
 		
 		var comms = get_parent().get_node_or_null("NeuralNotificationSystem")
 		if is_instance_valid(comms) and comms.has_method("send_message"):

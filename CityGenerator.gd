@@ -346,6 +346,15 @@ func _is_position_in_park_or_lot(pos: Vector3) -> bool:
 			return true
 	return false
 
+## Public surface query — returns true when pos is over a park grass area.
+## Called by PlayerOnFoot._fire_footstep() each step to detect the GRASS surface.
+func is_in_park(pos: Vector3) -> bool:
+	var point_2d = Vector2(pos.x, pos.z)
+	for park_box in active_park_boxes:
+		if park_box.has_point(point_2d):
+			return true
+	return false
+
 # Helper searching outward for a safe land location clear of water
 func _find_safe_land_position(start_pos: Vector3) -> Vector3:
 	for radius in range(15, 120, 15):

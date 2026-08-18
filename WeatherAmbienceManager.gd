@@ -62,10 +62,13 @@ const RAIN_ON_ROOF_PATH: String = ""   # e.g. "res://ambience/rain_on_car_roof.o
 # ==============================================================================
 
 enum FootstepSurface {
-	CONCRETE,       # dry asphalt / pavement
-	CONCRETE_RAIN,  # wet asphalt / puddles
-	GRASS,          # dry grass
-	GRASS_RAIN,     # wet grass / rain
+	CONCRETE       = 0, # dry asphalt / pavement (city streets, default)
+	CONCRETE_RAIN  = 1, # wet asphalt / puddles (rain weather on streets)
+	GRASS          = 2, # dry grass / park ground
+	GRASS_RAIN     = 3, # wet grass / park in rain
+	BALCONY        = 4, # high-rise balcony / rooftop metal grating (dry)
+	BALCONY_RAIN   = 5, # wet balcony / rooftop in rain
+	INDOOR         = 6, # indoor flooring (all interior locations)
 }
 
 # ------------------------------------------------------------------------------
@@ -112,6 +115,29 @@ const FOOTSTEP_GRASS_PATHS: Array[String] = [
 const FOOTSTEP_GRASS_RAIN_PATHS: Array[String] = [
 	# "res://sfx/footstep grass rain-01.ogg",
 	# "res://sfx/footstep grass rain-02.ogg",
+	# ...
+]
+
+# Balcony / Rooftop — dry  (6 clips, ready — metallic grating resonance)
+const FOOTSTEP_BALCONY_PATHS: Array[String] = [
+	"res://sfx/footstep - balcony.ogg",
+	"res://sfx/footstep - balcony-01.ogg",
+	"res://sfx/footstep - balcony-02.ogg",
+	"res://sfx/footstep - balcony-03.ogg",
+	"res://sfx/footstep - balcony-04.ogg",
+	"res://sfx/footstep - balcony-05.ogg",
+]
+
+# Balcony / Rooftop — rain / wet  (add wet variants once you have the assets;
+# until then the system falls back to the dry balcony bank automatically)
+const FOOTSTEP_BALCONY_RAIN_PATHS: Array[String] = [
+	# "res://sfx/footstep balcony wet-01.ogg",
+	# ...
+]
+
+# Indoor flooring  (fill in paths once you have the assets — tile, carpet, etc.)
+const FOOTSTEP_INDOOR_PATHS: Array[String] = [
+	# "res://sfx/footstep indoor-01.ogg",
 	# ...
 ]
 
@@ -165,6 +191,9 @@ var _footstep_concrete_streams:      Array[AudioStream] = []
 var _footstep_concrete_rain_streams: Array[AudioStream] = []
 var _footstep_grass_streams:         Array[AudioStream] = []
 var _footstep_grass_rain_streams:    Array[AudioStream] = []
+var _footstep_balcony_streams:       Array[AudioStream] = []
+var _footstep_balcony_rain_streams:  Array[AudioStream] = []
+var _footstep_indoor_streams:        Array[AudioStream] = []
 
 # Dedicated AudioStreamPlayer for one-shot footstep playback
 var _footstep_player: AudioStreamPlayer = null
@@ -177,6 +206,9 @@ var _last_concrete_index:      int = -1
 var _last_concrete_rain_index: int = -1
 var _last_grass_index:         int = -1
 var _last_grass_rain_index:    int = -1
+var _last_balcony_index:       int = -1
+var _last_balcony_rain_index:  int = -1
+var _last_indoor_index:        int = -1
 
 # ==============================================================================
 # INITIALIZATION & STREAM LOADING
@@ -314,11 +346,17 @@ func _setup_footstep_banks() -> void:
 	_load_bank(FOOTSTEP_CONCRETE_RAIN_PATHS, _footstep_concrete_rain_streams, "concrete_rain")
 	_load_bank(FOOTSTEP_GRASS_PATHS,         _footstep_grass_streams,         "grass")
 	_load_bank(FOOTSTEP_GRASS_RAIN_PATHS,    _footstep_grass_rain_streams,    "grass_rain")
+	_load_bank(FOOTSTEP_BALCONY_PATHS,       _footstep_balcony_streams,       "balcony")
+	_load_bank(FOOTSTEP_BALCONY_RAIN_PATHS,  _footstep_balcony_rain_streams,  "balcony_rain")
+	_load_bank(FOOTSTEP_INDOOR_PATHS,        _footstep_indoor_streams,        "indoor")
 
 	print("[AMBIENCE] Footstep banks — concrete: ", _footstep_concrete_streams.size(),
 		" | concrete_rain: ",  _footstep_concrete_rain_streams.size(),
 		" | grass: ",          _footstep_grass_streams.size(),
-		" | grass_rain: ",     _footstep_grass_rain_streams.size())
+		" | grass_rain: ",     _footstep_grass_rain_streams.size(),
+		" | balcony: ",        _footstep_balcony_streams.size(),
+		" | balcony_rain: ",   _footstep_balcony_rain_streams.size(),
+		" | indoor: ",         _footstep_indoor_streams.size())
 
 ## Internal helper — loads a list of paths into a stream array, prints warnings on failure.
 func _load_bank(paths: Array[String], bank: Array[AudioStream], label: String) -> void:
@@ -348,6 +386,7 @@ func set_player_in_car(in_car: bool) -> void:
 ## Pass the appropriate FootstepSurface variant for the terrain under the player.
 ## The manager picks a random non-repeating clip from the matching bank.
 ## If the bank for that surface is empty (assets not yet added), the call is a no-op.
+## Special: BALCONY_RAIN falls back to the dry BALCONY bank when no wet clips exist.
 func trigger_footstep(surface: FootstepSurface) -> void:
 	if not is_instance_valid(_footstep_player):
 		return
@@ -368,6 +407,20 @@ func trigger_footstep(surface: FootstepSurface) -> void:
 		FootstepSurface.GRASS_RAIN:
 			bank     = _footstep_grass_rain_streams
 			last_idx = _last_grass_rain_index
+		FootstepSurface.BALCONY:
+			bank     = _footstep_balcony_streams
+			last_idx = _last_balcony_index
+		FootstepSurface.BALCONY_RAIN:
+			# Prefer dedicated wet-balcony clips; fall back to dry balcony if not yet available
+			if not _footstep_balcony_rain_streams.is_empty():
+				bank     = _footstep_balcony_rain_streams
+				last_idx = _last_balcony_rain_index
+			else:
+				bank     = _footstep_balcony_streams
+				last_idx = _last_balcony_index
+		FootstepSurface.INDOOR:
+			bank     = _footstep_indoor_streams
+			last_idx = _last_indoor_index
 		_:
 			return
 
@@ -386,6 +439,14 @@ func trigger_footstep(surface: FootstepSurface) -> void:
 		FootstepSurface.CONCRETE_RAIN: _last_concrete_rain_index = idx
 		FootstepSurface.GRASS:         _last_grass_index         = idx
 		FootstepSurface.GRASS_RAIN:    _last_grass_rain_index    = idx
+		FootstepSurface.BALCONY:       _last_balcony_index       = idx
+		FootstepSurface.BALCONY_RAIN:
+			# Write back to whichever bank was actually used
+			if not _footstep_balcony_rain_streams.is_empty():
+				_last_balcony_rain_index = idx
+			else:
+				_last_balcony_index = idx
+		FootstepSurface.INDOOR:        _last_indoor_index        = idx
 
 	_footstep_player.stream    = bank[idx]
 	_footstep_player.volume_db = footstep_volume_db

@@ -42,13 +42,17 @@ var camera:          Camera3D
 var dialogue_system: DialogueSystem   # Set by Main scene after adding DialogueSystem node
 var ambience_manager: Node            # WeatherAmbienceManager — set by Main/PlayerCar after spawn
 
+# Cached scene-tree references resolved on first footstep — avoids per-step get_parent() calls.
+# These are null until the first _fire_footstep() that resolves them.
+var _indoor_mgr_ref:  Node = null   # IndoorSystemManager — for player_surface_zone
+var _city_gen_ref:    Node = null   # CityGenerator — for is_in_park()
+
 # Surface type for footstep audio.
-# Set this from an Area3D trigger when the player enters/leaves a grass zone.
-# Defaults to CONCRETE (city streets).
-# Use the WeatherAmbienceManager.FootstepSurface enum values:
-#   0 = CONCRETE | 1 = CONCRETE_RAIN | 2 = GRASS | 3 = GRASS_RAIN
-# The _fire_footstep() function automatically promotes CONCRETE → CONCRETE_RAIN
-# and GRASS → GRASS_RAIN when rain weather is active, so just set the dry variant.
+# LEGACY: previously the only way to set surface. Now mainly used as a fallback
+# when IndoorSystemManager is not present. IndoorSystemManager.player_surface_zone
+# is the authoritative source; grass is detected via CityGenerator.is_in_park().
+# WeatherAmbienceManager.FootstepSurface integer values (dry variants only):
+#   0 = CONCRETE | 2 = GRASS | 4 = BALCONY | 6 = INDOOR
 var current_surface: int = 0  # WeatherAmbienceManager.FootstepSurface.CONCRETE
 
 var _foot_zoom:          float   = 0.0   # 0 = top-down, 1 = over-shoulder
@@ -329,7 +333,8 @@ func _hide_hq_door_hint() -> void:
 
 # ------------------------------------------------------------------------------
 # FOOTSTEP AUDIO
-# Resolves wet/dry variant from weather, then delegates to WeatherAmbienceManager.
+# Priority: INDOOR → BALCONY/ROOFTOP → GRASS (park check) → CONCRETE (streets)
+# Rain promotion is applied automatically for CONCRETE, GRASS, and BALCONY.
 # ------------------------------------------------------------------------------
 func _fire_footstep() -> void:
 	if not is_instance_valid(ambience_manager):
@@ -337,24 +342,51 @@ func _fire_footstep() -> void:
 	if not ambience_manager.has_method("trigger_footstep"):
 		return
 
-	# Check whether rain is currently active
+	# --- Lazily resolve cached node references (first footstep only) ---
+	if not is_instance_valid(_indoor_mgr_ref):
+		_indoor_mgr_ref = get_parent().get_node_or_null("IndoorSystemManager")
+	if not is_instance_valid(_city_gen_ref):
+		_city_gen_ref = get_parent().get_node_or_null("CityGenerator")
+
+	# --- Determine base dry surface (0=CONCRETE, 2=GRASS, 4=BALCONY, 6=INDOOR) ---
+	var surface: int = current_surface  # legacy fallback
+
+	if is_instance_valid(_indoor_mgr_ref):
+		var zone: int = int(_indoor_mgr_ref.player_surface_zone)
+		if zone == 6:
+			# INDOOR — no rain variant, play and return immediately
+			ambience_manager.trigger_footstep(6)
+			return
+		elif zone == 4:
+			# BALCONY / ROOFTOP — may be wet in rain
+			surface = 4
+		else:
+			# Streets (zone=0) or any unknown → check park grass
+			if is_instance_valid(_city_gen_ref) and _city_gen_ref.has_method("is_in_park"):
+				surface = 2 if _city_gen_ref.is_in_park(global_position) else 0
+			else:
+				surface = 0  # CONCRETE fallback
+	else:
+		# No IndoorSystemManager — use legacy current_surface with grass check
+		if is_instance_valid(_city_gen_ref) and _city_gen_ref.has_method("is_in_park"):
+			if _city_gen_ref.is_in_park(global_position):
+				surface = 2  # GRASS
+
+	# --- Check whether rain is currently active ---
 	var rain_active: bool = false
 	var ws = ambience_manager.get("weather_system")
 	if is_instance_valid(ws):
 		var w = int(ws.current_weather)
 		rain_active = (w == 0 or w == 2)  # NEON_RAIN or GLITCH_STORM
 
-	# Resolve surface enum: promote dry → wet variant automatically when raining.
-	# current_surface should always be the DRY base (CONCRETE=0, GRASS=2);
-	# we add 1 to get the rain variant (CONCRETE_RAIN=1, GRASS_RAIN=3).
-	var surface: int = current_surface
+	# --- Promote dry → wet variant when raining ---
+	# CONCRETE(0)→CONCRETE_RAIN(1)  |  GRASS(2)→GRASS_RAIN(3)  |  BALCONY(4)→BALCONY_RAIN(5)
 	if rain_active:
-		# CONCRETE(0)->CONCRETE_RAIN(1), GRASS(2)->GRASS_RAIN(3)
-		# Already-wet variants are left unchanged.
-		if surface == 0:  # CONCRETE
-			surface = 1   # CONCRETE_RAIN
-		elif surface == 2:  # GRASS
-			surface = 3   # GRASS_RAIN
+		match surface:
+			0: surface = 1  # CONCRETE_RAIN
+			2: surface = 3  # GRASS_RAIN
+			4: surface = 5  # BALCONY_RAIN
+			# INDOOR(6) and already-wet variants are left unchanged
 
 	ambience_manager.trigger_footstep(surface)
 
