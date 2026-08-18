@@ -18,7 +18,9 @@ const EVENT_REGISTRY: Dictionary = {
 		"audio_track": "res://music/shadowrun_the_cage.mp3",
 		"audio_volume_db": 6.0,
 		"audio_unit_size": 18.0,
-		"audio_max_distance": 110.0,
+		"audio_max_distance": 115.0,
+		"doppler_intensity": 0.0010,
+		"max_pitch_offset": 0.030,
 		"performers": [
 
 			{"name": "Lead Singer", "pos": Vector3(1.5, 0.0, 0.0), "color": Color(1.0, 0.0, 0.8), "mic": true, "robe": false, "armor": false},

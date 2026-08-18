@@ -2294,20 +2294,28 @@ func refresh_stage_event_performers(target_stage: Node3D = null) -> void:
 
 	stage_node.add_child(decor_node)
 
-	# 6. Positional 3D Stage Concert Audio with Natural Rolloff
+	# 6. Positional 3D Stage Concert Audio with Natural Rolloff, Directional Emission Cone & Subtle Doppler Effect
 	if resolved_event_id == "PARK_CONCERT":
-		var concert_audio = AudioStreamPlayer3D.new()
+		var concert_audio = SubtleConcertDopplerAudio.new()
 		concert_audio.name = "StageConcertAudioPlayer"
-		concert_audio.position = Vector3(1.0, 2.5, 0.0) # Center stage PA speakers
+		# Positioned 3.2m high at the front edge of the main stage PA rig, projecting into the audience lawn and street
+		concert_audio.position = Vector3(2.5, 3.2, 0.0)
+		concert_audio.rotation_degrees = Vector3(0.0, 90.0, 0.0) # Aim forward (+X direction towards park & roadway)
 		var audio_path: String = event_cfg.get("audio_track", "res://music/shadowrun_the_cage.mp3")
 		if ResourceLoader.exists(audio_path):
 			var track_stream = load(audio_path)
 			concert_audio.stream = track_stream
 			concert_audio.volume_db = float(event_cfg.get("audio_volume_db", 6.0))
 			concert_audio.unit_size = float(event_cfg.get("audio_unit_size", 18.0))
-			concert_audio.max_distance = float(event_cfg.get("audio_max_distance", 110.0))
+			concert_audio.max_distance = float(event_cfg.get("audio_max_distance", 115.0))
 			concert_audio.attenuation_model = AudioStreamPlayer3D.ATTENUATION_INVERSE_DISTANCE
-			concert_audio.panning_strength = 1.0
+			concert_audio.panning_strength = 1.15 # Natural 3D spatial stereo panning
+			concert_audio.emission_angle_enabled = true
+			concert_audio.emission_angle_degrees = 90.0 # 90-degree forward acoustic cone projecting into the city
+			concert_audio.emission_angle_filter_attenuation_db = -12.0 # Natural backstage acoustic muffling
+			concert_audio.doppler_intensity = float(event_cfg.get("doppler_intensity", 0.0010)) # Subtle Doppler (~1-2% pitch shift)
+			concert_audio.max_pitch_offset = float(event_cfg.get("max_pitch_offset", 0.030)) # Clamped to 3% max
+			concert_audio.doppler_tracking = AudioStreamPlayer3D.DOPPLER_TRACKING_DISABLED # Managed smoothly by controller
 			concert_audio.autoplay = true
 			concert_audio.finished.connect(func():
 				if is_instance_valid(concert_audio):
@@ -2315,6 +2323,46 @@ func refresh_stage_event_performers(target_stage: Node3D = null) -> void:
 			)
 			stage_node.add_child(concert_audio)
 			concert_audio.play()
-			print("[STAGE AUDIO] 🎸 Positional 3D Rock Concert Audio active: ", audio_path)
+			print("[STAGE AUDIO] 🎸 Positional 3D Rock Concert Audio active in 3D space (Subtle Doppler enabled): ", audio_path)
 
 	print("[CITY GENERATOR] 🎭 Stage event refreshed with custom props for Day %d: %s" % [current_day_num, resolved_event_id])
+
+
+# ==============================================================================
+# SUBTLE CONCERT DOPPLER CONTROLLER
+# ==============================================================================
+# Applies a smooth, musical Doppler effect without harsh pitch warping on songs.
+class SubtleConcertDopplerAudio extends AudioStreamPlayer3D:
+	var doppler_intensity: float = 0.0010
+	var max_pitch_offset: float = 0.030
+	var smoothing_speed: float = 4.0
+	var _prev_cam_pos: Vector3 = Vector3.ZERO
+	var _has_prev_pos: bool = false
+
+	func _physics_process(delta: float) -> void:
+		if delta <= 0.0:
+			return
+		var cam = get_viewport().get_camera_3d()
+		if not is_instance_valid(cam):
+			return
+
+		var cam_pos: Vector3 = cam.global_position
+		if not _has_prev_pos:
+			_prev_cam_pos = cam_pos
+			_has_prev_pos = true
+			return
+
+		var vel: Vector3 = (cam_pos - _prev_cam_pos) / delta
+		_prev_cam_pos = cam_pos
+
+		var to_source: Vector3 = global_position - cam_pos
+		var dist: float = to_source.length()
+		var target_pitch: float = 1.0
+
+		if dist > 0.5 and dist < max_distance:
+			var dir: Vector3 = to_source / dist
+			var radial_vel: float = vel.dot(dir)
+			var shift: float = clamp(radial_vel * doppler_intensity, -max_pitch_offset, max_pitch_offset)
+			target_pitch = 1.0 + shift
+
+		pitch_scale = lerp(pitch_scale, target_pitch, clamp(smoothing_speed * delta, 0.0, 1.0))

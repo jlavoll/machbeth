@@ -42,3 +42,8 @@ maybe with a live stats readout as we change equipment
 
 
 equipped upgrades, equipped weapons etc on enemy design editor, needs to be a pull-down list
+
+
+- [x] doppler effect on concert as we drive by
+
+macks war rig look a little like my car
