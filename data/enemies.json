@@ -1,198 +1,198 @@
 {
   "enemies": {
-    "cawdor_interceptor_alpha": {
-      "armor_class": 12.0,
-      "description": "Standard corporate patrol vehicle fitted with light armor and rapid-fire twin cannons.",
-      "equipped_upgrades": [
+	"cawdor_interceptor_alpha": {
+	  "armor_class": 12.0,
+	  "description": "Standard corporate patrol vehicle fitted with light armor and rapid-fire twin cannons.",
+	  "equipped_upgrades": [
         "graphene_armor_l1"
-      ],
-      "equipped_weapons": [
+	  ],
+	  "equipped_weapons": [
         "twin_20mm_cannon"
-      ],
-      "hp": 100.0,
-      "icon": "🚙",
-      "id": "cawdor_interceptor_alpha",
-      "max_hp": 100.0,
-      "name": "Cawdor Interceptor Alpha",
-      "threat": "STANDARD",
-      "type": "🚙 ARMORED CAR",
-      "upgrade_slots": 2.0,
-      "weakness": "Front Radiator (EMP Hack)",
-      "weapon_slots": 2.0
-    },
-    "cawdor_interceptor_beta": {
-      "armor_class": 12.0,
-      "description": "Brawling corporate interceptor fitted with front hydraulic rams.",
-      "equipped_upgrades": [
+	  ],
+	  "hp": 100.0,
+	  "icon": "🚙",
+	  "id": "cawdor_interceptor_alpha",
+	  "max_hp": 100.0,
+	  "name": "Cawdor Interceptor Alpha",
+	  "threat": "STANDARD",
+	  "type": "🚙 ARMORED CAR",
+	  "upgrade_slots": 2.0,
+	  "weakness": "Front Radiator (EMP Hack)",
+	  "weapon_slots": 2.0
+	},
+	"cawdor_interceptor_beta": {
+	  "armor_class": 12.0,
+	  "description": "Brawling corporate interceptor fitted with front hydraulic rams.",
+	  "equipped_upgrades": [
         "graphene_armor_l1"
-      ],
-      "equipped_weapons": [
+	  ],
+	  "equipped_weapons": [
         "spike_ram"
-      ],
-      "hp": 100.0,
-      "icon": "🚙",
-      "id": "cawdor_interceptor_beta",
-      "max_hp": 100.0,
-      "name": "Cawdor Interceptor Beta",
-      "threat": "STANDARD",
-      "type": "🚙 ARMORED CAR",
-      "upgrade_slots": 2.0,
-      "weakness": "Front Radiator (EMP Hack)",
-      "weapon_slots": 2.0
-    },
-    "cawdor_interceptor_beta_copy_385": {
-      "armor_class": 130.0,
-      "description": "Elite corporate interceptor fitted with front hydraulic rams.",
-      "equipped_upgrades": [
+	  ],
+	  "hp": 100.0,
+	  "icon": "🚙",
+	  "id": "cawdor_interceptor_beta",
+	  "max_hp": 100.0,
+	  "name": "Cawdor Interceptor Beta",
+	  "threat": "STANDARD",
+	  "type": "🚙 ARMORED CAR",
+	  "upgrade_slots": 2.0,
+	  "weakness": "Front Radiator (EMP Hack)",
+	  "weapon_slots": 2.0
+	},
+	"cawdor_interceptor_beta_copy_385": {
+	  "armor_class": 130.0,
+	  "description": "Elite corporate interceptor fitted with front hydraulic rams.",
+	  "equipped_upgrades": [
         "graphene_armor_l1"
-      ],
-      "equipped_weapons": [
+	  ],
+	  "equipped_weapons": [
         "spike_ram"
-      ],
-      "hp": 110.0,
-      "icon": "🚙",
-      "id": "cawdor_interceptor_beta_copy_385",
-      "max_hp": 110.0,
-      "name": "Cawdor Interceptor Elite",
-      "threat": "STANDARD",
-      "type": "🚙 ARMORED CAR",
-      "upgrade_slots": 2.0,
-      "weakness": "Front Radiator (EMP Hack)",
-      "weapon_slots": 2.0
-    },
-    "duncan_gunship_apex": {
-      "armor_class": 18.0,
-      "description": "Corporate apex heavy military attack gunship.",
-      "equipped_upgrades": [
+	  ],
+	  "hp": 110.0,
+	  "icon": "🚙",
+	  "id": "cawdor_interceptor_beta_copy_385",
+	  "max_hp": 110.0,
+	  "name": "Cawdor Interceptor Elite",
+	  "threat": "STANDARD",
+	  "type": "🚙 ARMORED CAR",
+	  "upgrade_slots": 2.0,
+	  "weakness": "Front Radiator (EMP Hack)",
+	  "weapon_slots": 2.0
+	},
+	"duncan_gunship_apex": {
+	  "armor_class": 18.0,
+	  "description": "Corporate apex heavy military attack gunship.",
+	  "equipped_upgrades": [
         "graphene_armor_l2"
-      ],
-      "equipped_weapons": [
+	  ],
+	  "equipped_weapons": [
         "hellfire_rockets"
-      ],
-      "hp": 450.0,
-      "icon": "🚁",
-      "id": "duncan_gunship_apex",
-      "max_hp": 450.0,
-      "name": "Duncan Heavy Gunship Apex",
-      "threat": "BOSS TARGET",
-      "type": "🚁 ATTACK HELICOPTER BOSS",
-      "upgrade_slots": 4.0,
-      "weakness": "Overclocked Plasma Pods",
-      "weapon_slots": 4.0
-    },
-    "fife_exo_trooper_a": {
-      "armor_class": 14.0,
-      "description": "Heavy corporate exo-suit infantry armed with plasma rifles.",
-      "equipped_upgrades": [
+	  ],
+	  "hp": 450.0,
+	  "icon": "🚁",
+	  "id": "duncan_gunship_apex",
+	  "max_hp": 450.0,
+	  "name": "Duncan Heavy Gunship Apex",
+	  "threat": "BOSS TARGET",
+	  "type": "🚁 ATTACK HELICOPTER BOSS",
+	  "upgrade_slots": 4.0,
+	  "weakness": "Overclocked Plasma Pods",
+	  "weapon_slots": 4.0
+	},
+	"fife_exo_trooper_a": {
+	  "armor_class": 14.0,
+	  "description": "Heavy corporate exo-suit infantry armed with plasma rifles.",
+	  "equipped_upgrades": [
         "graphene_armor_l2"
-      ],
-      "equipped_weapons": [
+	  ],
+	  "equipped_weapons": [
         "plasma_rifle_array"
-      ],
-      "hp": 140.0,
-      "icon": "🎖️",
-      "id": "fife_exo_trooper_a",
-      "max_hp": 140.0,
-      "name": "Fife Exo-Trooper Squad A",
-      "threat": "HEAVY",
-      "type": "🎖️ HEAVY INFANTRY",
-      "upgrade_slots": 3.0,
-      "weakness": "Gatling Flank Sweep",
-      "weapon_slots": 2.0
-    },
-    "fife_exo_trooper_b": {
-      "armor_class": 14.0,
-      "description": "Exo-suit mortar team deploying HUD-scrambling EMP charges.",
-      "equipped_upgrades": [
+	  ],
+	  "hp": 140.0,
+	  "icon": "🎖️",
+	  "id": "fife_exo_trooper_a",
+	  "max_hp": 140.0,
+	  "name": "Fife Exo-Trooper Squad A",
+	  "threat": "HEAVY",
+	  "type": "🎖️ HEAVY INFANTRY",
+	  "upgrade_slots": 3.0,
+	  "weakness": "Gatling Flank Sweep",
+	  "weapon_slots": 2.0
+	},
+	"fife_exo_trooper_b": {
+	  "armor_class": 14.0,
+	  "description": "Exo-suit mortar team deploying HUD-scrambling EMP charges.",
+	  "equipped_upgrades": [
         "graphene_armor_l2"
-      ],
-      "equipped_weapons": [
+	  ],
+	  "equipped_weapons": [
         "emp_mortar"
-      ],
-      "hp": 140.0,
-      "icon": "🎖️",
-      "id": "fife_exo_trooper_b",
-      "max_hp": 140.0,
-      "name": "Fife Exo-Trooper Squad B",
-      "threat": "HEAVY",
-      "type": "🎖️ HEAVY INFANTRY",
-      "upgrade_slots": 3.0,
-      "weakness": "Gatling Flank Sweep",
-      "weapon_slots": 2.0
-    },
-    "new_enemy_42": {
-      "armor_class": 0.0,
-      "description": "Custom designed enemy unit.",
-      "equipped_upgrades": [
+	  ],
+	  "hp": 140.0,
+	  "icon": "🎖️",
+	  "id": "fife_exo_trooper_b",
+	  "max_hp": 140.0,
+	  "name": "Fife Exo-Trooper Squad B",
+	  "threat": "HEAVY",
+	  "type": "🎖️ HEAVY INFANTRY",
+	  "upgrade_slots": 3.0,
+	  "weakness": "Gatling Flank Sweep",
+	  "weapon_slots": 2.0
+	},
+	"new_enemy_42": {
+	  "armor_class": 0.0,
+	  "description": "Custom designed enemy unit.",
+	  "equipped_upgrades": [
         "graphene_armor_l1"
-      ],
-      "equipped_weapons": [
+	  ],
+	  "equipped_weapons": [
         "twin_20mm_cannon"
-      ],
-      "hp": 2.0,
-      "icon": "🚙",
-      "id": "angry_seagull",
-      "max_hp": 2.0,
-      "name": "Angry Seagulls",
-      "threat": "STANDARD",
-      "type": "Bird",
-      "upgrade_slots": 0.0,
-      "weakness": "EMP Shock",
-      "weapon_slots": 0.0
-    },
-    "norns_hunter_drone_01": {
-      "armor_class": 16.0,
-      "description": "Agile autonomous drone equipped with laser optic cutters.",
-      "equipped_upgrades": [],
-      "equipped_weapons": [
+	  ],
+	  "hp": 2.0,
+	  "icon": "🚙",
+	  "id": "angry_seagull",
+	  "max_hp": 2.0,
+	  "name": "Angry Seagulls",
+	  "threat": "STANDARD",
+	  "type": "Bird",
+	  "upgrade_slots": 0.0,
+	  "weakness": "EMP Shock",
+	  "weapon_slots": 0.0
+	},
+	"norns_hunter_drone_01": {
+	  "armor_class": 16.0,
+	  "description": "Agile autonomous drone equipped with laser optic cutters.",
+	  "equipped_upgrades": [],
+	  "equipped_weapons": [
         "laser_cutter"
-      ],
-      "hp": 80.0,
-      "icon": "🛸",
-      "id": "norns_hunter_drone_01",
-      "max_hp": 80.0,
-      "name": "Norns AI Hunter Drone #01",
-      "threat": "ELITE",
-      "type": "🛸 ATTACK DRONE",
-      "upgrade_slots": 1.0,
-      "weakness": "ICE-Breaker System Reboot",
-      "weapon_slots": 1.0
-    },
-    "norns_hunter_drone_02": {
-      "armor_class": 16.0,
-      "description": "High-altitude targeting drone fitted with neural disruptor beams.",
-      "equipped_upgrades": [],
-      "equipped_weapons": [
+	  ],
+	  "hp": 80.0,
+	  "icon": "🛸",
+	  "id": "norns_hunter_drone_01",
+	  "max_hp": 80.0,
+	  "name": "Norns AI Hunter Drone #01",
+	  "threat": "ELITE",
+	  "type": "🛸 ATTACK DRONE",
+	  "upgrade_slots": 1.0,
+	  "weakness": "ICE-Breaker System Reboot",
+	  "weapon_slots": 1.0
+	},
+	"norns_hunter_drone_02": {
+	  "armor_class": 16.0,
+	  "description": "High-altitude targeting drone fitted with neural disruptor beams.",
+	  "equipped_upgrades": [],
+	  "equipped_weapons": [
         "disruptor_beam"
-      ],
-      "hp": 80.0,
-      "icon": "🛸",
-      "id": "norns_hunter_drone_02",
-      "max_hp": 80.0,
-      "name": "Norns AI Hunter Drone #02",
-      "threat": "ELITE",
-      "type": "🛸 ATTACK DRONE",
-      "upgrade_slots": 1.0,
-      "weakness": "ICE-Breaker System Reboot",
-      "weapon_slots": 1.0
-    },
-    "norns_hunter_drone_03": {
-      "armor_class": 16.0,
-      "description": "Specialized drone deploying corrosive nanites.",
-      "equipped_upgrades": [],
-      "equipped_weapons": [
+	  ],
+	  "hp": 80.0,
+	  "icon": "🛸",
+	  "id": "norns_hunter_drone_02",
+	  "max_hp": 80.0,
+	  "name": "Norns AI Hunter Drone #02",
+	  "threat": "ELITE",
+	  "type": "🛸 ATTACK DRONE",
+	  "upgrade_slots": 1.0,
+	  "weakness": "ICE-Breaker System Reboot",
+	  "weapon_slots": 1.0
+	},
+	"norns_hunter_drone_03": {
+	  "armor_class": 16.0,
+	  "description": "Specialized drone deploying corrosive nanites.",
+	  "equipped_upgrades": [],
+	  "equipped_weapons": [
         "nanite_swarm"
-      ],
-      "hp": 80.0,
-      "icon": "🛸",
-      "id": "norns_hunter_drone_03",
-      "max_hp": 80.0,
-      "name": "Norns AI Hunter Drone #03",
-      "threat": "ELITE",
-      "type": "🛸 ATTACK DRONE",
-      "upgrade_slots": 1.0,
-      "weakness": "ICE-Breaker System Reboot",
-      "weapon_slots": 1.0
-    }
+	  ],
+	  "hp": 80.0,
+	  "icon": "🛸",
+	  "id": "norns_hunter_drone_03",
+	  "max_hp": 80.0,
+	  "name": "Norns AI Hunter Drone #03",
+	  "threat": "ELITE",
+	  "type": "🛸 ATTACK DRONE",
+	  "upgrade_slots": 1.0,
+	  "weakness": "ICE-Breaker System Reboot",
+	  "weapon_slots": 1.0
+	}
   }
 }
