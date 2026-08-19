@@ -1,13 +1,124 @@
 {
-	"speaker_display_name": "STREET HAWKER",
-	"speaker_subtitle": "SYNTH-FOOD TRADER",
-	"speaker_color": "#FF9900",
+	"speaker_display_name": "KAI // SYNTH-STREET CHEF",
+	"speaker_subtitle": "NEON FOOD HAWKER // SECTOR 04",
+	"speaker_color": "#FFAA00",
 	"nodes": {
 		"start": {
-			"text": "Hot synth-noodles! Best prices in Night District!",
+			"text": "Hey runner! Smell that ozone-charred broth? Freshest synth-noodles in Night District! What's your pleasure?",
 			"choices": [
 				{
-					"text": "[OK]",
+					"text": "\"Give me a hot bowl of Neon Noodles. [25 Credits]\"",
+					"target": "buy_noodles"
+				},
+				{
+					"text": "\"Give me a cold can of Cyber-Stim Cola. [15 Credits]\"",
+					"target": "buy_cola"
+				},
+				{
+					"text": "\"Hear any rumors about the corporate convoys today?\"",
+					"target": "ask_rumors"
+				},
+				{
+					"text": "\"How's business out here in the smog?\"",
+					"target": "vendor_lore"
+				},
+				{
+					"text": "\"Just passing through.\"",
+					"target": "exit"
+				}
+			]
+		},
+		"start_night": {
+			"text": "Late night shift, huh runner? Smog is thicker, and the neon burns brighter. Careful out there—Fife drones get twitchy after midnight. Need some hot noodles to keep warm?",
+			"choices": [
+				{
+					"text": "\"Give me your midnight spicy special. [25 Credits]\"",
+					"target": "buy_noodles"
+				},
+				{
+					"text": "\"What's stirring in the shadows tonight?\"",
+					"target": "ask_rumors"
+				},
+				{
+					"text": "\"Stay safe, Kai.\"",
+					"target": "exit"
+				}
+			]
+		},
+		"start_post_battle": {
+			"text": "Whoa! Did you hear that rolling thunder on the northern highway? Word is a massive black War-Rig just shredded an entire corporate security convoy! The streets are buzzing!",
+			"choices": [
+				{
+					"text": "\"That was Mack. The city belongs to us now.\"",
+					"target": "battle_mack_proud"
+				},
+				{
+					"text": "\"Give me noodles, I need energy for the next run. [25 Credits]\"",
+					"target": "buy_noodles"
+				},
+				{
+					"text": "\"Keep your head down, Kai.\"",
+					"target": "exit"
+				}
+			]
+		},
+		"buy_noodles": {
+			"text": "*Kai scoops a steaming neon-cyan broth garnished with synthetic seaweed and protein wafers.* \"Eat up! Boosts your neural clarity and keeps the rain off your neck!\"",
+			"choices": [
+				{
+					"text": "\"Thanks. Tell me what you've heard on the street.\"",
+					"target": "ask_rumors"
+				},
+				{
+					"text": "\"Delicious. See you around.\"",
+					"target": "exit"
+				}
+			]
+		},
+		"buy_cola": {
+			"text": "*Kai pops the tab on a frosty chrome can. Neon bubbles hiss.* \"Pure caffeinated electrolytic fuel. Keep that wheel straight, racer!\"",
+			"choices": [
+				{
+					"text": "\"Any corporate convoys passing through?\"",
+					"target": "ask_rumors"
+				},
+				{
+					"text": "\"Thanks, Kai.\"",
+					"target": "exit"
+				}
+			]
+		},
+		"ask_rumors": {
+			"text": "Word from the alley couriers is Cawdor Logistics is shifting weapon crates down to Bankes Vault. If you've got an edge on the road, watch out for black armored limos with tinted turret glass.",
+			"choices": [
+				{
+					"text": "\"Good to know. What else?\"",
+					"target": "vendor_lore"
+				},
+				{
+					"text": "\"I'll be ready for them.\"",
+					"target": "exit"
+				}
+			]
+		},
+		"vendor_lore": {
+			"text": "The Mega-Corps squeeze us for stall taxes every dawn, but the people gotta eat. When Mack rolls through, the tax collectors hide in their high-rises. We like Mack around here.",
+			"choices": [
+				{
+					"text": "\"Mack won't let them take over.\"",
+					"target": "exit"
+				},
+				{
+					"text": "\"Let me get some noodles before I go.\"",
+					"target": "buy_noodles"
+				}
+			]
+		},
+		"battle_mack_proud": {
+			"text": "I knew it! Tell Commander Mack his noodles are on the house for the rest of the week! Give 'em hell out there!",
+			"choices": [
+				{
+					"text": "\"Will do, chef.\"",
 					"target": "exit"
 				}
 			]

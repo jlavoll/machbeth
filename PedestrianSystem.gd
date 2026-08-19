@@ -2580,6 +2580,15 @@ func _try_trigger_character_dialogue(player_pos: Vector3, dialogue_sys: Dialogue
 		var quest_mgr = get_parent().get_node_or_null("QuestManager")
 		var has_active_quest: bool = is_instance_valid(quest_mgr) and quest_mgr.active_quest_id != ""
 
+		var campaign_mgr_ref = get_parent().get_node_or_null("CampaignManager")
+		var is_night_time: bool = false
+		var is_post_battle: bool = false
+		if is_instance_valid(campaign_mgr_ref):
+			if campaign_mgr_ref.get("current_lighting_phase") in [campaign_mgr_ref.DayLightingPhase.DUSK_STAGE_2, campaign_mgr_ref.DayLightingPhase.NIGHT_STAGE_3]:
+				is_night_time = true
+			if campaign_mgr_ref.get("grand_battles_today") > 0:
+				is_post_battle = true
+
 		if is_gang_meta and is_leader and has_active_quest:
 			# Snarky refusal: gang leader refuses new job request while player is already on a mission!
 			start_node = "busy_with_quest"
@@ -2592,7 +2601,21 @@ func _try_trigger_character_dialogue(player_pos: Vector3, dialogue_sys: Dialogue
 					var dir_to_contact: Vector3 = (closest_node.global_position - player_car.global_position).normalized()
 					if car_facing.dot(dir_to_contact) > 0.6:
 						start_node = "blinded"
-		
+		elif is_post_battle and (rng.randf() < 0.65):
+			# Contextual post-battle gossip check
+			var test_f = FileAccess.open(json_path, FileAccess.READ)
+			if test_f:
+				var parsed = JSON.parse_string(test_f.get_as_text())
+				if parsed is Dictionary and parsed.get("nodes", {}).has("start_post_battle"):
+					start_node = "start_post_battle"
+		elif is_night_time and (rng.randf() < 0.7):
+			# Contextual night-time greeting check
+			var test_f = FileAccess.open(json_path, FileAccess.READ)
+			if test_f:
+				var parsed = JSON.parse_string(test_f.get_as_text())
+				if parsed is Dictionary and parsed.get("nodes", {}).has("start_night"):
+					start_node = "start_night"
+
 		# Set dynamic gang leader speaker display name based on faction (Red Crows, Blue Seagulls, etc.)
 		if is_gang_meta and closest_node.has_meta("gang_faction_name"):
 			var f_name: String = closest_node.get_meta("gang_faction_name", "RED CROWS")

@@ -584,7 +584,9 @@ func _check_city_edge_transition() -> void:
 	var crossed_dir: String = ""
 	var new_seed: int = city_gen.city_seed
 
-	if pos.z < -half_z:
+	# The North corridor connects seamlessly to the 2200m Cyber-Highway and the Northern Barren City (Z = -2500m to -3100m).
+	# Do not wrap at Z = -295m; allow continuous driving between the twin cities!
+	if pos.z < -3105.0:
 		crossed_dir = "NORTH"
 		new_seed += 1
 	elif pos.z > half_z:

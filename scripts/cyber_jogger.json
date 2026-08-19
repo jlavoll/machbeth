@@ -1,13 +1,100 @@
 {
-	"speaker_display_name": "CYBER-RUNNER",
-	"speaker_subtitle": "DISTRICT JOGGER",
-	"speaker_color": "#00FFFF",
+	"speaker_display_name": "TORX // CYBER-ATHLETE",
+	"speaker_subtitle": "HIGH-RPM PERIMETER RUNNER",
+	"speaker_color": "#00FFCC",
 	"nodes": {
 		"start": {
-			"text": "Outta the way! Keeping the heart rate at 180!",
+			"text": "*Torx jogs in place, synthetic sweat evaporating off titanium knee joints.* \"180 beats per minute! Subdermal lung filters running at 94% efficiency! Don't break my cadence, driver!\"",
 			"choices": [
 				{
-					"text": "[OK]",
+					"text": "\"What kind of cyberware are you running in those legs?\"",
+					"target": "jogger_cyberware"
+				},
+				{
+					"text": "\"How do you run through this smog without choking?\"",
+					"target": "smog_lungs"
+				},
+				{
+					"text": "\"Ever see anything interesting on your perimeter laps?\"",
+					"target": "track_intel"
+				},
+				{
+					"text": "\"Keep running!\"",
+					"target": "exit"
+				}
+			]
+		},
+		"start_night": {
+			"text": "*Torx's running suit neon stripes pulse with rapid strobe rhythm.* \"Night laps are the best. Zero civilian traffic on the sidewalks, and the neon reflections look fast as hell!\"",
+			"choices": [
+				{
+					"text": "\"Aren't you worried about gang ambushes in the dark?\"",
+					"target": "gang_speed"
+				},
+				{
+					"text": "\"Seen any corporate activity on the boulevards?\"",
+					"target": "track_intel"
+				},
+				{
+					"text": "\"Keep the pace!\"",
+					"target": "exit"
+				}
+			]
+		},
+		"start_post_battle": {
+			"text": "*Torx stops to catch his breath.* \"Holy nitro! I was on lap 14 near the north highway when Mack's rig collided with that Cawdor interceptor! Shrapnel flew 50 meters! The rush was incredible!\"",
+			"choices": [
+				{
+					"text": "\"That's how Mack clears the road.\"",
+					"target": "mack_cheer"
+				},
+				{
+					"text": "\"Be careful running near combat zones.\"",
+					"target": "exit"
+				}
+			]
+		},
+		"jogger_cyberware": {
+			"text": "Hydraulic titanium tendons, carbon-fiber arches, and kinetic energy recovery dynamos. Every step I take charges my neural suit batteries! Porter at The Pit has some similar actuator mods if you want your car's suspension dialed in!",
+			"choices": [
+				{
+					"text": "\"Good to know. Porter knows his hardware.\"",
+					"target": "exit"
+				}
+			]
+		},
+		"smog_lungs": {
+			"text": "Dual electro-static particulate scrubbers inside the trachea. Filters out 99.8% of industrial carbon soot and acid mist. Cost me 800 Credits, but now I breath cleaner than corporate executives!",
+			"choices": [
+				{
+					"text": "\"Money well spent in this city.\"",
+					"target": "exit"
+				}
+			]
+		},
+		"track_intel": {
+			"text": "The long straightaway along Sector 2 is completely clear of speed cameras this evening. If you want to open up your engine throttle without tripping police alerts, that's the stretch to hit.",
+			"choices": [
+				{
+					"text": "\"Thanks for the racer tip!\"",
+					"target": "exit"
+				}
+			]
+		},
+		"gang_speed": {
+			"text": "The Red Crows tried to corner me once. Good luck catching someone with 35km/h sustained sprint speed and kinetic burst boosters! They were eating my ozone wake!",
+			"choices": [
+				{
+					"text": "\"Run fast, stay free.\"",
+					"target": "exit"
+				}
+			]
+		},
+		"mack_cheer": {
+			"text": "Tell Mack he's got fans in the running clubs! If he ever needs a high-speed courier on foot to dodge road blockades, I'm ready to lace up!",
+			"choices": [
+				{
+					"text": "\"I'll keep that in mind, Torx.\"",
 					"target": "exit"
 				}
 			]

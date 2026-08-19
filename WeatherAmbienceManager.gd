@@ -135,10 +135,18 @@ const FOOTSTEP_BALCONY_RAIN_PATHS: Array[String] = [
 	# ...
 ]
 
-# Indoor flooring  (fill in paths once you have the assets — tile, carpet, etc.)
+# Indoor flooring (subtle, crisp interior footfalls)
 const FOOTSTEP_INDOOR_PATHS: Array[String] = [
-	# "res://sfx/footstep indoor-01.ogg",
-	# ...
+	"res://sfx/footstep dry-01.ogg",
+	"res://sfx/footstep dry-02.ogg",
+	"res://sfx/footstep dry-03.ogg",
+	"res://sfx/footstep dry-04.ogg",
+	"res://sfx/footstep dry-05.ogg",
+	"res://sfx/footstep dry-06.ogg",
+	"res://sfx/footstep dry-07.ogg",
+	"res://sfx/footstep dry-08.ogg",
+	"res://sfx/footstep dry-09.ogg",
+	"res://sfx/footstep dry-10.ogg",
 ]
 
 # ==============================================================================
@@ -223,6 +231,9 @@ func _ready() -> void:
 	_setup_footstep_banks()
 	_sync_weather_state_check()
 
+const INDOOR_BUS_NAME: String = "IndoorRoomReverb"
+var _indoor_reverb_effect: AudioEffectReverb = null
+
 # ------------------------------------------------------------------------------
 # DYNAMIC AUDIO BUS CREATION WITH LOWPASS FILTER & TIGHT CABIN REVERB
 # ------------------------------------------------------------------------------
@@ -254,6 +265,53 @@ func _create_car_cabin_audio_bus() -> void:
 	# Cache live references so we can tween the properties each frame
 	_lowpass_effect = AudioServer.get_bus_effect(bus_index, _lowpass_effect_index) as AudioEffectLowPassFilter
 	_reverb_effect  = AudioServer.get_bus_effect(bus_index, _reverb_effect_index)  as AudioEffectReverb
+
+	# --- Indoor Room Reverb Bus ---
+	var indoor_bus_idx: int = AudioServer.get_bus_index(INDOOR_BUS_NAME)
+	if indoor_bus_idx == -1:
+		indoor_bus_idx = AudioServer.bus_count
+		AudioServer.add_bus(indoor_bus_idx)
+		AudioServer.set_bus_name(indoor_bus_idx, INDOOR_BUS_NAME)
+		AudioServer.set_bus_send(indoor_bus_idx, "Master")
+
+		var ind_reverb = AudioEffectReverb.new()
+		ind_reverb.room_size = 0.35
+		ind_reverb.damping = 0.6
+		ind_reverb.wet = 0.22
+		ind_reverb.dry = 0.9
+		AudioServer.add_bus_effect(indoor_bus_idx, ind_reverb, 0)
+		print("[AMBIENCE DSP] Created 'IndoorRoomReverb' Audio Bus for tailored room acoustics.")
+
+	_indoor_reverb_effect = AudioServer.get_bus_effect(indoor_bus_idx, 0) as AudioEffectReverb
+
+## Configures the acoustic room size and wetness for the indoor reverb bus.
+## (Rooftops, balconies, and outdoor zones pass room_size 0.0 to disable reverb).
+func set_indoor_room_acoustics(room_dim: Vector2, is_open_air: bool = false) -> void:
+	if _indoor_reverb_effect == null:
+		return
+
+	if is_open_air:
+		_indoor_reverb_effect.wet = 0.0
+		_indoor_reverb_effect.room_size = 0.05
+		return
+
+	# Calculate floor area (e.g. 15x15 = 225m² small loft, 40x30 = 1200m² grand lobby/pit)
+	var area: float = room_dim.x * room_dim.y
+	if area <= 300.0:
+		# Small tight room (Banquo loft, Lady M lair)
+		_indoor_reverb_effect.room_size = 0.25
+		_indoor_reverb_effect.damping = 0.75
+		_indoor_reverb_effect.wet = 0.18
+	elif area <= 600.0:
+		# Medium room (Penthouse, Mack Workshop, Substation)
+		_indoor_reverb_effect.room_size = 0.45
+		_indoor_reverb_effect.damping = 0.55
+		_indoor_reverb_effect.wet = 0.28
+	else:
+		# Large cavernous hall (HQ Lobby, Chop Shop, The Pit Garage)
+		_indoor_reverb_effect.room_size = 0.75
+		_indoor_reverb_effect.damping = 0.35
+		_indoor_reverb_effect.wet = 0.38
 
 # ------------------------------------------------------------------------------
 # 1. RAIN AUDIO STREAM PLAYER SETUP
@@ -446,9 +504,8 @@ func trigger_footstep(surface: FootstepSurface) -> void:
 				_last_balcony_rain_index = idx
 			else:
 				_last_balcony_index = idx
-		FootstepSurface.INDOOR:        _last_indoor_index        = idx
-
 	_footstep_player.stream    = bank[idx]
+	_footstep_player.bus       = INDOOR_BUS_NAME if surface == FootstepSurface.INDOOR else "Master"
 	_footstep_player.volume_db = footstep_volume_db
 	_footstep_player.play()
 

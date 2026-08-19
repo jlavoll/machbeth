@@ -1,13 +1,95 @@
 {
-	"speaker_display_name": "PARK DANCER",
-	"speaker_subtitle": "NEON RAVE LOCAL",
+	"speaker_display_name": "NOVA // SYNTH-WAVE DANCER",
+	"speaker_subtitle": "CYBER PARK RAVE // FREQUENCY 108.4",
 	"speaker_color": "#FF00AA",
 	"nodes": {
 		"start": {
-			"text": "Can't talk, feeling the beat!",
+			"text": "*Nova spins to the booming sub-bass of the park stage, cybernetic hair strands pulsing with hot pink luminescence.* \"Hey! Don't just stand there in the shadows, let the neon shake your chassis!\"",
 			"choices": [
 				{
-					"text": "[OK]",
+					"text": "\"What frequency is the park radio broadcasting right now?\"",
+					"target": "music_station"
+				},
+				{
+					"text": "\"How can you party with corporate drones flying overhead?\"",
+					"target": "rave_resistance"
+				},
+				{
+					"text": "\"Ever heard of Lady M or the Three Witches?\"",
+					"target": "witches_gossip"
+				},
+				{
+					"text": "\"Keep dancing!\"",
+					"target": "exit"
+				}
+			]
+		},
+		"start_night": {
+			"text": "*Laser strobes pierce the thick mist as the beat drops heavy.* \"Night rave in full effect! The darker the sky, the brighter the glow-sticks, runner!\"",
+			"choices": [
+				{
+					"text": "\"Who's on stage tonight?\"",
+					"target": "music_station"
+				},
+				{
+					"text": "\"Any weird cybernetic anomalies in the park tonight?\"",
+					"target": "witches_gossip"
+				},
+				{
+					"text": "\"Enjoy the beat!\"",
+					"target": "exit"
+				}
+			]
+		},
+		"start_post_battle": {
+			"text": "*Nova cheers over the music.* \"The sonic shockwave from Mack's War-Rig literally rattled the stage subwoofers 10 minutes ago! That bass drop was legendary!\"",
+			"choices": [
+				{
+					"text": "\"Mack's firepower is unmatched.\"",
+					"target": "mack_party"
+				},
+				{
+					"text": "\"Stay loud, keep the district energized!\"",
+					"target": "exit"
+				}
+			]
+		},
+		"music_station": {
+			"text": "We're plugged into Outrun Pirate Radio! 140 BPM pure analog synths, broadcasting live from a hijacked broadcast antenna on Dunsinane Tower!",
+			"choices": [
+				{
+					"text": "\"How does Duncan's security not jam you?\"",
+					"target": "rave_resistance"
+				},
+				{
+					"text": "\"Turn it up!\"",
+					"target": "exit"
+				}
+			]
+		},
+		"rave_resistance": {
+			"text": "Every beat we drop is an act of defiance! Duncan wants us silent, working overtime in steel cubicles. Out here on the grass, we own our neural bandwidth!",
+			"choices": [
+				{
+					"text": "\"That's the spirit.\"",
+					"target": "exit"
+				}
+			]
+		},
+		"witches_gossip": {
+			"text": "Ooh... the Three Phantoms of the fog? Sometimes late at night when the fog rolls in from the river, three holographic silhouettes glitch across the park screens... murmuring prophecies in rhyming code. Creepy, but so stylish!",
+			"choices": [
+				{
+					"text": "\"They're real. Watch yourself in the fog.\"",
+					"target": "exit"
+				}
+			]
+		},
+		"mack_party": {
+			"text": "Next track is dedicated to the War-Rig! If Mack ever needs a neon paint job for that beast of a machine, tell him to roll it through the Cyber Park!",
+			"choices": [
+				{
+					"text": "\"I'll tell him. Keep the rave alive!\"",
 					"target": "exit"
 				}
 			]

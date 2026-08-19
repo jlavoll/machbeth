@@ -154,6 +154,14 @@ var is_scanner_terminal_user_toggled: bool = true
 var active_side_mission_name: String = ""
 var side_mission_time_left: float = 0.0
 var side_mission_active: bool = false
+var is_simulated_battle: bool = false
+
+# Dynamic Engine Heat & Overheat Lockout Mechanics
+var mack_core_temp: float = 65.0
+const MACK_BASE_TEMP: float = 65.0
+const MACK_OVERHEAT_THRESHOLD: float = 120.0
+var mack_overheat_lockout_turns: int = 0
+var is_mack_overheated: bool = false
 
 # Joe's Ice Cream Daily Sponsorship Stipend Mechanic
 var has_collected_daily_joe_stipend: bool = false
@@ -292,6 +300,8 @@ var mack_nag_dispatches: Array[Dictionary] = [
 ]
 
 func _ready() -> void:
+	# Always process so battle ticks run even when UIs pause the tree
+	process_mode = Node.PROCESS_MODE_ALWAYS
 	_build_deployment_ui()
 	_build_telemetry_hud()
 	call_deferred("_connect_dialogue_signals")
@@ -357,7 +367,8 @@ func _process(delta: float) -> void:
 			_on_side_mission_expired()
 
 	# Update 4-Stage Battle Phases based on elapsed battle timer (5 minutes = 300s)
-	_update_battle_phase()
+	if not is_simulated_battle:
+		_update_battle_phase()
 
 	# --- REAL-TIME COMBAT MATH CALCULATIONS ---
 	var incoming_dps: float = 0.40
@@ -440,18 +451,23 @@ func _on_side_mission_expired() -> void:
 
 func _update_battle_phase() -> void:
 	var old_phase = current_battle_phase
+	var phase_changed: bool = false
+
 	if battle_timer < 75.0:
 		current_battle_phase = BattlePhase.PHASE_1_ARRED_CARS
 		if old_phase != current_battle_phase or active_enemy_units.is_empty():
-			if battle_timer < 2.0: # Initial spawn
-				mack_current_action = "PHASE I: Engaging Corporate Armored Cars..."
+			mack_current_action = "PHASE I: Engaging Corporate Armored Cars..."
+			if active_enemy_units.is_empty():
 				active_enemy_units = [
 					_fetch_enemy_from_json("cawdor_interceptor_alpha"),
 					_fetch_enemy_from_json("cawdor_interceptor_beta")
 				]
+			if old_phase != current_battle_phase:
+				phase_changed = true
 	elif battle_timer < 160.0:
 		current_battle_phase = BattlePhase.PHASE_2_FOOT_SOLDIERS
 		if old_phase != current_battle_phase:
+			phase_changed = true
 			mack_current_action = "PHASE II: Sweeping Corporate Foot-Soldier Barricade..."
 			active_enemy_units = [
 				_fetch_enemy_from_json("fife_exo_trooper_a"),
@@ -460,6 +476,7 @@ func _update_battle_phase() -> void:
 	elif battle_timer < 240.0:
 		current_battle_phase = BattlePhase.PHASE_3_DRONE_SWARM
 		if old_phase != current_battle_phase:
+			phase_changed = true
 			mack_current_action = "PHASE III: Cleaving Attack Drone Swarm..."
 			active_enemy_units = [
 				_fetch_enemy_from_json("norns_hunter_drone_01"),
@@ -469,28 +486,62 @@ func _update_battle_phase() -> void:
 	else:
 		current_battle_phase = BattlePhase.PHASE_4_GUNSHIP_BOSS
 		if old_phase != current_battle_phase:
+			phase_changed = true
 			mack_current_action = "FINAL PHASE: Duel against Corporate Attack Helicopter!"
 			active_enemy_units = [
 				_fetch_enemy_from_json("duncan_gunship_apex")
 			]
 
-	if old_phase != current_battle_phase:
+	if phase_changed:
 		if is_instance_valid(neural_comms) and neural_comms.has_method("send_message"):
-			neural_comms.send_message("BATTLE PHASE TRANSITION: " + mack_current_action, "TACTICAL TELEMETRY")
+			var enemy_names: Array[String] = []
+			for u in active_enemy_units:
+				enemy_names.append(u.get("name", "Hostile"))
+			var enemy_summary: String = ", ".join(enemy_names)
+
+			var lady_m_broadcast: String = ""
+			match current_battle_phase:
+				BattlePhase.PHASE_1_ARRED_CARS:
+					lady_m_broadcast = "LADY M // OVERWATCH: 'Mack has engaged Phase 1! Scanning Cawdor Interceptor vanguard [%s]. Target their front radiators!'" % enemy_summary
+				BattlePhase.PHASE_2_FOOT_SOLDIERS:
+					lady_m_broadcast = "LADY M // OVERWATCH: 'Hostiles deploying heavy perimeter barricade [%s]! Beware EMP mortar suppression!'" % enemy_summary
+				BattlePhase.PHASE_3_DRONE_SWARM:
+					lady_m_broadcast = "LADY M // OVERWATCH: 'Aerial contacts! Drone swarm descending [%s]. Mack, engage flak cannons!'" % enemy_summary
+				BattlePhase.PHASE_4_GUNSHIP_BOSS:
+					lady_m_broadcast = "LADY M // WARNING: 'APEX CONTACT DETECTED! Corporate Heavy Gunship [%s] on radar! Brace for Hellfire strikes!'" % enemy_summary
+
+			neural_comms.send_message(lady_m_broadcast, "LADY M // MISSION CONTROL")
 
 func _fetch_enemy_from_json(enemy_id: String) -> Dictionary:
 	var EnemiesScript = load("res://Enemies.gd")
 	var raw = EnemiesScript.get_enemy_data(enemy_id)
 	if raw.is_empty():
-		return {"name": "Unknown Hostile", "type": "🚙 ARMORED CAR", "hp": 100, "max_hp": 100, "ac": 12, "dmg": "18-24 Kinetic", "weapon": "Plasma Cannon", "weapon_slots": 2, "upgrade_slots": 2, "threat": "STANDARD", "weakness": "Kinetic Fire", "icon": "🚙"}
+		return {"name": "Unknown Hostile", "type": "🚙 ARMORED CAR", "hp": 100, "max_hp": 100, "ac": 12, "dmg": "18-24 Kinetic", "weapon": "Plasma Cannon", "weapons": ["Plasma Cannon"], "upgrades": ["Graphene Armor L1"], "weapon_slots": 2, "upgrade_slots": 2, "threat": "STANDARD", "weakness": "Kinetic Fire", "icon": "🚙"}
 	
 	var weapon_name: String = "Plasma Cannon"
 	var dmg_range: String = "18-24 Kinetic"
+	var weapons_list: Array[String] = []
 	if raw.has("equipped_weapons") and not raw["equipped_weapons"].is_empty():
-		var w_data = EnemiesScript.get_weapon_data(raw["equipped_weapons"][0])
-		if not w_data.is_empty():
-			weapon_name = w_data.get("name", weapon_name)
-			dmg_range = "%d-%d %s" % [w_data.get("damage_min", 18), w_data.get("damage_max", 24), w_data.get("weapon_type", "Kinetic")]
+		for wid in raw["equipped_weapons"]:
+			var w_data = EnemiesScript.get_weapon_data(wid)
+			var w_name: String = w_data.get("name", wid.replace("_", " ").capitalize())
+			weapons_list.append(w_name)
+		if not weapons_list.is_empty():
+			weapon_name = weapons_list[0]
+			var w_data0 = EnemiesScript.get_weapon_data(raw["equipped_weapons"][0])
+			if not w_data0.is_empty():
+				dmg_range = "%d-%d %s" % [w_data0.get("damage_min", 18), w_data0.get("damage_max", 24), w_data0.get("weapon_type", "Kinetic")]
+	else:
+		weapons_list.append("Twin 20mm Autocannon")
+
+	var upgrades_list: Array[String] = []
+	if raw.has("equipped_upgrades") and not raw["equipped_upgrades"].is_empty():
+		for uid in raw["equipped_upgrades"]:
+			var u_data = EnemiesScript.get_upgrade_data(uid)
+			var u_name: String = u_data.get("name", uid.replace("_", " ").capitalize())
+			upgrades_list.append(u_name)
+	else:
+		upgrades_list.append("Reinforced Chassis")
 			
 	return {
 		"name": raw.get("name", "Hostile Target"),
@@ -500,6 +551,8 @@ func _fetch_enemy_from_json(enemy_id: String) -> Dictionary:
 		"ac": raw.get("armor_class", 12),
 		"dmg": dmg_range,
 		"weapon": weapon_name,
+		"weapons": weapons_list,
+		"upgrades": upgrades_list,
 		"weapon_slots": raw.get("weapon_slots", 2),
 		"upgrade_slots": raw.get("upgrade_slots", 2),
 		"threat": raw.get("threat", "STANDARD"),
@@ -520,6 +573,29 @@ var decision_event_pool: Array[String] = [
 func _trigger_random_decision_event() -> void:
 	if decision_event_pool.is_empty():
 		return
+
+	# GATING: If Banquo is currently inside an indoor building, engaged in dialogue, or on an active solo quest,
+	# do NOT interrupt him with modal dialogue takeovers. Send a subtle neural comms notification instead!
+	var indoor_mgr = get_parent().get_node_or_null("IndoorSystemManager")
+	var dialogue_sys = get_parent().get_node_or_null("DialogueSystem")
+	var quest_mgr = get_parent().get_node_or_null("QuestManager")
+	var is_banquo_busy: bool = false
+
+	if is_instance_valid(indoor_mgr) and indoor_mgr.get("is_inside_building") == true:
+		is_banquo_busy = true
+	if is_instance_valid(dialogue_sys) and dialogue_sys.get("_is_dialogue_active") == true:
+		is_banquo_busy = true
+	if is_instance_valid(quest_mgr):
+		var cur_q = quest_mgr.get("active_quest_id")
+		if cur_q != null and str(cur_q) != "":
+			is_banquo_busy = true
+
+	if is_banquo_busy:
+		print("[CampaignManager] Mack encounter event skipped modal popup because Banquo is currently engaged in a solo task/interior.")
+		if is_instance_valid(neural_comms) and neural_comms.has_method("send_message"):
+			neural_comms.send_message("MACK OVERWATCH: 'Holding the line on the highway. Focus on your infiltration, Banquo!'", "MACK // AUTONOMOUS COMBAT")
+		return
+
 	var rng = RandomNumberGenerator.new()
 	rng.randomize()
 	var event_id: String = decision_event_pool.pick_random()
@@ -812,6 +888,7 @@ func _on_decision_choice_selected(_choice_index: int, target_node_id: String) ->
 ## Launches an instant battle simulation directly into the Battle Telemetry Radar HUD (U)
 func start_simulated_mission(mission_id: String, round_idx: int = 0) -> void:
 	is_battle_in_progress = true
+	is_simulated_battle = true
 	battle_timer = 0.0
 	battle_duration = 180.0
 	mack_max_hp = 300.0
@@ -824,8 +901,7 @@ func start_simulated_mission(mission_id: String, round_idx: int = 0) -> void:
 	active_enemy_units.clear()
 
 	# Read missions.json for custom round configurations
-	var enemy_count: int = 3
-	var enemy_names: Array[String] = ["CAWDOR VANGUARD", "FIFE ENFORCER", "EXO-TROOPER INTERCEPTOR"]
+	var enemy_ids: Array[String] = []
 	if FileAccess.file_exists("res://data/missions.json"):
 		var f = FileAccess.open("res://data/missions.json", FileAccess.READ)
 		var j = JSON.new()
@@ -835,27 +911,17 @@ func start_simulated_mission(mission_id: String, round_idx: int = 0) -> void:
 			if rounds.size() > round_idx:
 				var r = rounds[round_idx]
 				var e_list = r.get("enemies", [])
-				if e_list.size() > 0:
-					enemy_count = e_list.size()
-					enemy_names.clear()
-					for e in e_list:
-						enemy_names.append(e.get("enemy_id", "hostile").replace("_", " ").to_upper())
+				for e in e_list:
+					var raw_eid: String = e.get("enemy_id", "")
+					if raw_eid != "":
+						enemy_ids.append(raw_eid)
 
-	for i in range(enemy_count):
-		var e_name: String = enemy_names[i % enemy_names.size()]
-		var e_hp: int = 90 + (i * 35)
-		active_enemy_units.append({
-			"name": e_name,
-			"hp": e_hp,
-			"max_hp": e_hp,
-			"ac": 12 + i,
-			"atk_bonus": 3 + i,
-			"weapon": "Twin 20mm Autocannon",
-			"dmg": "18-28 Kinetic",
-			"weakness": "EMP / ICE-Breaker Hacks",
-			"threat": "LEVEL %d" % (i + 2),
-			"icon": "🚙"
-		})
+	if enemy_ids.is_empty():
+		enemy_ids = ["cawdor_interceptor_alpha", "cawdor_interceptor_beta", "fife_exo_trooper_a"]
+
+	for eid in enemy_ids:
+		var unit_dict = _fetch_enemy_from_json(eid)
+		active_enemy_units.append(unit_dict)
 
 
 	# Open the Battle Telemetry Radar Screen
@@ -863,8 +929,28 @@ func start_simulated_mission(mission_id: String, round_idx: int = 0) -> void:
 	if is_instance_valid(radar_ui) and radar_ui.has_method("open_telemetry_console"):
 		radar_ui.open_telemetry_console()
 
+	# Immediately log the battle start and initial engagement salvo
+	_log_combat_math("[color=#00FFCC]⚔️ SIMULATION ENGAGED: Mack War-Rig initialized combat against %d hostiles![/color]" % active_enemy_units.size())
+	
 	if is_instance_valid(neural_comms) and neural_comms.has_method("send_message"):
 		neural_comms.send_message("⚔️ BATTLE TELEMETRY CONSOLE ACTIVE: Simulating %s (Wave %d)!" % [mission_id, round_idx + 1], "BATTLE SIMULATOR")
+
+## Terminates active simulated combat and returns to idle state
+func stop_simulated_mission() -> void:
+	if not is_simulated_battle and not is_battle_in_progress:
+		return
+	is_battle_in_progress = false
+	is_simulated_battle = false
+	active_enemy_units.clear()
+	mack_current_action = "Simulation Terminated"
+	_log_combat_math("[color=#FF5555]⏹️ SIMULATION ABORTED: Combat simulator offline.[/color]")
+	
+	if is_instance_valid(neural_comms) and neural_comms.has_method("send_message"):
+		neural_comms.send_message("⏹️ SIMULATION TERMINATED: Combat matrix returned to standby.", "BATTLE SIMULATOR")
+
+	var radar_ui = get_parent().get_node_or_null("BattleTelemetryRadarUI")
+	if is_instance_valid(radar_ui) and radar_ui.has_method("close_telemetry_console"):
+		radar_ui.close_telemetry_console()
 
 
 func _broadcast_next_rumor() -> void:
@@ -1067,62 +1153,69 @@ func _on_launch_repair_drone_pressed() -> void:
 		_log_combat_math("[color=#FF3333][DRONE ERROR] Insufficient Cyber-Credits! Need 150 C.[/color]")
 
 func _log_combat_math(text: String) -> void:
-	math_log_lines.insert(0, text) # Prepend newest log line to top (Line 0)
+	math_log_lines.insert(0, text)
 	if math_log_lines.size() > 35:
 		math_log_lines.pop_back()
 	if is_instance_valid(side_math_text):
 		side_math_text.text = "\n".join(math_log_lines)
 
-func log_attack_telemetry_breakdown(attacker_name: String, target_name: String, weapon_type: String, roll_d20: int, bonus: int, target_def: int, is_hit: bool, is_crit: bool, damage_dealt: int, armor_absorbed: int, remaining_hp: int, is_player_attacker: bool) -> void:
+# Clean, single-event wiped stream for Slot 4 Combat Feed under the Radar
+var current_combat_event_text: String = ""
+
+func log_attack_telemetry_breakdown(attacker_name: String, target_name: String, weapon_type: String, roll_d20: int, bonus: int, target_def: int, is_hit: bool, is_crit: bool, damage_dealt: int, armor_absorbed: int, remaining_hp: int, is_player_attacker: bool, is_weakness_exploit: bool = false) -> void:
 	var total_roll: int = roll_d20 + bonus
 	
-	# Line 1: Action & Weapon Type
-	var action_line: String = ""
+	# Phase 1 (t = 0.0s): Wipe previous attack and show ONLY the new attack announcement!
 	if is_player_attacker:
-		action_line = "[color=#00E5FF]⚔️ %s attacks %s with %s![/color]" % [attacker_name, target_name, weapon_type]
+		current_combat_event_text = "[color=#00E5FF]⚔️ [b]%s[/b][/color] attacks with [color=#FFFFFF][b]%s[/b][/color]..." % [attacker_name, weapon_type]
 	else:
-		action_line = "[color=#FF5555]💥 %s attacks %s with %s![/color]" % [attacker_name, target_name, weapon_type]
-	_log_combat_math(action_line)
+		current_combat_event_text = "[color=#FF4455]💥 [b]%s[/b][/color] fires [color=#FFFFFF][b]%s[/b][/color]..." % [attacker_name, weapon_type]
 	
-	# Line 2: Dice Roll & Stats Breakdown
-	var roll_line: String = ""
-	if is_player_attacker:
-		roll_line = "[color=#88CCFF]   🎯 ROLL: d20(%d) + Bonus(%d) = %d vs Target Def(%d)[/color]" % [roll_d20, bonus, total_roll, target_def]
-	else:
-		roll_line = "[color=#FFAAAA]   🎯 ROLL: d20(%d) + Atk(%d) = %d vs Mack Evasion(%d)[/color]" % [roll_d20, bonus, total_roll, target_def]
-	_log_combat_math(roll_line)
+	_log_combat_math(current_combat_event_text)
 	
-	# Line 3: Result (Hit / Crit / Miss / Damage & Armor Absorption)
-	var result_line: String = ""
-	if not is_hit:
+	# Phase 2 (t = +1.8s): Wipe the attack text and show ONLY the dice roll & impact result!
+	get_tree().create_timer(1.8).timeout.connect(func():
+		var roll_str: String = ""
 		if is_player_attacker:
-			result_line = "[color=#AAAAAA]   💨 RESULT: MISSED! %s evaded line of fire![/color]" % target_name
+			roll_str = "[color=#88CCFF]🎲 d20 roll: [b]%d[/b] (+%d) = [b]%d[/b] vs Def [b]%d[/b][/color]" % [roll_d20, bonus, total_roll, target_def]
 		else:
-			result_line = "[color=#00FF88]   🛡️ RESULT: MISSED! Mack's evasive maneuvering dodged attack![/color]"
-	elif is_crit:
-		result_line = "[color=#FFCC00]   ⚡ RESULT: CRITICAL HIT! Dealt %d DMG to %s! (%s HP: %d)[/color]" % [damage_dealt, target_name, target_name, remaining_hp]
-	else:
-		if is_player_attacker:
-			result_line = "[color=#00FF88]   ⚡ RESULT: HIT! Dealt %d DMG to %s! (%s HP: %d)[/color]" % [damage_dealt, target_name, target_name, remaining_hp]
-		else:
-			if armor_absorbed > 0:
-				result_line = "[color=#FF6666]   💥 RESULT: HIT! Dealt %d Raw DMG (Graphene Armor -%d HP absorbed! Net: %d DMG)[/color]" % [damage_dealt + armor_absorbed, armor_absorbed, damage_dealt]
-			else:
-				result_line = "[color=#FF6666]   💥 RESULT: HIT! Dealt %d DMG to War-Rig Hull! (Mack HP: %d)[/color]" % [damage_dealt, remaining_hp]
-	_log_combat_math(result_line)
-	
-	# Trigger floating damage popups on Battle Telemetry Radar Overlay (U key)
-	if is_hit and damage_dealt > 0:
-		var telemetry_ui = get_parent().get_node_or_null("BattleTelemetryRadarUI")
-		if is_instance_valid(telemetry_ui) and telemetry_ui.has_method("spawn_damage_popup"):
-			# Find target enemy index if player attacked enemy
-			var enemy_idx: int = 0
+			roll_str = "[color=#FFAAAA]🎲 d20 roll: [b]%d[/b] (+%d) = [b]%d[/b] vs Evasion [b]%d[/b][/color]" % [roll_d20, bonus, total_roll, target_def]
+		
+		var outcome_str: String = ""
+		if not is_hit:
 			if is_player_attacker:
-				for i in range(active_enemy_units.size()):
-					if active_enemy_units[i].get("name", "") == target_name:
-						enemy_idx = i
-						break
-			telemetry_ui.spawn_damage_popup(damage_dealt, not is_player_attacker, enemy_idx)
+				outcome_str = "[color=#888888]💨 MISSED — %s slipped past targeting cone![/color]" % target_name
+			else:
+				outcome_str = "[color=#00FF88]🛡️ MISSED — Mack executed evasive roll![/color]"
+		elif is_crit:
+			var exploit_tag: String = " [color=#FF00FF]★ WEAKNESS OVERDRIVE![/color]" if is_weakness_exploit else ""
+			outcome_str = "[color=#FFCC00]⚡ CRITICAL HIT! [b]%d DMG[/b]%s -> %s [color=#FFEE55](%d HP remaining)[/color][/color]" % [damage_dealt, exploit_tag, target_name, remaining_hp]
+		else:
+			if is_player_attacker:
+				var exploit_tag: String = " [color=#FF00FF]★ WEAKNESS EXPLOIT (+40%)![/color]" if is_weakness_exploit else ""
+				outcome_str = "[color=#00FF88]⚡ DIRECT HIT! [b]%d DMG[/b]%s -> %s [color=#88FFAA](%d HP remaining)[/color][/color]" % [damage_dealt, exploit_tag, target_name, remaining_hp]
+			else:
+				if armor_absorbed > 0:
+					outcome_str = "[color=#FF6666]💥 HIT! %d Raw DMG [color=#FF9999](Armor absorbed %d DMG | Net: [b]-%d HP[/b])[/color][/color]" % [damage_dealt + armor_absorbed, armor_absorbed, damage_dealt]
+				else:
+					outcome_str = "[color=#FF6666]💥 HIT! [b]-%d HP[/b] to War-Rig Hull! [color=#FF9999](Mack HP: %d)[/color][/color]" % [damage_dealt, remaining_hp]
+		
+		# Replace combat feed with the clean result card
+		current_combat_event_text = "%s\n\n%s" % [roll_str, outcome_str]
+		_log_combat_math(outcome_str)
+		
+		# Trigger floating damage popups on Battle Telemetry Radar Overlay (U key)
+		if is_hit and damage_dealt > 0:
+			var telemetry_ui = get_parent().get_node_or_null("BattleTelemetryRadarUI")
+			if is_instance_valid(telemetry_ui) and telemetry_ui.has_method("spawn_damage_popup"):
+				var enemy_idx: int = 0
+				if is_player_attacker:
+					for i in range(active_enemy_units.size()):
+						if active_enemy_units[i].get("name", "") == target_name:
+							enemy_idx = i
+							break
+				telemetry_ui.spawn_damage_popup(damage_dealt, not is_player_attacker, enemy_idx)
+	)
 
 var math_tick: float = 0.0
 
@@ -1157,8 +1250,8 @@ func _update_telemetry_hud() -> void:
 			mack_timer_label.text = "%02d:%02d" % [mins, secs]
 
 	# Live Vitals Core Temp & RPM Calculation
-	var core_temp: float = 75.0 + ((1.0 - (mack_current_hp / mack_max_hp)) * 35.0)
-	var rpm: int = 4000 + randi() % 800
+	var core_temp: float = mack_core_temp
+	var rpm: int = int(3200 + (mack_core_temp / MACK_OVERHEAT_THRESHOLD) * 3800) + randi() % 400
 
 	# Synchronize 3D Screen Matrix inside The Pit Garage
 	var pit_root = get_parent().get_node_or_null("IndoorSystemManager/PorterPitRoot")
@@ -1201,127 +1294,191 @@ func _update_telemetry_hud() -> void:
 	if is_instance_valid(garage_mgr) and garage_mgr.fleet.has("BANQUO_CAR"):
 		telemetry_lvl = garage_mgr.fleet["BANQUO_CAR"]["upgrades"]["telemetry"].get("level", 0)
 
-	if telemetry_lvl >= 1:
-		if is_instance_valid(side_terminal_panel):
-			side_terminal_panel.visible = is_side_terminal_user_toggled
+	if is_instance_valid(side_terminal_panel):
+		side_terminal_panel.visible = (telemetry_lvl >= 1 and is_side_terminal_user_toggled)
+	
+	if is_instance_valid(side_vitals_label) and telemetry_lvl >= 1:
+		side_vitals_label.text = "CORE TEMP: %.1f°C | HULL: %.0f/%.0f\nENGINE RPM: %d | GATLING AMMO: %.0f%%" % [
+			core_temp, mack_current_hp, mack_max_hp, rpm, (mack_current_hp / mack_max_hp) * 100.0
+		]
+
+	# Live Enemy Threat Scanner
+	if is_instance_valid(side_enemy_scanner_label):
+		var scan_text: String = ""
+		for enemy in active_enemy_units:
+			var cur_hp: int = enemy.get("hp", 100)
+			var max_hp: int = enemy.get("max_hp", 100)
+			var hp_pct: float = (float(cur_hp) / max(1.0, float(max_hp))) * 100.0
+			var ac: int = enemy.get("ac", 12)
+			var dmg_str: String = enemy.get("dmg", "18-24 Kinetic")
+			var threat: String = enemy.get("threat", "STANDARD")
+			var weakness: String = enemy.get("weakness", "Kinetic Fire")
+
+			var icon: String = enemy.get("icon", "🚙")
+			var e_name: String = enemy.get("name", "Hostile Unit")
+			scan_text += "[color=#FFCC00]%s %s[/color] [color=#FF8800][%s][/color]\n" % [icon, e_name, threat]
+			scan_text += "[color=#88CCFF]  ⚔️ Weapon System:[/color] %s (%s)\n" % [enemy.get("weapon", "Autocannon"), dmg_str]
+			scan_text += "[color=#00FF88]  🛡️ Armor Class (AC):[/color] %d  [color=#FFD700]| Weakness:[/color] %s\n" % [ac, weakness]
+			scan_text += "[color=#FF5555]  ❤️ Hull Integrity:[/color] %d / %d HP (%.0f%%)\n\n" % [cur_hp, max_hp, hp_pct]
+		side_enemy_scanner_label.text = scan_text
+
+	# Detailed Dual-Roll Combat Math Feed (Always runs during battle/simulation)
+	if is_instance_valid(side_math_text):
+		side_math_text.visible = (telemetry_lvl >= 2 or is_simulated_battle)
+	math_tick += 0.016
+	if math_tick >= 3.8: # Relaxed combat tempo (3.8s per turn: 0s Attack -> 1.3s Pause -> Resolution -> 2.5s Reading window)
+		math_tick = 0.0
+		var is_player_turn: bool = (randi() % 2 == 0)
+
+		var ord_lvl: int = 1
+		var armor_lvl: int = 1
+		var engine_cooling_lvl: int = 1
+		if is_instance_valid(garage_mgr) and garage_mgr.fleet.has("MACK_RIG"):
+			ord_lvl = garage_mgr.fleet["MACK_RIG"]["upgrades"]["ordnance"].get("level", 1)
+			armor_lvl = garage_mgr.fleet["MACK_RIG"]["upgrades"]["armor"].get("level", 1)
+			engine_cooling_lvl = garage_mgr.fleet["MACK_RIG"]["upgrades"]["engine"].get("level", 1)
 		
-		if is_instance_valid(side_vitals_label):
-			side_vitals_label.text = "CORE TEMP: %.1f°C | HULL: %.0f/%.0f\nENGINE RPM: %d | GATLING AMMO: %.0f%%" % [
-				core_temp, mack_current_hp, mack_max_hp, rpm, (mack_current_hp / mack_max_hp) * 100.0
-			]
+		var ocular_tier: int = 1
+		var cyborg_mgr = get_parent().get_node_or_null("CyborgModdingManager")
+		if is_instance_valid(cyborg_mgr) and cyborg_mgr.cyberware_slots.has("ocular_scope"):
+			ocular_tier = cyborg_mgr.cyberware_slots["ocular_scope"].get("tier", 1)
 
-		# Live Enemy Threat Scanner
-		if is_instance_valid(side_enemy_scanner_label):
-			var scan_text: String = ""
-			for enemy in active_enemy_units:
-				var cur_hp: int = enemy.get("hp", 100)
-				var max_hp: int = enemy.get("max_hp", 100)
-				var hp_pct: float = (float(cur_hp) / max(1.0, float(max_hp))) * 100.0
-				var ac: int = enemy.get("ac", 12)
-				var dmg_str: String = enemy.get("dmg", "18-24 Kinetic")
-				var threat: String = enemy.get("threat", "STANDARD")
-				var weakness: String = enemy.get("weakness", "Kinetic Fire")
+		# --- CONTINUOUS ENGINE COOLING PASS ---
+		# Engine cooler dissipates heat every turn down towards baseline 65°C
+		var cooling_rate: float = 6.0 + float(engine_cooling_lvl - 1) * 8.0 # L1=6°C, L2=14°C, L3=22°C
+		mack_core_temp = max(MACK_BASE_TEMP, mack_core_temp - cooling_rate)
 
-				var icon: String = enemy.get("icon", "🚙")
-				var e_name: String = enemy.get("name", "Hostile Unit")
-				scan_text += "[color=#FFCC00]%s %s[/color] [color=#FF8800][%s][/color]\n" % [icon, e_name, threat]
-				scan_text += "[color=#88CCFF]  ⚔️ Weapon System:[/color] %s (%s)\n" % [enemy.get("weapon", "Autocannon"), dmg_str]
-				scan_text += "[color=#00FF88]  🛡️ Armor Class (AC):[/color] %d  [color=#FFD700]| Weakness:[/color] %s\n" % [ac, weakness]
-				scan_text += "[color=#FF5555]  ❤️ Hull Integrity:[/color] %d / %d HP (%.0f%%)\n\n" % [cur_hp, max_hp, hp_pct]
-			side_enemy_scanner_label.text = scan_text
+		# Check Overheat Lockout Recovery
+		if is_mack_overheated:
+			mack_overheat_lockout_turns -= 1
+			if mack_overheat_lockout_turns <= 0 and mack_core_temp < MACK_OVERHEAT_THRESHOLD:
+				is_mack_overheated = false
+				_log_combat_math("[color=#00FF88]❄️ CRYO-VENT COMPLETE: Engine temperature stabilized at %.0f°C! Hardpoints back online![/color]" % mack_core_temp)
+			else:
+				_log_combat_math("[color=#FF3344]🔥 OVERHEAT VENTING: War-Rig stalled (%d turns left | Core: %.0f°C)...[/color]" % [max(1, mack_overheat_lockout_turns), mack_core_temp])
 
-
-		# Level 2: Detailed Dual-Roll Combat Math Feed (Mack Attacks vs Enemy Offense & Graphene Absorption)
-		if telemetry_lvl >= 2:
-			side_math_text.visible = true
-			math_tick += 0.016
-			if math_tick >= 2.2: # Faster pulse (every 2.2s) alternating Mack attacks and Enemy rolls
-				math_tick = 0.0
-				var is_player_turn: bool = (randi() % 2 == 0)
-
-				var ord_lvl: int = 1
-				var armor_lvl: int = 1
-				if is_instance_valid(garage_mgr) and garage_mgr.fleet.has("MACK_RIG"):
-					ord_lvl = garage_mgr.fleet["MACK_RIG"]["upgrades"]["ordnance"].get("level", 1)
-					armor_lvl = garage_mgr.fleet["MACK_RIG"]["upgrades"]["armor"].get("level", 1)
+		if is_player_turn:
+			# If Mack is currently overheated, his firing circuits are locked out!
+			if is_mack_overheated:
+				current_combat_event_text = "[color=#FF3344]🔥 [b]MACK OVERHEATED![/b] Firing circuits locked! Emergency cryo-radiators venting heat...[/color]"
+				_log_combat_math(current_combat_event_text)
+			else:
+				# --- MACK REAL ATTACK ROLL & ENEMY HP DEDUCTION ---
+				stat_total_rounds_fired += 1
+				var atk_bonus: int = (ord_lvl - 1) * 4 + (ocular_tier - 1) * 3
+				var crit_threshold: int = 16 - (ocular_tier - 1) * 2 # Crit range expands with ocular scope
+				var roll_d20: int = (randi() % 20) + 1
+				var total_val: int = roll_d20 + 6 + atk_bonus
 				
-				var ocular_tier: int = 1
-				var cyborg_mgr = get_parent().get_node_or_null("CyborgModdingManager")
-				if is_instance_valid(cyborg_mgr) and cyborg_mgr.cyberware_slots.has("ocular_scope"):
-					ocular_tier = cyborg_mgr.cyberware_slots["ocular_scope"].get("tier", 1)
-
-				if is_player_turn:
-					# --- MACK REAL ATTACK ROLL & ENEMY HP DEDUCTION ---
-					stat_total_rounds_fired += 1
-					var atk_bonus: int = (ord_lvl - 1) * 6 + (ocular_tier - 1) * 4
-					var crit_threshold: int = 15 - (ocular_tier - 1) * 2 # Crit range expands with ocular scope
-					var roll_d20: int = (randi() % 20) + 1
-					var total_val: int = roll_d20 + 8 + atk_bonus
+				# Determine Mack's Weapon Name, Type & Heat Cost based on Ordnance Upgrade Level
+				var mack_weapon: String = "Heavy Dual Gatling Cannon"
+				var mack_weapon_type: String = "Kinetic"
+				var heat_cost: float = 8.0 # L1 Gatling: Low heat
+				if ord_lvl == 2:
+					mack_weapon = "Heavy EMP Autocannon"
+					mack_weapon_type = "EMP"
+					heat_cost = 18.0 # L2 EMP Autocannon: Medium heat
+				elif ord_lvl >= 3:
+					mack_weapon = "Military Ordnance Plasma Pods"
+					mack_weapon_type = "Plasma"
+					heat_cost = 32.0 # L3 Plasma Pods: Massive heat spike!
 					
-					# Determine Mack's Weapon Name based on Ordnance Upgrade Level
-					var mack_weapon: String = "Heavy Dual Gatling Cannon"
-					if ord_lvl == 2:
-						mack_weapon = "Heavy EMP Autocannon"
-					elif ord_lvl >= 3:
-						mack_weapon = "Military Ordnance Plasma Pods"
-						
-					var is_hit: bool = (roll_d20 > 2) # Misses on natural 1-2
-					var is_crit: bool = (roll_d20 >= crit_threshold and is_hit)
-					var damage_dealt: int = 0
+				var is_hit: bool = (roll_d20 > 2) # Misses on natural 1-2
+				var is_crit: bool = (roll_d20 >= crit_threshold and is_hit)
+				var damage_dealt: int = 0
+				var is_weakness_exploit: bool = false
 
+				if is_hit:
+					var base_dmg: float = 14.0 + float(atk_bonus) * 2.0 + float(randi() % 5)
+					
+					# Check Target Weakness Exploitation against Faktaboks profile
+					if not active_enemy_units.is_empty():
+						var target_weakness: String = active_enemy_units[0].get("weakness", "").to_upper()
+						if target_weakness.contains(mack_weapon_type.to_upper()) or \
+						   (mack_weapon_type == "Kinetic" and target_weakness.contains("KINETIC")) or \
+						   (mack_weapon_type == "EMP" and (target_weakness.contains("EMP") or target_weakness.contains("HACK"))) or \
+						   (mack_weapon_type == "Plasma" and (target_weakness.contains("PLASMA") or target_weakness.contains("HEAT"))):
+							is_weakness_exploit = true
+							base_dmg *= 1.40 # +40% Bonus Damage on Weakness Exploitation!
+
+					# Tactical Weapon Type Specific Traits:
+					match mack_weapon_type:
+						"Kinetic":
+							# Consistent raw kinetic impact
+							damage_dealt = int(base_dmg)
+						"EMP":
+							# EMP disrupts electronics, reducing enemy accuracy on their next counter-attack
+							damage_dealt = int(base_dmg * 0.90)
+						"Plasma":
+							# Plasma superheats target chassis for armor-piercing damage
+							damage_dealt = int(base_dmg * 1.15)
+						_:
+							damage_dealt = int(base_dmg)
+
+					if is_crit:
+						damage_dealt = int(damage_dealt * 1.6)
+						stat_total_crits_landed += 1
+						heat_cost += 10.0 # Extra heat surge on crit overdrive
+					stat_highest_damage_dealt = max(stat_highest_damage_dealt, damage_dealt)
+
+				# Apply Weapon Heat Generation
+				mack_core_temp += heat_cost
+
+				if not active_enemy_units.is_empty():
+					var target_enemy = active_enemy_units[0]
 					if is_hit:
-						damage_dealt = int((18 + atk_bonus * 2.8) + (randi() % 6))
-						if is_crit:
-							damage_dealt = int(damage_dealt * 1.85)
-							stat_total_crits_landed += 1
-						stat_highest_damage_dealt = max(stat_highest_damage_dealt, damage_dealt)
-
-					if not active_enemy_units.is_empty():
-						var target_enemy = active_enemy_units[0]
-						if is_hit:
-							target_enemy["hp"] = max(0, target_enemy["hp"] - damage_dealt)
-						
-						log_attack_telemetry_breakdown("Mack", target_enemy["name"], mack_weapon, roll_d20, 8 + atk_bonus, 12, is_hit, is_crit, damage_dealt, 0, target_enemy["hp"], true)
-						
-						if target_enemy["hp"] <= 0:
-							stat_enemies_destroyed += 1
-							stat_tech_harvested_count += (1 + randi() % 2)
+						target_enemy["hp"] = max(0, target_enemy["hp"] - damage_dealt)
+					
+					log_attack_telemetry_breakdown("Mack", target_enemy["name"], mack_weapon, roll_d20, 6 + atk_bonus, 12, is_hit, is_crit, damage_dealt, 0, target_enemy["hp"], true, is_weakness_exploit)
+					
+					if target_enemy["hp"] <= 0:
+						stat_enemies_destroyed += 1
+						stat_tech_harvested_count += (1 + randi() % 2)
+						get_tree().create_timer(1.8).timeout.connect(func():
 							_log_combat_math("[color=#33FF57]   💀 DESTROYED! %s neutralized by Mack's %s![/color]" % [target_enemy["name"], mack_weapon])
-							active_enemy_units.remove_at(0)
-					else:
-						# Downtime: All wave enemies destroyed early! Mack slowly recovers hull integrity!
-						mack_current_hp = min(mack_max_hp, mack_current_hp + 3.5)
-						mack_current_action = "WAVE CLEARED! Mack's nanite systems repairing hull (+3.5 HP)..."
-						_log_combat_math("[color=#00FF88]🌿 DOWNTIME RECOVERY: Wave cleared early! Nanites restoring War-Rig hull (+3.5 HP)[/color]")
+						)
+						active_enemy_units.remove_at(0)
 				else:
-					# --- ENEMY ATTACK ROLL & ARMOR ABSORPTION ---
-					if not active_enemy_units.is_empty():
-						var active_enemy = active_enemy_units.pick_random()
-						var enemy_roll: int = (randi() % 20) + 1
-						var is_hit: bool = (enemy_roll > 3) # Misses on d20 <= 3
-						var enemy_raw_dmg: int = 24 + (randi() % 10)
-						var armor_absorbed: int = int(enemy_raw_dmg * ((armor_lvl - 1) * 0.15 + 0.10))
-						var net_dmg: int = max(4, enemy_raw_dmg - armor_absorbed)
+					# Downtime: All wave enemies destroyed early! Mack slowly recovers hull integrity!
+					mack_current_hp = min(mack_max_hp, mack_current_hp + 3.0)
+					mack_current_action = "WAVE CLEARED! Mack's nanite systems repairing hull (+3.0 HP)..."
+					_log_combat_math("[color=#00FF88]🌿 DOWNTIME RECOVERY: Wave cleared early! Nanites restoring War-Rig hull (+3.0 HP)[/color]")
 
-						if not is_hit:
-							net_dmg = 0
-							armor_absorbed = 0
-						else:
-							mack_current_hp = max(0.0, mack_current_hp - net_dmg)
-
-						var enemy_weapon: String = active_enemy.get("weapon", "Plasma Cannon")
-
-						log_attack_telemetry_breakdown(active_enemy["name"], "Mack's War-Rig", enemy_weapon, enemy_roll, 4, 14, is_hit, false, net_dmg, armor_absorbed, int(mack_current_hp), false)
+				# Check if this attack triggered an Engine Overheat Emergency!
+				if mack_core_temp >= MACK_OVERHEAT_THRESHOLD and not is_mack_overheated:
+					is_mack_overheated = true
+					mack_overheat_lockout_turns = 2
+					get_tree().create_timer(1.9).timeout.connect(func():
+						_log_combat_math("[color=#FF0044]🚨 CRITICAL OVERHEAT! Engine reached %.0f°C (Limit: %.0f°C)! Weapons locked for 2 turns while venting![/color]" % [mack_core_temp, MACK_OVERHEAT_THRESHOLD])
+					)
 		else:
-			side_math_text.visible = false
+			# --- ENEMY ATTACK ROLL & ARMOR ABSORPTION ---
+			if not active_enemy_units.is_empty():
+				var active_enemy = active_enemy_units.pick_random()
+				var enemy_roll: int = (randi() % 20) + 1
+				var is_hit: bool = (enemy_roll > 4) # Misses on d20 <= 4
+				var enemy_raw_dmg: int = 16 + (randi() % 8)
+				
+				# Vulnerability: Mack takes +30% damage while stalled in Overheat!
+				if is_mack_overheated:
+					enemy_raw_dmg = int(enemy_raw_dmg * 1.30)
 
-		# Level 3: Repair Drone Dispatch Uplink
-		if telemetry_lvl >= 3:
-			side_drone_btn.visible = true
-		else:
-			side_drone_btn.visible = false
-	else:
-		side_terminal_panel.visible = false
+				var armor_absorbed: int = int(enemy_raw_dmg * ((armor_lvl - 1) * 0.15 + 0.10))
+				var net_dmg: int = max(3, enemy_raw_dmg - armor_absorbed)
+
+				if not is_hit:
+					net_dmg = 0
+					armor_absorbed = 0
+				else:
+					mack_current_hp = max(0.0, mack_current_hp - net_dmg)
+
+				var enemy_weapon: String = active_enemy.get("weapon", "Plasma Cannon")
+
+				log_attack_telemetry_breakdown(active_enemy["name"], "Mack's War-Rig", enemy_weapon, enemy_roll, 3, 14, is_hit, false, net_dmg, armor_absorbed, int(mack_current_hp), false)
+
+	# Level 3: Repair Drone Dispatch Uplink
+	if is_instance_valid(side_drone_btn):
+		side_drone_btn.visible = (telemetry_lvl >= 3)
 
 func launch_grand_deployment() -> void:
 	if is_battle_in_progress:
@@ -1361,6 +1518,7 @@ func launch_grand_deployment() -> void:
 
 func _start_actual_combat_engagement(location_name: String) -> void:
 	is_battle_in_progress = true
+	is_simulated_battle = false
 	battle_timer = 0.0
 	last_rumor_tick = 0.0
 	rumor_index = 0
@@ -1411,6 +1569,12 @@ func _start_actual_combat_engagement(location_name: String) -> void:
 	var current_data: Dictionary = act_details.get(current_act, {})
 	var convoy_name: String = current_data.get("target_convoy", "Corporate Vanguard")
 
+	current_battle_phase = BattlePhase.PHASE_1_ARRED_CARS
+	active_enemy_units = [
+		_fetch_enemy_from_json("cawdor_interceptor_alpha"),
+		_fetch_enemy_from_json("cawdor_interceptor_beta")
+	]
+
 	print("[CAMPAIGN MANAGER] Hostile engagement started at ", location_name, " for: ", convoy_name)
 	_update_telemetry_hud()
 
@@ -1447,34 +1611,42 @@ func _conclude_autonomous_battle(success: bool) -> void:
 		_advance_campaign_act()
 		_show_after_action_summary(final_payout, bonus_scrap, hp_ratio, true)
 	else:
-		# --- ENGINE OVERHEAT FAILURE & RETREAT PENALTY ---
-		# Engine cooling limit reached before boss was destroyed -> Forced Emergency Abort!
+		# --- ENGINE OVERHEAT FAILURE & RETREAT / DAY REPLAY ---
+		# Target boss survived or Mack was forced to retreat -> Day must be replayed!
 		var penalty_repair_cost: int = 400
 		var scrap_salvaged: int = 25 # Minimal emergency scrap
 		
 		if is_instance_valid(quest_manager):
 			quest_manager.player_credits = max(0, quest_manager.player_credits - penalty_repair_cost)
 
-		# Overheating inflicts severe neural paranoia on Mack (+35%)
+		# Overheating inflicts neural paranoia on Mack (+25%)
 		var glitch_sys = get_parent().get_node_or_null("NeuralGlitchSystem")
 		if is_instance_valid(glitch_sys):
-			glitch_sys.inject_neural_instability(35.0)
+			glitch_sys.inject_neural_instability(25.0)
+
+		# Reset daily grand battle cap AND refresh 1 emergency side job for Banquo to earn recovery funds!
+		grand_battles_today = 0
+		side_missions_today = max(0, side_missions_today - 1)
 
 		# Launch The 3 Norns Towing Recovery Quest
 		_spawn_norns_recovery_quest()
+
+		if is_instance_valid(neural_comms) and neural_comms.has_method("send_message"):
+			neural_comms.send_message("Lady M: 'Tactical abort! Mack's rig was pulled back to the perimeter. Banquo, a new emergency supply pursuit is open if you need cash to repair the War-Rig before re-deploying!'", "MISSION RETRY // EMERGENCY PURSUITS OPEN")
 
 		_show_after_action_summary(-penalty_repair_cost, scrap_salvaged, hp_ratio, false)
 
 	# Notify QuestManager so BATTLE_INTERCEPT quests can auto-complete / fail
 	emit_signal("battle_concluded", success)
 
-	# --- DAY LIGHTING PROGRESSION: Step down to Stage 2 (LOW_LIGHT 25% - Dusk) after Mack's Battle ---
-	current_lighting_phase = DayLightingPhase.DUSK_STAGE_2
-	var visual_fx = get_parent().get_node_or_null("CityVisualEffects")
-	if is_instance_valid(visual_fx) and visual_fx.has_method("set_city_light_stage"):
-		visual_fx.set_city_light_stage(visual_fx.CityLightStage.LOW_LIGHT, true, 2.5)
-	if is_instance_valid(neural_comms) and neural_comms.has_method("send_message"):
-		neural_comms.send_message("🌇 DUSK FALLS: Mack's War-Rig battle concluded. City lighting shifted down to Stage 2 (Low Light / Dusk).", "TIME PROGRESSION // DUSK")
+	# --- DAY LIGHTING PROGRESSION: If success, step down to Stage 2 (LOW_LIGHT 25% - Dusk) after Mack's Battle ---
+	if success:
+		current_lighting_phase = DayLightingPhase.DUSK_STAGE_2
+		var visual_fx = get_parent().get_node_or_null("CityVisualEffects")
+		if is_instance_valid(visual_fx) and visual_fx.has_method("set_city_light_stage"):
+			visual_fx.set_city_light_stage(visual_fx.CityLightStage.LOW_LIGHT, true, 2.5)
+		if is_instance_valid(neural_comms) and neural_comms.has_method("send_message"):
+			neural_comms.send_message("🌇 DUSK FALLS: Mack's War-Rig battle concluded. City lighting shifted down to Stage 2 (Low Light / Dusk).", "TIME PROGRESSION // DUSK")
 
 func _spawn_norns_recovery_quest() -> void:
 	is_norns_recovery_active = true

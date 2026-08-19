@@ -1,13 +1,100 @@
 {
-	"speaker_display_name": "SYNTH BUSKER",
-	"speaker_subtitle": "PARK MUSICIAN",
-	"speaker_color": "#00FF88",
+	"speaker_display_name": "ORPHEUS // CYBER-BARD",
+	"speaker_subtitle": "HOLOGRAM SYNTH-GUITARIST // SECTOR ALLEY",
+	"speaker_color": "#FFD700",
 	"nodes": {
 		"start": {
-			"text": "Throw some credits in the pod if you like the tune.",
+			"text": "*The busker strums a holographic laser-harp guitar, producing haunting synthesized melodies that echo down the neon corridor.* \"Halt, wandering operative. Will you spare a thought—or a credit—for the Ballad of the City?\"",
 			"choices": [
 				{
-					"text": "[OK]",
+					"text": "\"Play me a song about Mack and his War-Rig. [Tip 20 Credits]\"",
+					"target": "song_mack"
+				},
+				{
+					"text": "\"Sing of Duncan and the Towers of Dunsinane.\"",
+					"target": "song_duncan"
+				},
+				{
+					"text": "\"What do you sing when the night turns cold?\"",
+					"target": "song_tragedy"
+				},
+				{
+					"text": "\"Keep playing, bard.\"",
+					"target": "exit"
+				}
+			]
+		},
+		"start_night": {
+			"text": "*The strings of light shimmer deep violet in the evening fog.* \"Ah, the night travelers emerge... when the streetlights flicker and the ghosts of old Glasgow hum in the wires. What shall I play for your soul, Banquo?\"",
+			"choices": [
+				{
+					"text": "\"Sing of the Three Sisters in the mist. [Tip 20 Credits]\"",
+					"target": "song_witches"
+				},
+				{
+					"text": "\"Play something to steel my nerve for the road.\"",
+					"target": "song_mack"
+				},
+				{
+					"text": "\"Farewell, minstrel.\"",
+					"target": "exit"
+				}
+			]
+		},
+		"start_post_battle": {
+			"text": "*The bard strikes a triumphant golden chord.* \"I felt the highway quake! The iron beast roared, and corporate steel turned to ash! The muse inspires a new epic!\"",
+			"choices": [
+				{
+					"text": "\"Immortalize the victory in verse! [Tip 50 Credits]\"",
+					"target": "song_victory"
+				},
+				{
+					"text": "\"Let the city hear it.\"",
+					"target": "exit"
+				}
+			]
+		},
+		"song_mack": {
+			"text": "*The harp resonates with heavy industrial bass rhythm.*\n\n'Upon the asphalt, iron-crowned,\nWhere thunder shakes the toxic ground,\nGreat Mack advances through the haze,\nAnd sets the corporate road ablaze!'",
+			"choices": [
+				{
+					"text": "\"Splendid verse. Mack would approve.\"",
+					"target": "exit"
+				}
+			]
+		},
+		"song_duncan": {
+			"text": "*A somber, echoing melody drifts through the air.*\n\n'High above the smog and rain,\nKing Duncan counts his gilded gain,\nYet stone and glass shall surely fall,\nWhen Birnam marches to the wall...'",
+			"choices": [
+				{
+					"text": "\"Prophetic words...\"",
+					"target": "exit"
+				}
+			]
+		},
+		"song_witches": {
+			"text": "*Whispering synthesizer tones mimic wind howling through cables.*\n\n'Fair is foul, and foul is fair,\nHover through the neon air,\nThree phantoms weave the fateful thread,\nBefore the morning stars have fled...'",
+			"choices": [
+				{
+					"text": "\"Chilling. Thank you, Orpheus.\"",
+					"target": "exit"
+				}
+			]
+		},
+		"song_tragedy": {
+			"text": "*Soft melancholic arpeggios chime.*\n\n'Life's but a walking shadow on the screen,\nA poor netrunner that struts and frets his hour,\nAnd then is heard no more.'",
+			"choices": [
+				{
+					"text": "\"A tale told by an idiot, full of sound and fury...\"",
+					"target": "exit"
+				}
+			]
+		},
+		"song_victory": {
+			"text": "*A glorious crescendo fills the alley, neon light cascading like sparks.*\n\n'Cry havoc on the highway line!\nThe War-Rig shatters their design!\nNo corporate armor shall withstand\nThe fury of this rebel band!'",
+			"choices": [
+				{
+					"text": "\"Long live the resistance!\"",
 					"target": "exit"
 				}
 			]

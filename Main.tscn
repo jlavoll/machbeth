@@ -35,6 +35,8 @@
 [ext_resource type="Script" uid="uid://dw0vlkg3x41vf" path="res://LoadoutGridUI.gd" id="33_loadoutui"]
 [ext_resource type="Script" uid="uid://cx6ljrvjdv572" path="res://UnifiedInventoryManager.gd" id="34_invmgr"]
 [ext_resource type="Script" uid="uid://cchhgmw7qmucl" path="res://InventoryShopUI.gd" id="35_invui"]
+[ext_resource type="Script" path="res://BanquoOperativeUI.gd" id="36_banquoui"]
+[ext_resource type="Script" path="res://TacticalCompassHUD.gd" id="37_compassui"]
 
 [sub_resource type="Environment" id="Environment_1"]
 background_mode = 1
@@ -176,6 +178,12 @@ script = ExtResource("34_invmgr")
 
 [node name="InventoryShopUI" type="CanvasLayer" parent="." unique_id=987111555]
 script = ExtResource("35_invui")
+
+[node name="BanquoOperativeUI" type="CanvasLayer" parent="." unique_id=987111666]
+script = ExtResource("36_banquoui")
+
+[node name="TacticalCompassHUD" type="CanvasLayer" parent="." unique_id=987111777]
+script = ExtResource("37_compassui")
 
 [node name="PlayerCar" type="CharacterBody3D" parent="." unique_id=1110453537]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1, 0)

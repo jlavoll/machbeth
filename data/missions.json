@@ -1,20 +1,29 @@
 {
   "missions": {
     "act1_custom_mission_15862": {
-      "act": 1,
+      "act": 1.0,
       "act_title": "Act I: Macbeth's Ambition",
       "description": "Custom mission created in Mission Editor overlay.",
-      "difficulty_threshold": 1,
+      "difficulty_threshold": 1.0,
       "id": "act1_custom_mission_15862",
       "name": "More bass in monitor",
       "rewards": {
-        "credits": 750,
+        "credits": 750.0,
         "reputation": "Street Operative (+15)",
-        "scrap": 50
+        "scrap": 50.0
       },
       "rounds": [
         {
           "enemies": [
+            {
+              "enemy_id": "norns_hunter_drone_03",
+              "equipped_upgrades": [
+                "telemetry_terminal_l3"
+              ],
+              "equipped_weapons": [
+                "emp_mortar"
+              ]
+            },
             {
               "enemy_id": "new_enemy_42",
               "equipped_upgrades": [
@@ -25,8 +34,8 @@
               ]
             }
           ],
-          "round_name": "Wave 1 - Initial Patrol",
-          "round_number": 1
+          "round_name": "Wave 1 - Seagulls with basses",
+          "round_number": 1.0
         }
       ]
     },

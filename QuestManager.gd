@@ -23,7 +23,7 @@ var active_quest_id: String = ""
 var active_quest_data: Dictionary = {}
 var active_quest_time_left: float = 0.0
 var active_eavesdrop_timer: float = 0.0
-var player_credits: int = 15000 # High starting credits for testing
+var player_credits: int = 500 # Balanced starting credits for Act 1 progression
 
 # Act 1 Day Completion Flags
 var day1_mission_complete: bool = false

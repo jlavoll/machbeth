@@ -22,7 +22,7 @@ var battle_status_label: Label = null
 # Sub-System Slot Panels
 var radar_screen_rect: Control = null
 var mack_hp_bar: ProgressBar = null
-var side_vitals_label: Label = null
+var side_vitals_label: RichTextLabel = null
 var drone_repair_btn: Button = null
 var enemy_scanner_vbox: VBoxContainer = null
 var math_log_text: RichTextLabel = null
@@ -44,7 +44,8 @@ var geist_font: Font = preload("res://fonts/GeistPixel-Regular-VariableFont_ELSH
 
 
 func _ready() -> void:
-
+	# Always process so radar HUD keeps updating even while UIs pause the tree
+	process_mode = Node.PROCESS_MODE_ALWAYS
 	layer = 120 # Standard overlay depth
 	_build_unified_telemetry_console()
 	visible = false
@@ -200,6 +201,21 @@ func _build_unified_telemetry_console() -> void:
 	battle_status_label.add_theme_color_override("font_color", Color(0.0, 0.85, 1.0))
 	header_hbox.add_child(battle_status_label)
 	
+	header_hbox.add_spacer(false)
+
+	var stop_sim_btn = Button.new()
+	stop_sim_btn.name = "StopSimBtn"
+	stop_sim_btn.text = "⏹️ END SIMULATION"
+	stop_sim_btn.add_theme_font_override("font", orbitron_font)
+	stop_sim_btn.add_theme_font_size_override("font_size", 10)
+	stop_sim_btn.add_theme_color_override("font_color", Color(1.0, 0.3, 0.3))
+	stop_sim_btn.pressed.connect(func():
+		var campaign_mgr = get_parent().get_node_or_null("CampaignManager")
+		if is_instance_valid(campaign_mgr) and campaign_mgr.has_method("stop_simulated_mission"):
+			campaign_mgr.stop_simulated_mission()
+	)
+	header_hbox.add_child(stop_sim_btn)
+
 	var close_btn = Button.new()
 	close_btn.text = "✖ CLOSE (U)"
 	close_btn.size_flags_horizontal = Control.SIZE_SHRINK_END
@@ -208,77 +224,76 @@ func _build_unified_telemetry_console() -> void:
 	
 	main_vbox.add_child(HSeparator.new())
 	
-	# 3-Column Master Layout Grid
+	# 2-Column Master Layout Grid (Left: Radar & Combat Math Stream; Right: Vitals & Threat Scanner)
 	var grid_split = HBoxContainer.new()
 	grid_split.size_flags_vertical = Control.SIZE_EXPAND_FILL
-	grid_split.add_theme_constant_override("separation", 8)
+	grid_split.add_theme_constant_override("separation", 10)
 	main_vbox.add_child(grid_split)
 	
-	# --- COLUMN 1 (LEFT): SLOT 4 - COMBAT MATH MATRIX ---
+	# --- COLUMN 1 (LEFT / CENTER): RADAR (TOP) & COMBAT MATH CALCULATION WINDOW (BOTTOM) ---
 	var col1_vbox = VBoxContainer.new()
 	col1_vbox.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	col1_vbox.size_flags_stretch_ratio = 1.0
+	col1_vbox.size_flags_stretch_ratio = 1.35
+	col1_vbox.add_theme_constant_override("separation", 6)
 	grid_split.add_child(col1_vbox)
 	
-	var math_hdr = Label.new()
-	math_hdr.text = "🎲 SLOT 4: COMBAT MATH MATRIX [TELEMETRY L2]"
-	math_hdr.add_theme_font_override("font", orbitron_font)
-	math_hdr.add_theme_font_size_override("font_size", 10)
-	math_hdr.add_theme_color_override("font_color", Color(0.0, 1.0, 0.85))
-	col1_vbox.add_child(math_hdr)
-	
-	var math_panel = PanelContainer.new()
-	math_panel.size_flags_vertical = Control.SIZE_EXPAND_FILL
-	var m_style = StyleBoxFlat.new()
-	m_style.bg_color = Color(0.01, 0.03, 0.05, 0.95)
-	m_style.border_color = Color(0.0, 1.0, 0.85, 0.4)
-	m_style.set_border_width_all(1)
-	m_style.set_content_margin_all(6)
-	math_panel.add_theme_stylebox_override("panel", m_style)
-	col1_vbox.add_child(math_panel)
-	
-	math_log_text = RichTextLabel.new()
-	math_log_text.size_flags_vertical = Control.SIZE_EXPAND_FILL
-	math_log_text.bbcode_enabled = true
-	math_log_text.scroll_following = false # Top is always newest
-	math_log_text.add_theme_font_override("normal_font", sharetech_font)
-	math_log_text.add_theme_font_size_override("normal_font_size", 10)
-	math_panel.add_child(math_log_text)
-	
-	# --- COLUMN 2 (CENTER): SLOT 1 - VECTOR BATTLE RADAR ---
-	var col2_vbox = VBoxContainer.new()
-	col2_vbox.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	col2_vbox.size_flags_stretch_ratio = 1.2
-	grid_split.add_child(col2_vbox)
-	
+	# Slot 1: Vector Radar (Dominant Upper Area)
 	var radar_hdr = Label.new()
 	radar_hdr.text = "📡 SLOT 1: VECTOR BATTLE RADAR"
 	radar_hdr.add_theme_font_override("font", orbitron_font)
 	radar_hdr.add_theme_font_size_override("font_size", 10)
 	radar_hdr.add_theme_color_override("font_color", Color(0.0, 0.85, 1.0))
-	col2_vbox.add_child(radar_hdr)
-
+	col1_vbox.add_child(radar_hdr)
 	
 	var radar_panel = PanelContainer.new()
 	radar_panel.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	radar_panel.size_flags_stretch_ratio = 2.4
 	var r_style = StyleBoxFlat.new()
 	r_style.bg_color = Color(0.01, 0.02, 0.04, 0.95)
 	r_style.border_color = Color(0.0, 0.85, 1.0, 0.5)
 	r_style.set_border_width_all(1)
 	radar_panel.add_theme_stylebox_override("panel", r_style)
-	col2_vbox.add_child(radar_panel)
+	col1_vbox.add_child(radar_panel)
 	
 	radar_screen_rect = Control.new()
 	radar_screen_rect.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	radar_screen_rect.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	radar_panel.add_child(radar_screen_rect)
 	
-	# --- COLUMN 3 (RIGHT): SLOT 2 (THREAT SCANNER) & SLOT 3 (MACK VITALS) SHARED COLUMN ---
-	var col3_vbox = VBoxContainer.new()
-	col3_vbox.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	col3_vbox.size_flags_stretch_ratio = 1.0
-	col3_vbox.add_theme_constant_override("separation", 6)
-	grid_split.add_child(col3_vbox)
+	# Slot 4: Compact Combat Action & Calculation Terminal (Underneath Radar)
+	var math_hdr = Label.new()
+	math_hdr.text = "🎲 SLOT 4: COMBAT ACTION & CALCULATION FEED [TELEMETRY L2]"
+	math_hdr.add_theme_font_override("font", orbitron_font)
+	math_hdr.add_theme_font_size_override("font_size", 10)
+	math_hdr.add_theme_color_override("font_color", Color(0.0, 1.0, 0.85))
+	col1_vbox.add_child(math_hdr)
+	
+	var math_panel = PanelContainer.new()
+	math_panel.custom_minimum_size.y = 80
+	math_panel.size_flags_vertical = Control.SIZE_SHRINK_END
+	var m_style = StyleBoxFlat.new()
+	m_style.bg_color = Color(0.01, 0.03, 0.05, 0.95)
+	m_style.border_color = Color(0.0, 1.0, 0.85, 0.5)
+	m_style.set_border_width_all(1)
+	m_style.set_content_margin_all(8)
+	math_panel.add_theme_stylebox_override("panel", m_style)
+	col1_vbox.add_child(math_panel)
+	
+	math_log_text = RichTextLabel.new()
+	math_log_text.custom_minimum_size.y = 64
+	math_log_text.bbcode_enabled = true
+	math_log_text.scroll_following = false
+	math_log_text.fit_content = true
+	math_log_text.add_theme_font_override("normal_font", sharetech_font)
+	math_log_text.add_theme_font_size_override("normal_font_size", 12)
+	math_panel.add_child(math_log_text)
+	
+	# --- COLUMN 2 (RIGHT): SLOT 3 (MACK VITALS) & SLOT 2 (THREAT SCANNER) ---
+	var col2_vbox = VBoxContainer.new()
+	col2_vbox.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	col2_vbox.size_flags_stretch_ratio = 1.0
+	col2_vbox.add_theme_constant_override("separation", 6)
+	grid_split.add_child(col2_vbox)
 	
 	# Sub-Slot 3A: War-Rig Hull & Core Temp (Telemetry Upgrade L1)
 	var vitals_hdr = Label.new()
@@ -286,7 +301,7 @@ func _build_unified_telemetry_console() -> void:
 	vitals_hdr.add_theme_font_override("font", orbitron_font)
 	vitals_hdr.add_theme_font_size_override("font_size", 10)
 	vitals_hdr.add_theme_color_override("font_color", Color(1.0, 0.85, 0.0))
-	col3_vbox.add_child(vitals_hdr)
+	col2_vbox.add_child(vitals_hdr)
 	
 	var vitals_card = PanelContainer.new()
 	var v_style = StyleBoxFlat.new()
@@ -295,20 +310,18 @@ func _build_unified_telemetry_console() -> void:
 	v_style.set_border_width_all(1)
 	v_style.set_content_margin_all(6)
 	vitals_card.add_theme_stylebox_override("panel", v_style)
-	col3_vbox.add_child(vitals_card)
+	col2_vbox.add_child(vitals_card)
 	
 	var vitals_vbox = VBoxContainer.new()
+	vitals_vbox.add_theme_constant_override("separation", 5)
 	vitals_card.add_child(vitals_vbox)
 	
-	mack_hp_bar = ProgressBar.new()
-	mack_hp_bar.custom_minimum_size.y = 14
-	vitals_vbox.add_child(mack_hp_bar)
-	
-	side_vitals_label = Label.new()
-	side_vitals_label.text = "CORE TEMP: 75.0°C | ENGINE RPM: 4200"
-	side_vitals_label.add_theme_font_override("font", sharetech_font)
-	side_vitals_label.add_theme_font_size_override("font_size", 10)
-	side_vitals_label.add_theme_color_override("font_color", Color(0.9, 0.95, 1.0))
+	side_vitals_label = RichTextLabel.new()
+	side_vitals_label.bbcode_enabled = true
+	side_vitals_label.fit_content = true
+	side_vitals_label.text = "HULL INTEGRITY: 250 / 250 HP"
+	side_vitals_label.add_theme_font_override("normal_font", sharetech_font)
+	side_vitals_label.add_theme_font_size_override("normal_font_size", 11)
 	vitals_vbox.add_child(side_vitals_label)
 	
 	# Drone Button (Telemetry L3)
@@ -318,7 +331,7 @@ func _build_unified_telemetry_console() -> void:
 	drone_repair_btn.pressed.connect(_on_repair_drone_pressed)
 	vitals_vbox.add_child(drone_repair_btn)
 	
-	col3_vbox.add_child(HSeparator.new())
+	col2_vbox.add_child(HSeparator.new())
 	
 	# Sub-Slot 2: Hostile Threat Scanner
 	var enemy_hdr = Label.new()
@@ -326,12 +339,11 @@ func _build_unified_telemetry_console() -> void:
 	enemy_hdr.add_theme_font_override("font", orbitron_font)
 	enemy_hdr.add_theme_font_size_override("font_size", 10)
 	enemy_hdr.add_theme_color_override("font_color", Color(1.0, 0.2, 0.3))
-	col3_vbox.add_child(enemy_hdr)
-
+	col2_vbox.add_child(enemy_hdr)
 	
 	var enemy_scroll = ScrollContainer.new()
 	enemy_scroll.size_flags_vertical = Control.SIZE_EXPAND_FILL
-	col3_vbox.add_child(enemy_scroll)
+	col2_vbox.add_child(enemy_scroll)
 	
 	enemy_scanner_vbox = VBoxContainer.new()
 	enemy_scanner_vbox.size_flags_horizontal = Control.SIZE_EXPAND_FILL
@@ -361,6 +373,10 @@ func _update_console_data() -> void:
 	var telemetry_lvl: int = 0
 	if is_instance_valid(garage_mgr) and garage_mgr.fleet.has("BANQUO_CAR"):
 		telemetry_lvl = garage_mgr.fleet["BANQUO_CAR"]["upgrades"]["telemetry"].get("level", 0)
+	
+	# During instant mission simulations, bypass level locks so developer/player sees full simulation telemetry
+	if campaign_mgr.is_battle_in_progress:
+		telemetry_lvl = max(telemetry_lvl, 2)
 		
 	# Update Header Battle Action
 	if is_instance_valid(battle_status_label):
@@ -369,49 +385,116 @@ func _update_console_data() -> void:
 	# 1. Always Render Vector Radar (Slot 1)
 	_draw_radar_screen(campaign_mgr)
 	
-	# 2. Render Hostile Enemy Scanner (Slot 2)
+	# 2. Render Hostile Enemy Scanner & Faktaboks (Slot 2)
 	for child in enemy_scanner_vbox.get_children():
 		child.queue_free()
 		
 	for enemy in campaign_mgr.active_enemy_units:
 		var e_card = PanelContainer.new()
 		var e_style = StyleBoxFlat.new()
-		e_style.bg_color = Color(0.08, 0.03, 0.04, 0.85)
-		e_style.border_color = Color(1.0, 0.2, 0.3, 0.6)
+		e_style.bg_color = Color(0.06, 0.03, 0.04, 0.92)
+		e_style.border_color = Color(1.0, 0.25, 0.35, 0.7)
 		e_style.set_border_width_all(1)
-		e_style.set_content_margin_all(5)
+		e_style.set_content_margin_all(8)
 		e_card.add_theme_stylebox_override("panel", e_style)
 		enemy_scanner_vbox.add_child(e_card)
 		
 		var eVbox = VBoxContainer.new()
+		eVbox.add_theme_constant_override("separation", 4)
 		e_card.add_child(eVbox)
 		
-		var e_lbl = Label.new()
-		var e_name = enemy.get("name", "Hostile Target")
-		var e_icon = enemy.get("icon", "🚘")
-		var e_ac = enemy.get("ac", 12)
-		e_lbl.text = "%s %s [AC: %d]" % [e_icon, e_name, e_ac]
-		e_lbl.add_theme_color_override("font_color", Color(1.0, 0.8, 0.2))
-		eVbox.add_child(e_lbl)
+		# Unit Header & Hitpoints Left/Max Readout
+		var e_hdr_hbox = HBoxContainer.new()
+		eVbox.add_child(e_hdr_hbox)
 		
-		var hp_bar = ProgressBar.new()
-		hp_bar.custom_minimum_size.y = 10
-		hp_bar.max_value = enemy.get("max_hp", 100)
-		hp_bar.value = enemy.get("hp", 100)
-		eVbox.add_child(hp_bar)
+		var e_name = enemy.get("name", "Hostile Target")
+		var e_icon = enemy.get("icon", "🚙")
+		var e_ac = enemy.get("ac", 12)
+		var cur_hp: int = int(enemy.get("hp", 100))
+		var max_hp: int = int(enemy.get("max_hp", 100))
+		
+		var e_lbl = Label.new()
+		e_lbl.text = "%s %s" % [e_icon, e_name]
+		e_lbl.add_theme_font_override("font", orbitron_font)
+		e_lbl.add_theme_font_size_override("font_size", 11)
+		e_lbl.add_theme_color_override("font_color", Color(1.0, 0.85, 0.2))
+		e_lbl.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		e_hdr_hbox.add_child(e_lbl)
+		
+		var hp_lbl = Label.new()
+		hp_lbl.text = "❤️ %d / %d HP" % [cur_hp, max_hp]
+		hp_lbl.add_theme_font_override("font", sharetech_font)
+		hp_lbl.add_theme_font_size_override("font_size", 11)
+		if cur_hp < (max_hp * 0.35):
+			hp_lbl.add_theme_color_override("font_color", Color(1.0, 0.3, 0.3))
+		elif cur_hp < (max_hp * 0.70):
+			hp_lbl.add_theme_color_override("font_color", Color(1.0, 0.7, 0.2))
+		else:
+			hp_lbl.add_theme_color_override("font_color", Color(0.3, 1.0, 0.4))
+		e_hdr_hbox.add_child(hp_lbl)
+
+		# Technical Faktaboks (Equipment, Armor Class & Tactical Weakness)
+		var fakta_panel = PanelContainer.new()
+		var f_style = StyleBoxFlat.new()
+		f_style.bg_color = Color(0.02, 0.04, 0.06, 0.85)
+		f_style.border_color = Color(0.0, 0.85, 1.0, 0.35)
+		f_style.set_border_width_all(1)
+		f_style.set_content_margin_all(5)
+		fakta_panel.add_theme_stylebox_override("panel", f_style)
+		eVbox.add_child(fakta_panel)
+		
+		var fakta_vbox = VBoxContainer.new()
+		fakta_vbox.add_theme_constant_override("separation", 2)
+		fakta_panel.add_child(fakta_vbox)
+		
+		var weapons_arr = enemy.get("weapons", [enemy.get("weapon", "Autocannon")])
+		var upgrades_arr = enemy.get("upgrades", ["Graphene Armor L1"])
+		var weapon_str: String = ", ".join(weapons_arr)
+		var upgrade_str: String = ", ".join(upgrades_arr)
+		var weakness_str: String = enemy.get("weakness", "EMP Strike")
+		
+		var f_title = Label.new()
+		f_title.text = "📋 FAKTABOKS // SPECS & HARDPOINTS"
+		f_title.add_theme_font_override("font", sharetech_font)
+		f_title.add_theme_font_size_override("font_size", 9)
+		f_title.add_theme_color_override("font_color", Color(0.0, 0.85, 1.0))
+		fakta_vbox.add_child(f_title)
+		
+		var f_details = RichTextLabel.new()
+		f_details.bbcode_enabled = true
+		f_details.fit_content = true
+		f_details.add_theme_font_override("normal_font", sharetech_font)
+		f_details.add_theme_font_size_override("normal_font_size", 10)
+		f_details.text = "[color=#88CCFF]⚔️ Weaponry:[/color] %s\n[color=#FFD700]🛡️ Armor:[/color] AC %d | %s\n[color=#FF88AA]🎯 Weakness:[/color] %s" % [
+			weapon_str, e_ac, upgrade_str, weakness_str
+		]
+		fakta_vbox.add_child(f_details)
 		
 	# 3. Render Vitals (Slot 3 - Telemetry Level 1 Required)
-	mack_hp_bar.max_value = campaign_mgr.mack_max_hp
-	mack_hp_bar.value = campaign_mgr.mack_current_hp
+	var mack_cur: int = int(campaign_mgr.mack_current_hp)
+	var mack_max: int = int(campaign_mgr.mack_max_hp)
+	var core_temp: float = campaign_mgr.get("mack_core_temp")
+	var is_overheated: bool = campaign_mgr.get("is_mack_overheated")
+	var lockout_rnds: int = campaign_mgr.get("mack_overheat_lockout_turns")
+	var rpm: int = int(3200 + (core_temp / 120.0) * 3800) + randi() % 400
 	
-	if telemetry_lvl >= 1:
-		var core_temp: float = 75.0 + ((1.0 - (campaign_mgr.mack_current_hp / campaign_mgr.mack_max_hp)) * 35.0)
-		var rpm: int = 4000 + randi() % 800
-		side_vitals_label.text = "CORE TEMP: %.1f°C | ENGINE RPM: %d" % [core_temp, rpm]
+	var temp_color_hex: String = "#00FFCC"
+	if core_temp >= 115.0:
+		temp_color_hex = "#FF0033"
+	elif core_temp >= 95.0:
+		temp_color_hex = "#FFAA00"
+	elif core_temp >= 80.0:
+		temp_color_hex = "#FFEE55"
+
+	if is_overheated:
+		side_vitals_label.text = "HULL INTEGRITY: %d / %d HP\n🔥 [color=#FF0044][b]CRITICAL OVERHEAT: %.0f°C (LIMIT: 120°C)[/b][/color]\n❄️ [color=#FF9999]VENTING CYCLING: %d RNDS REMAINING[/color]" % [mack_cur, mack_max, core_temp, max(1, lockout_rnds)]
+		side_vitals_label.add_theme_color_override("font_color", Color(1.0, 0.3, 0.3))
+	elif telemetry_lvl >= 1:
+		side_vitals_label.text = "HULL INTEGRITY: %d / %d HP\nCORE TEMP: %.1f°C | ENGINE RPM: %d" % [mack_cur, mack_max, core_temp, rpm]
 		side_vitals_label.add_theme_color_override("font_color", Color(0.9, 0.95, 1.0))
 	else:
-		side_vitals_label.text = "[ 🔒 VITALS OFFLINE - BUY TELEMETRY L1 AT THE PIT ]"
-		side_vitals_label.add_theme_color_override("font_color", Color(1.0, 0.3, 0.3))
+		side_vitals_label.text = "HULL INTEGRITY: %d / %d HP\nCORE TEMP: %.1f°C [ 🔒 PIT TELEMETRY L1 REQUIRED ]" % [mack_cur, mack_max, core_temp]
+		side_vitals_label.add_theme_color_override("font_color", Color(0.8, 0.8, 0.8))
 		
 	# Drone Repair Button (Telemetry Level 3 Required)
 	if telemetry_lvl >= 3:
@@ -421,20 +504,14 @@ func _update_console_data() -> void:
 		drone_repair_btn.disabled = true
 		drone_repair_btn.text = "🔒 REPAIR DRONE OFFLINE [BUY TELEMETRY L3]"
 
-	# 4. Render Combat Math Log (Slot 4 - Telemetry Level 2 Required)
+	# 4. Render Combat Math Feed (Slot 4 - Telemetry Level 2 Required)
 	if telemetry_lvl >= 2:
-		var formatted_lines: Array[String] = []
-		var lines = campaign_mgr.math_log_lines
-		for idx in range(lines.size()):
-			var line_str: String = lines[idx]
-			if idx == 0:
-				# Clean high-contrast indicator: bright gold pulse arrow & bold white text
-				formatted_lines.append("[color=#FFCC00]▶ [b]" + line_str + "[/b][/color]")
-			else:
-				formatted_lines.append("  " + line_str)
-		math_log_text.text = "\n".join(formatted_lines)
+		var event_text: String = campaign_mgr.get("current_combat_event_text")
+		if event_text == "":
+			event_text = "[color=#888888]Scanning battlefield frequencies... Standby for tactical engagement.[/color]"
+		math_log_text.text = event_text
 	else:
-		math_log_text.text = "[color=#FF5555]🔒 COMBAT MATH MATRIX OFFLINE\n\nPurchase Telemetry Upgrade Level 2 at Porter's Pit Garage to unlock real-time D20 dice rolls & armor absorption telemetry![/color]"
+		math_log_text.text = "[color=#FF5555]🔒 COMBAT FEED OFFLINE\n\nPurchase Telemetry Upgrade Level 2 at Porter's Pit Garage to unlock real-time D20 dice rolls & combat telemetry![/color]"
 
 func _draw_radar_screen(campaign_mgr: Node) -> void:
 	for child in radar_screen_rect.get_children():

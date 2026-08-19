@@ -156,7 +156,7 @@ func _build_ui_hierarchy() -> void:
 	header_hbox.add_child(loadout_btn)
 
 	var sim_btn = Button.new()
-	sim_btn.text = "⚔️ SIMULATE BATTLE NOW"
+	sim_btn.text = "⚔️ SIMULATE BATTLE"
 	sim_btn.add_theme_font_override("font", orbitron_font)
 	sim_btn.add_theme_font_size_override("font_size", 10)
 	sim_btn.add_theme_color_override("font_color", Color(1.0, 0.2, 0.4))
@@ -168,6 +168,17 @@ func _build_ui_hierarchy() -> void:
 	)
 	header_hbox.add_child(sim_btn)
 
+	var stop_sim_btn = Button.new()
+	stop_sim_btn.text = "⏹️ STOP SIM"
+	stop_sim_btn.add_theme_font_override("font", orbitron_font)
+	stop_sim_btn.add_theme_font_size_override("font_size", 10)
+	stop_sim_btn.add_theme_color_override("font_color", Color(1.0, 0.4, 0.4))
+	stop_sim_btn.pressed.connect(func():
+		var campaign_mgr = get_parent().get_node_or_null("CampaignManager")
+		if is_instance_valid(campaign_mgr) and campaign_mgr.has_method("stop_simulated_mission"):
+			campaign_mgr.stop_simulated_mission()
+	)
+	header_hbox.add_child(stop_sim_btn)
 	
 	var close_btn = Button.new()
 	close_btn.text = " CLOSE "
@@ -245,7 +256,8 @@ func _refresh_mission_list() -> void:
 	for mission_id in missions_catalog.keys():
 		var mission = missions_catalog[mission_id]
 		var act_num = mission.get("act", 1)
-		var display_text = "Act " + str(act_num) + ": " + mission.get("name", mission_id)
+		var op_tag = "[MACK]" if mission.get("operative", "MACK") == "MACK" else "[BANQUO]"
+		var display_text = "%s Act %s: %s" % [op_tag, str(act_num), mission.get("name", mission_id)]
 		mission_item_list.add_item(display_text)
 		mission_item_list.set_item_metadata(mission_item_list.get_item_count() - 1, mission_id)
 	
@@ -303,6 +315,22 @@ func _populate_mission_form() -> void:
 		_update_list_item_text()
 	)
 	act_hbox.add_child(act_opt)
+
+	# Designated Operative / Executor (Mack vs Banquo)
+	var op_hbox = HBoxContainer.new()
+	form_fields_container.add_child(op_hbox)
+	var lbl_op = Label.new(); lbl_op.text = "Operative:"; lbl_op.custom_minimum_size.x = 140
+	op_hbox.add_child(lbl_op)
+	var op_opt = OptionButton.new()
+	op_opt.add_item("🚛 MACK // Heavy War-Rig Convoy Battles", 0)
+	op_opt.add_item("🏃 BANQUO // On-Foot Solo Street / Infiltration", 1)
+	var current_op: String = mission.get("operative", "MACK")
+	op_opt.select(0 if current_op == "MACK" else 1)
+	op_opt.item_selected.connect(func(idx):
+		mission["operative"] = "MACK" if idx == 0 else "BANQUO"
+		_update_list_item_text()
+	)
+	op_hbox.add_child(op_opt)
 	
 	# Description
 	var desc_hbox = HBoxContainer.new()
@@ -394,9 +422,10 @@ func _update_list_item_text() -> void:
 	if not missions_catalog.has(active_selected_mission_id):
 		return
 	var mission = missions_catalog[active_selected_mission_id]
+	var op_tag = "[MACK]" if mission.get("operative", "MACK") == "MACK" else "[BANQUO]"
 	for i in range(mission_item_list.get_item_count()):
 		if mission_item_list.get_item_metadata(i) == active_selected_mission_id:
-			mission_item_list.set_item_text(i, "Act " + str(mission.get("act", 1)) + ": " + mission.get("name", ""))
+			mission_item_list.set_item_text(i, "%s Act %s: %s" % [op_tag, str(mission.get("act", 1)), mission.get("name", "")])
 			break
 
 func _on_round_tab_changed(tab_idx: int) -> void:

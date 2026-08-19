@@ -129,8 +129,11 @@ func generate_city_from_seed(target_seed: int) -> void:
 	else:
 		rng.randomize()
 
+	_calculate_street_grid_cuts()
 	_build_ground_and_grid()
 	_generate_city_grid()
+	_build_cyberhighway_corridor()
+	_build_northern_barren_metropolis()
 	_spawn_exit_points()
 	_spawn_food_trucks()
 	_spawn_steam_manholes()
@@ -150,9 +153,8 @@ func _spawn_exit_points() -> void:
 	var half_x: float = city_size_x / 2.0
 	var half_z: float = city_size_z / 2.0
 	
-	# Edge road locations (Broadway or central street corridor)
+	# Edge road locations (South, West, East boundaries - North is open to the Cyber-Highway!)
 	var exits = [
-		{"dir": "NORTH", "pos": Vector3(active_broadway_x, 0.0, -half_z + 10.0), "size": Vector3(30.0, 8.0, 4.0), "color": Color(0.0, 0.85, 1.0)}, # Cyan
 		{"dir": "SOUTH", "pos": Vector3(active_broadway_x, 0.0, half_z - 10.0), "size": Vector3(30.0, 8.0, 4.0), "color": Color(1.0, 0.0, 0.8)}, # Magenta
 		{"dir": "WEST", "pos": Vector3(-half_x + 10.0, 0.0, active_broadway_z), "size": Vector3(4.0, 8.0, 30.0), "color": Color(0.0, 1.0, 0.4)}, # Emerald
 		{"dir": "EAST", "pos": Vector3(half_x - 10.0, 0.0, active_broadway_z), "size": Vector3(4.0, 8.0, 30.0), "color": Color(1.0, 0.8, 0.0)}  # Amber
@@ -461,19 +463,31 @@ func _build_ground_and_grid() -> void:
 	grid_lines.surface_end()
 
 	# --------------------------------------------------------------------------
-	# 4 PERIMETER LASER BARRIER COLLISION WALLS (PREVENTS CAR FROM FALLING INTO THE VOID)
+	# PERIMETER LASER BARRIER COLLISION WALLS (PREVENTS CAR FROM FALLING INTO THE VOID)
 	# --------------------------------------------------------------------------
+	# South, East, and West walls are solid.
+	# North wall is split into Left & Right segments to leave an open 50m highway throat centered on active_broadway_x!
 	var wall_thickness: float = 4.0
 	var wall_height: float = 20.0
+	var highway_opening_width: float = 50.0
+
+	var north_left_w: float = max(0.0, (active_broadway_x - (-half_x)) - (highway_opening_width * 0.5))
+	var north_left_cx: float = -half_x + (north_left_w * 0.5)
+
+	var north_right_w: float = max(0.0, (half_x - active_broadway_x) - (highway_opening_width * 0.5))
+	var north_right_cx: float = half_x - (north_right_w * 0.5)
 
 	var wall_configs: Array[Dictionary] = [
-		{"pos": Vector3(0.0, wall_height / 2.0, -half_z), "size": Vector3(city_size_x, wall_height, wall_thickness)}, # North Wall
+		{"pos": Vector3(north_left_cx, wall_height / 2.0, -half_z), "size": Vector3(north_left_w, wall_height, wall_thickness)}, # North Left Wall
+		{"pos": Vector3(north_right_cx, wall_height / 2.0, -half_z), "size": Vector3(north_right_w, wall_height, wall_thickness)}, # North Right Wall
 		{"pos": Vector3(0.0, wall_height / 2.0, half_z), "size": Vector3(city_size_x, wall_height, wall_thickness)},  # South Wall
 		{"pos": Vector3(-half_x, wall_height / 2.0, 0.0), "size": Vector3(wall_thickness, wall_height, city_size_z)}, # West Wall
 		{"pos": Vector3(half_x, wall_height / 2.0, 0.0), "size": Vector3(wall_thickness, wall_height, city_size_z)}   # East Wall
 	]
 
 	for cfg in wall_configs:
+		if cfg["size"].x <= 0.0 or cfg["size"].z <= 0.0:
+			continue
 		var wall_body = StaticBody3D.new()
 		wall_body.name = "PerimeterLaserBarrierWall"
 		wall_body.position = cfg["pos"]
@@ -516,23 +530,10 @@ func _generate_window_texture(neon_color: Color) -> Texture2D:
 # 3. CITY GRID LAYOUT & STREET NETWORK
 # ==============================================================================
 
-# Divides the city into blocks separated by main streets, secondary avenues, parks, rivers, and parking lots
-func _generate_city_grid() -> void:
-	# Palette of cyberpunk neon colors for building accents & window illumination
-	var neon_colors: Array[Color] = [
-		Color(0.0, 0.85, 1.0),  # Cyan / Electric Blue
-		Color(0.0, 0.4, 1.0),   # Deep Blue
-		Color(1.0, 0.0, 0.8),   # Hot Magenta
-		Color(1.0, 0.8, 0.0)    # Amber Gold
-	]
-
-	# --------------------------------------------------------------------------
-	# 1. GRID-ALIGNED STREET CUTS (10m GRID UNITS, 2-LANE 20m STREETS)
-	# --------------------------------------------------------------------------
+func _calculate_street_grid_cuts() -> void:
 	var half_x_dim: float = city_size_x / 2.0
 	var half_z_dim: float = city_size_z / 2.0
 
-	# Dynamically calculate street cuts across the full city map dimensions (90m spacing)
 	var base_x_cuts: Array[float] = []
 	var cur_x: float = -half_x_dim + 30.0
 	while cur_x <= half_x_dim - 30.0:
@@ -548,14 +549,25 @@ func _generate_city_grid() -> void:
 	var broadway_x_idx: int = rng.randi_range(1, base_x_cuts.size() - 2)
 	var broadway_z_idx: int = rng.randi_range(1, base_z_cuts.size() - 2)
 
-	# Strictly grid-aligned street corridors (aligned to 10m grid lines)
-	var x_streets: Array[float] = base_x_cuts.duplicate()
-	var z_streets: Array[float] = base_z_cuts.duplicate()
+	active_x_streets = base_x_cuts.duplicate()
+	active_z_streets = base_z_cuts.duplicate()
+	active_broadway_x = active_x_streets[broadway_x_idx]
+	active_broadway_z = active_z_streets[broadway_z_idx]
 
-	active_x_streets = x_streets
-	active_z_streets = z_streets
-	active_broadway_x = x_streets[broadway_x_idx]
-	active_broadway_z = z_streets[broadway_z_idx]
+# Divides the city into blocks separated by main streets, secondary avenues, parks, rivers, and parking lots
+func _generate_city_grid() -> void:
+	# Palette of cyberpunk neon colors for building accents & window illumination
+	var neon_colors: Array[Color] = [
+		Color(0.0, 0.85, 1.0),  # Cyan / Electric Blue
+		Color(0.0, 0.4, 1.0),   # Deep Blue
+		Color(1.0, 0.0, 0.8),   # Hot Magenta
+		Color(1.0, 0.8, 0.0)    # Amber Gold
+	]
+
+	var x_streets: Array[float] = active_x_streets
+	var z_streets: Array[float] = active_z_streets
+	var broadway_x_idx: int = x_streets.find(active_broadway_x)
+	var broadway_z_idx: int = z_streets.find(active_broadway_z)
 
 	# --------------------------------------------------------------------------
 	# 2. SEED-DRIVEN SPECIAL DISTRICT ALLOCATION (PARKS, RIVER, PARKING LOTS)
@@ -616,6 +628,8 @@ func _generate_city_grid() -> void:
 				# Never place river or skyscraper cluster directly over origin (0,0) where the car spawns at game start
 				var overlaps_origin: bool = (abs(center.x) < 35.0 and abs(center.z) < 35.0)
 				var is_river_cell: bool = has_river and not overlaps_origin and ((river_axis == "X" and ix == river_cell_index) or (river_axis == "Z" and iz == river_cell_index))
+				# Never place buildings directly blocking the North Broadway highway corridor throat
+				var is_north_highway_throat: bool = (abs(center.x - active_broadway_x) < 30.0 and center.z < -120.0)
 
 				if is_river_cell:
 					_spawn_cyber_river_canal(center, size)
@@ -627,7 +641,7 @@ func _generate_city_grid() -> void:
 						# Distinct park types: First park gets MONUMENT, Second park gets STAGE!
 						var park_type: String = "MONUMENT" if (current_cell_idx == park_indices[0]) else "STAGE"
 						_spawn_cyber_park(center, size, neon_colors, park_type)
-				elif current_cell_idx in parking_indices:
+				elif current_cell_idx in parking_indices or is_north_highway_throat:
 					_spawn_parking_lot(center, size, neon_colors)
 				else:
 					_create_block_cluster(center, size, neon_colors)
@@ -2375,3 +2389,260 @@ class SubtleConcertDopplerAudio extends AudioStreamPlayer3D:
 			target_pitch = 1.0 + shift
 
 		pitch_scale = lerp(pitch_scale, target_pitch, clamp(smoothing_speed * delta, 0.0, 1.0))
+
+# ==============================================================================
+# NORTHERN SECTOR CORRIDOR HIGHWAY & BARREN METROPOLIS SYSTEM
+# ==============================================================================
+
+const NORTH_HIGHWAY_LENGTH: float = 2300.0
+const NORTH_HIGHWAY_WIDTH: float = 40.0
+const NORTH_CITY_CENTER_Z: float = -2800.0
+
+func _build_cyberhighway_corridor() -> void:
+	var highway_root = Node3D.new()
+	highway_root.name = "CyberHighwayCorridor"
+	add_child(highway_root)
+
+	# 1. Physical Multilane Asphalt Highway Collider & Mesh (From Z = -270m down to Z = -2570m)
+	# Bridges seamlessly with the Central City ground at Z = -290m
+	var highway_body = StaticBody3D.new()
+	highway_body.name = "HighwayBody"
+	highway_body.position = Vector3(active_broadway_x, -0.5, -1420.0) # Centered at Z = -1420m
+
+	var col = CollisionShape3D.new()
+	var box_shape = BoxShape3D.new()
+	box_shape.size = Vector3(NORTH_HIGHWAY_WIDTH, 1.0, NORTH_HIGHWAY_LENGTH)
+	col.shape = box_shape
+	highway_body.add_child(col)
+
+	var road_inst = MeshInstance3D.new()
+	var plane_mesh = PlaneMesh.new()
+	plane_mesh.size = Vector2(NORTH_HIGHWAY_WIDTH, NORTH_HIGHWAY_LENGTH)
+	road_inst.mesh = plane_mesh
+	road_inst.position = Vector3(0.0, 0.46, 0.0) # Surface at Y = -0.04m, smooth transition over ground
+
+	var road_mat = StandardMaterial3D.new()
+	road_mat.albedo_color = Color(0.012, 0.010, 0.018)
+	road_mat.roughness = 0.65
+	road_mat.metallic = 0.20
+	road_inst.material_override = road_mat
+	highway_body.add_child(road_inst)
+	highway_root.add_child(highway_body)
+
+	# 2. Glowing Road Shoulder Guardrails (Left & Right Glowing Barriers)
+	var left_rail = _build_glowing_guardrail(Vector3(active_broadway_x - (NORTH_HIGHWAY_WIDTH * 0.5), 0.6, -1420.0), NORTH_HIGHWAY_LENGTH, Color(0.0, 1.0, 0.85))
+	var right_rail = _build_glowing_guardrail(Vector3(active_broadway_x + (NORTH_HIGHWAY_WIDTH * 0.5), 0.6, -1420.0), NORTH_HIGHWAY_LENGTH, Color(1.0, 0.45, 0.0))
+	highway_root.add_child(left_rail)
+	highway_root.add_child(right_rail)
+
+	# 3. Holographic Speed Gantries & Emergency Pylons every 250m along the highway
+	var gantry_spacing: float = 250.0
+	var current_z: float = -450.0
+	var gantry_idx: int = 1
+
+	while current_z >= -2350.0:
+		_build_highway_overhead_gantry(highway_root, Vector3(active_broadway_x, 0.0, current_z), gantry_idx)
+		current_z -= gantry_spacing
+		gantry_idx += 1
+
+func _build_glowing_guardrail(pos: Vector3, length: float, glow_color: Color) -> Node3D:
+	var rail_body = StaticBody3D.new()
+	rail_body.position = pos
+
+	var col = CollisionShape3D.new()
+	var box = BoxShape3D.new()
+	box.size = Vector3(0.8, 1.2, length)
+	col.shape = box
+	rail_body.add_child(col)
+
+	var mesh_inst = MeshInstance3D.new()
+	var b_mesh = BoxMesh.new()
+	b_mesh.size = Vector3(0.8, 1.2, length)
+	mesh_inst.mesh = b_mesh
+
+	var mat = StandardMaterial3D.new()
+	mat.albedo_color = Color(0.02, 0.02, 0.04)
+	mat.emission_enabled = true
+	mat.emission = glow_color
+	mat.emission_energy_multiplier = 4.0
+	mesh_inst.material_override = mat
+	rail_body.add_child(mesh_inst)
+
+	return rail_body
+
+func _build_highway_overhead_gantry(parent: Node3D, pos: Vector3, index: int) -> void:
+	var gantry_root = Node3D.new()
+	gantry_root.position = pos
+	parent.add_child(gantry_root)
+
+	# Left & Right Steel Vertical Trusses
+	var truss_h: float = 12.0
+	var truss_w: float = NORTH_HIGHWAY_WIDTH + 4.0
+
+	var left_col = CollisionShape3D.new()
+	var col_box = BoxShape3D.new()
+	col_box.size = Vector3(1.2, truss_h, 1.2)
+	left_col.shape = col_box
+	left_col.position = Vector3(-truss_w * 0.5, truss_h * 0.5, 0.0)
+
+	var right_col = CollisionShape3D.new()
+	right_col.shape = col_box
+	right_col.position = Vector3(truss_w * 0.5, truss_h * 0.5, 0.0)
+
+	var static_truss = StaticBody3D.new()
+	static_truss.add_child(left_col)
+	static_truss.add_child(right_col)
+	gantry_root.add_child(static_truss)
+
+	var truss_mesh = MeshInstance3D.new()
+	var t_box = BoxMesh.new()
+	t_box.size = Vector3(truss_w, 1.0, 1.2)
+	truss_mesh.mesh = t_box
+	truss_mesh.position = Vector3(0.0, truss_h, 0.0)
+
+	var t_mat = StandardMaterial3D.new()
+	t_mat.albedo_color = Color(0.05, 0.06, 0.08)
+	t_mat.metallic = 0.9
+	t_mat.roughness = 0.2
+	truss_mesh.material_override = t_mat
+	gantry_root.add_child(truss_mesh)
+
+	# Holographic Highway OSD Sign
+	var sign_lbl = Label3D.new()
+	var dist_km: float = (abs(pos.z) - 300.0) / 1000.0
+	sign_lbl.text = "⚡ NORTH SECTOR 00 CORRIDOR // CHECKPOINT #%02d\nSPEED LIMIT: 180 KM/H // DISTANCE: +%.1f KM" % [index, dist_km]
+	sign_lbl.position = Vector3(0.0, truss_h - 1.2, 0.8)
+	sign_lbl.font_size = 22
+	sign_lbl.pixel_size = 0.006
+	sign_lbl.modulate = Color(0.0, 1.0, 0.85) if (index % 2 == 1) else Color(1.0, 0.6, 0.0)
+	sign_lbl.outline_modulate = Color(0.0, 0.0, 0.0)
+	sign_lbl.outline_size = 6
+	gantry_root.add_child(sign_lbl)
+
+# ==============================================================================
+# NORTHERN BARREN METROPOLIS ("SECTOR 00" - 600m x 600m)
+# ==============================================================================
+func _build_northern_barren_metropolis() -> void:
+	var north_root = Node3D.new()
+	north_root.name = "NorthernBarrenCity"
+	north_root.position = Vector3(0.0, 0.0, NORTH_CITY_CENTER_Z)
+	add_child(north_root)
+
+	# 1. Ground Plane (600m x 600m) with Cold Matte Asphalt
+	var ground_body = StaticBody3D.new()
+	var ground_col = CollisionShape3D.new()
+	var ground_box = BoxShape3D.new()
+	ground_box.size = Vector3(city_size_x, 1.0, city_size_z)
+	ground_col.shape = ground_box
+	ground_body.position = Vector3(0.0, -0.5, 0.0)
+	ground_body.add_child(ground_col)
+
+	var ground_mesh = MeshInstance3D.new()
+	var plane = PlaneMesh.new()
+	plane.size = Vector2(city_size_x, city_size_z)
+	ground_mesh.mesh = plane
+	ground_mesh.position = Vector3(0.0, 0.45, 0.0)
+
+	var ground_mat = StandardMaterial3D.new()
+	ground_mat.albedo_color = Color(0.008, 0.006, 0.010) # Cold blackened asphalt
+	ground_mat.roughness = 0.90                          # Matte, desolate texture
+	ground_mat.metallic = 0.05
+	ground_mesh.material_override = ground_mat
+	ground_body.add_child(ground_mesh)
+	north_root.add_child(ground_body)
+
+	# 2. Dim Cold Wireframe Grid (Faint Amber / Blood Crimson)
+	var barren_grid_lines = ImmediateMesh.new()
+	var barren_grid_inst = MeshInstance3D.new()
+	barren_grid_inst.mesh = barren_grid_lines
+	barren_grid_inst.position = Vector3(0.0, 0.02, 0.0)
+
+	var barren_grid_mat = StandardMaterial3D.new()
+	barren_grid_mat.albedo_color = Color(0, 0, 0)
+	barren_grid_mat.emission_enabled = true
+	barren_grid_mat.emission = Color(0.8, 0.2, 0.1) # Cold Industrial Ember Crimson
+	barren_grid_mat.emission_energy_multiplier = 1.2 # Dim, eerie emission
+	barren_grid_inst.material_override = barren_grid_mat
+	north_root.add_child(barren_grid_inst)
+
+	# Draw 20m grid lines across 600m x 600m
+	var half_x: float = city_size_x * 0.5
+	var half_z: float = city_size_z * 0.5
+
+	barren_grid_lines.clear_surfaces()
+	barren_grid_lines.surface_begin(Mesh.PRIMITIVE_LINES)
+	for gx in range(-int(half_x), int(half_x) + 1, 20):
+		barren_grid_lines.surface_add_vertex(Vector3(gx, 0.0, -half_z))
+		barren_grid_lines.surface_add_vertex(Vector3(gx, 0.0, half_z))
+	for gz in range(-int(half_z), int(half_z) + 1, 20):
+		barren_grid_lines.surface_add_vertex(Vector3(-half_x, 0.0, gz))
+		barren_grid_lines.surface_add_vertex(Vector3(half_x, 0.0, gz))
+	barren_grid_lines.surface_end()
+
+	# 3. Barren Megastructures & Brutalist Skeletal Towers
+	# Placed with wide open abandoned plazas and zero crowds for an eerie wasteland feel
+	var north_rng = RandomNumberGenerator.new()
+	north_rng.seed = 99991 # Fixed barren layout seed
+
+	for bx in range(-4, 5):
+		for bz in range(-4, 5):
+			# Keep Broadway thoroughfare corridor clear
+			var pos_x: float = bx * 65.0
+			var pos_z: float = bz * 65.0
+			if abs(pos_x - active_broadway_x) < 25.0:
+				continue
+			# Leave a large central abandoned plaza
+			if abs(pos_x) < 40.0 and abs(pos_z) < 40.0:
+				continue
+
+			# 50% density for sparse, abandoned decay
+			if north_rng.randf() > 0.55:
+				continue
+
+			_build_barren_brutalist_tower(north_root, Vector3(pos_x, 0.0, pos_z), north_rng)
+
+	# 4. Central Barren Monolith / Ruined Core
+	var monolith_lbl = Label3D.new()
+	monolith_lbl.text = "⚠️ SECTOR 00 // DECOMMISSIONED ZONE\n[ABANDONED INDUSTRIAL SECTOR - ZERO CIVILIAN OCCUPANCY]"
+	monolith_lbl.position = Vector3(0.0, 16.0, 0.0)
+	monolith_lbl.font_size = 26
+	monolith_lbl.pixel_size = 0.008
+	monolith_lbl.modulate = Color(1.0, 0.25, 0.15)
+	monolith_lbl.outline_modulate = Color(0.0, 0.0, 0.0)
+	monolith_lbl.outline_size = 8
+	north_root.add_child(monolith_lbl)
+
+func _build_barren_brutalist_tower(parent: Node3D, pos: Vector3, b_rng: RandomNumberGenerator) -> void:
+	var w: float = b_rng.randf_range(30.0, 48.0)
+	var d: float = b_rng.randf_range(30.0, 48.0)
+	var h: float = b_rng.randf_range(60.0, 160.0)
+
+	var b_body = StaticBody3D.new()
+	b_body.position = pos + Vector3(0.0, h * 0.5, 0.0)
+
+	var col = CollisionShape3D.new()
+	var box = BoxShape3D.new()
+	box.size = Vector3(w, h, d)
+	col.shape = box
+	b_body.add_child(col)
+
+	var mesh_inst = MeshInstance3D.new()
+	var b_box = BoxMesh.new()
+	b_box.size = Vector3(w, h, d)
+	mesh_inst.mesh = b_box
+
+	# Dark, rusted, weathered industrial concrete
+	var mat = StandardMaterial3D.new()
+	mat.albedo_color = Color(0.02, 0.02, 0.03)
+	mat.roughness = 0.95
+	mat.metallic = 0.10
+
+	# 25% chance of faint, glitching broken ember strip
+	if b_rng.randf() < 0.25:
+		mat.emission_enabled = true
+		mat.emission = Color(1.0, 0.2, 0.0)
+		mat.emission_energy_multiplier = 0.8 # Faint dead glow
+	mesh_inst.material_override = mat
+	b_body.add_child(mesh_inst)
+
+	parent.add_child(b_body)

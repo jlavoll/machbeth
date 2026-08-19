@@ -346,7 +346,171 @@ func _build_form_for_selected_item() -> void:
 		field_label.custom_minimum_size = Vector2(150, 0)
 		row_hbox.add_child(field_label)
 		
-		if typeof(val) == TYPE_INT or typeof(val) == TYPE_FLOAT:
+		# --- DYNAMIC DROPDOWN SELECTORS ---
+		if current_category == CatalogCategory.ENEMIES and key == "equipped_weapons":
+			var w_opt = OptionButton.new()
+			w_opt.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+			var weapon_keys = weapons_catalog.keys()
+			var current_w_arr = val if typeof(val) == TYPE_ARRAY else [str(val)]
+			var current_w_id = current_w_arr[0] if current_w_arr.size() > 0 else ""
+			var selected_w_idx = 0
+			for wi in range(weapon_keys.size()):
+				var wid = weapon_keys[wi]
+				var wname = weapons_catalog[wid].get("name", wid)
+				w_opt.add_item("%s (%s)" % [wname, wid])
+				if wid == current_w_id:
+					selected_w_idx = wi
+			w_opt.select(selected_w_idx)
+			w_opt.item_selected.connect(func(idx):
+				var picked_w_id = weapon_keys[idx]
+				entry_data["equipped_weapons"] = [picked_w_id]
+				_update_status_banner("Equipped weapon updated: " + picked_w_id)
+			)
+			row_hbox.add_child(w_opt)
+
+		elif current_category == CatalogCategory.ENEMIES and key == "equipped_upgrades":
+			var u_opt = OptionButton.new()
+			u_opt.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+			var upgrade_keys = upgrades_catalog.keys()
+			var current_u_arr = val if typeof(val) == TYPE_ARRAY else [str(val)]
+			var current_u_id = current_u_arr[0] if current_u_arr.size() > 0 else ""
+			var selected_u_idx = 0
+			for ui in range(upgrade_keys.size()):
+				var uid = upgrade_keys[ui]
+				var uname = upgrades_catalog[uid].get("name", uid)
+				u_opt.add_item("%s (%s)" % [uname, uid])
+				if uid == current_u_id:
+					selected_u_idx = ui
+			u_opt.select(selected_u_idx)
+			u_opt.item_selected.connect(func(idx):
+				var picked_u_id = upgrade_keys[idx]
+				entry_data["equipped_upgrades"] = [picked_u_id]
+				_update_status_banner("Equipped upgrade updated: " + picked_u_id)
+			)
+			row_hbox.add_child(u_opt)
+
+		elif current_category == CatalogCategory.WEAPONS and key == "weapon_type":
+			var type_opt = OptionButton.new()
+			type_opt.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+			var weapon_types = [
+				"Kinetic",
+				"EMP",
+				"Plasma",
+				"Energy",
+				"Laser",
+				"Beam",
+				"Heavy Ordnance",
+				"Bio-Tech",
+				"Melee/Ramming"
+			]
+			var sel_t_idx: int = 0
+			for ti in range(weapon_types.size()):
+				type_opt.add_item(weapon_types[ti])
+				if str(val).to_lower() == weapon_types[ti].to_lower():
+					sel_t_idx = ti
+			type_opt.select(sel_t_idx)
+			type_opt.item_selected.connect(func(idx):
+				_update_entry_attribute("weapon_type", weapon_types[idx])
+			)
+			row_hbox.add_child(type_opt)
+
+		elif current_category == CatalogCategory.UPGRADES and key == "stats_modified":
+			# Option 2: Fixed Stat Checklist Grid with SpinBoxes
+			var stats_dict: Dictionary = val if typeof(val) == TYPE_DICTIONARY else {}
+			var stat_panel = PanelContainer.new()
+			stat_panel.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+			var sp_style = StyleBoxFlat.new()
+			sp_style.bg_color = Color(0.02, 0.05, 0.08, 0.9)
+			sp_style.border_color = Color(0.0, 0.85, 1.0, 0.4)
+			sp_style.set_border_width_all(1)
+			sp_style.set_content_margin_all(8)
+			stat_panel.add_theme_stylebox_override("panel", sp_style)
+			
+			var stat_vbox = VBoxContainer.new()
+			stat_vbox.add_theme_constant_override("separation", 6)
+			stat_panel.add_child(stat_vbox)
+			
+			var stat_defs = [
+				{"id": "hull_hp_bonus", "label": "🛡️ Hull HP Bonus", "step": 10.0, "min": 0.0, "max": 1000.0, "unit": "HP"},
+				{"id": "armor_absorbed", "label": "🛡️ Armor Absorption", "step": 1.0, "min": 0.0, "max": 100.0, "unit": "DMG"},
+				{"id": "cooling_rate", "label": "❄️ Engine Cooling Rate", "step": 1.0, "min": 0.0, "max": 50.0, "unit": "°C/rnd"},
+				{"id": "attack_bonus", "label": "🎯 D20 Attack Roll Bonus", "step": 1.0, "min": 0.0, "max": 30.0, "unit": "Roll+"},
+				{"id": "crit_threshold_reduction", "label": "⚡ Crit Range Expansion", "step": 1.0, "min": 0.0, "max": 10.0, "unit": "Range"},
+				{"id": "damage_multiplier", "label": "💥 Damage Multiplier", "step": 0.05, "min": 1.0, "max": 5.0, "unit": "x"},
+				{"id": "evasion_bonus", "label": "🏃 Evasion Bonus", "step": 1.0, "min": 0.0, "max": 20.0, "unit": "AC+"}
+			]
+			
+			for sdef in stat_defs:
+				var sid: String = sdef["id"]
+				var s_row = HBoxContainer.new()
+				s_row.add_theme_constant_override("separation", 8)
+				
+				var is_active: bool = stats_dict.has(sid)
+				var cur_val: float = float(stats_dict.get(sid, 0.0 if sid != "damage_multiplier" else 1.0))
+				
+				var chk = CheckBox.new()
+				chk.text = sdef["label"]
+				chk.button_pressed = is_active
+				chk.custom_minimum_size.x = 200
+				chk.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+				s_row.add_child(chk)
+				
+				var spin = SpinBox.new()
+				spin.min_value = sdef["min"]
+				spin.max_value = sdef["max"]
+				spin.step = sdef["step"]
+				spin.value = cur_val
+				spin.editable = is_active
+				spin.custom_minimum_size.x = 110
+				s_row.add_child(spin)
+				
+				var unit_lbl = Label.new()
+				unit_lbl.text = sdef["unit"]
+				unit_lbl.custom_minimum_size.x = 45
+				unit_lbl.add_theme_color_override("font_color", Color(0.7, 0.8, 0.9))
+				s_row.add_child(unit_lbl)
+				
+				chk.toggled.connect(func(pressed):
+					spin.editable = pressed
+					if pressed:
+						var v = spin.value
+						if sid == "damage_multiplier" and v < 1.0:
+							v = 1.15
+							spin.value = v
+						elif sid != "damage_multiplier" and v == 0.0:
+							v = sdef["step"]
+							spin.value = v
+						stats_dict[sid] = v
+					else:
+						stats_dict.erase(sid)
+					entry_data["stats_modified"] = stats_dict
+					_update_status_banner("Updated stats_modified for: " + entry_data.get("name", ""))
+				)
+				
+				spin.value_changed.connect(func(new_v):
+					if chk.button_pressed:
+						stats_dict[sid] = new_v
+						entry_data["stats_modified"] = stats_dict
+				)
+				
+				stat_vbox.add_child(s_row)
+				
+			row_hbox.add_child(stat_panel)
+
+		elif current_category == CatalogCategory.ENEMIES and key == "threat":
+			var threat_opt = OptionButton.new()
+			threat_opt.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+			var threats = ["STANDARD", "ELITE", "MINI_BOSS", "BOSS"]
+			for ti in range(threats.size()):
+				threat_opt.add_item(threats[ti])
+				if str(val).to_upper() == threats[ti]:
+					threat_opt.select(ti)
+			threat_opt.item_selected.connect(func(idx):
+				_update_entry_attribute("threat", threats[idx])
+			)
+			row_hbox.add_child(threat_opt)
+
+		elif typeof(val) == TYPE_INT or typeof(val) == TYPE_FLOAT:
 			var spin_box = SpinBox.new()
 			spin_box.min_value = 0
 			spin_box.max_value = 9999

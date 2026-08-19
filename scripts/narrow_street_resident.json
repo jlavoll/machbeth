@@ -1,13 +1,134 @@
 {
-	"speaker_display_name": "ALLEY LOCAL",
-	"speaker_subtitle": "NARROW STREET RESIDENT",
-	"speaker_color": "#0066FF",
+	"speaker_display_name": "VANCE // ALLEY RESIDENT",
+	"speaker_subtitle": "NARROW PASSAGE SURVEILLANCE LOCALS",
+	"speaker_color": "#0088FF",
 	"nodes": {
 		"start": {
-			"text": "This is my street. Mind your own business.",
+			"text": "*A trenchcoat-clad figure peers out from behind rusted air conditioning ducts.* \"You stepping heavy in this alley, stranger. Corporate snitch or street runner?\"",
 			"choices": [
 				{
-					"text": "[OK]",
+					"text": "\"Just passing through. What are you watching for?\"",
+					"target": "drone_paranoia"
+				},
+				{
+					"text": "\"I ride with Banquo and Mack.\"",
+					"target": "mack_banquo_reputation"
+				},
+				{
+					"text": "\"Any corporate movement down these backstreets?\"",
+					"target": "alley_intel"
+				},
+				{
+					"text": "\"Mind your own business.\"",
+					"target": "exit"
+				}
+			]
+		},
+		"start_night": {
+			"text": "*Vance lowers a thermal visor.* \"It's dark. Shadows have teeth out here after curfew. The Red Crows and Fife patrol drones are playing cat-and-mouse on 5th Avenue.\"",
+			"choices": [
+				{
+					"text": "\"Where's the best route to avoid corporate cameras?\"",
+					"target": "stealth_routes"
+				},
+				{
+					"text": "\"Seen any Fife security squads?\"",
+					"target": "alley_intel"
+				},
+				{
+					"text": "\"Stay in the shadows, friend.\"",
+					"target": "exit"
+				}
+			]
+		},
+		"start_post_battle": {
+			"text": "*Vance lets out a dry whistle.* \"The sirens haven't stopped since Mack's War-Rig blasted through the north perimeter. Concrete barriers didn't even slow him down!\"",
+			"choices": [
+				{
+					"text": "\"Corporate control is crumbling.\"",
+					"target": "alley_celebrate"
+				},
+				{
+					"text": "\"How are the locals reacting?\"",
+					"target": "locals_mood"
+				},
+				{
+					"text": "\"Keep your eyes peeled.\"",
+					"target": "exit"
+				}
+			]
+		},
+		"drone_paranoia": {
+			"text": "The skies belong to Duncan's surveillance network. Every optical camera on Broadway feeds back to his penthouse. You keep your head down and your license plate dirty if you wanna live long.",
+			"choices": [
+				{
+					"text": "\"How do we blind their lenses?\"",
+					"target": "stealth_routes"
+				},
+				{
+					"text": "\"Thanks for the heads up.\"",
+					"target": "exit"
+				}
+			]
+		},
+		"mack_banquo_reputation": {
+			"text": "Banquo? Ha! Everyone knows the Interceptor on the radar. You two are shaking up the city grid faster than the Megacorps can print police budget. Respect.",
+			"choices": [
+				{
+					"text": "\"Tell me what you see from up here.\"",
+					"target": "alley_intel"
+				},
+				{
+					"text": "\"See you on the asphalt.\"",
+					"target": "exit"
+				}
+			]
+		},
+		"alley_intel": {
+			"text": "Listen close: every few hours, armored Fife couriers sneak small convoys down Sector 3 to bypass the main boulevard. If you catch 'em at the traffic lights, you can hijack their military salvage.",
+			"choices": [
+				{
+					"text": "\"Good intel. Here's a 20 Credit tip.\"",
+					"target": "tip_reward"
+				},
+				{
+					"text": "\"I'll hunt them down.\"",
+					"target": "exit"
+				}
+			]
+		},
+		"stealth_routes": {
+			"text": "Cut through the sub-level tunnels by the old brewery or take the back alleys behind the neon club. The automated turrets have a 3-second blind spot between sweeps.",
+			"choices": [
+				{
+					"text": "\"Valuable info. Appreciate it.\"",
+					"target": "exit"
+				}
+			]
+		},
+		"tip_reward": {
+			"text": "*Vance pockets the chit with a grin.* \"Appreciate it, runner. You ever need an extra pair of eyes in the dark, I'm right here in the brickwork.\"",
+			"choices": [
+				{
+					"text": "\"Stay sharp.\"",
+					"target": "exit"
+				}
+			]
+		},
+		"locals_mood": {
+			"text": "People are tired of corporate boots on their necks. When Mack fires that 20mm autocannon, it sounds like freedom in this smog.",
+			"choices": [
+				{
+					"text": "\"We're taking back the districts.\"",
+					"target": "exit"
+				}
+			]
+		},
+		"alley_celebrate": {
+			"text": "Damn right! The street syndicates are already carving up the abandoned supply depots. Good hunting, Banquo!",
+			"choices": [
+				{
+					"text": "\"Keep the streets alive.\"",
 					"target": "exit"
 				}
 			]

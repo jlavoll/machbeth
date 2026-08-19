@@ -363,6 +363,10 @@ func _process(_delta: float) -> void:
 		# Use on-foot position when walking, car position when driving
 		var tracked_pos: Vector3 = _get_active_player_position()
 
+		# Smoothly pan overmap camera to follow the player across the full highway corridor & twin cities
+		map_camera.position.x = tracked_pos.x * 0.35
+		map_camera.position.z = tracked_pos.z
+
 		# Project player's 3D world position to 2D screen coordinates on satellite camera
 		var player_unprojected_screen_position: Vector2 = map_camera.unproject_position(tracked_pos)
 		player_blip_marker.position = player_unprojected_screen_position - (player_blip_marker.size / 2.0)

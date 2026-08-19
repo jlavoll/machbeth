@@ -135,6 +135,25 @@ func purchase_upgrade(veh_key: String, slot: String) -> bool:
 	var current_credits: int = 0
 	if is_instance_valid(quest_manager):
 		current_credits = quest_manager.player_credits
+
+	# Act-based upgrade tier gating
+	var campaign_mgr = get_parent().get_node_or_null("CampaignManager")
+	var allowed_max_tier: int = 3
+	if is_instance_valid(campaign_mgr):
+		var act_idx = campaign_mgr.current_act
+		if act_idx == campaign_mgr.CampaignAct.ACT_1_DUNCAN_FALL:
+			allowed_max_tier = 1
+		elif act_idx == campaign_mgr.CampaignAct.ACT_2_BANQUO_INTERCEPT:
+			allowed_max_tier = 2
+		else:
+			allowed_max_tier = 3
+
+	if current_lvl >= allowed_max_tier:
+		print("[GARAGE MANAGER] Tier locked by current Act story progression!")
+		var comms = get_parent().get_node_or_null("NeuralCommsHUD")
+		if is_instance_valid(comms) and comms.has_method("send_message"):
+			comms.send_message("Porter: 'Hold your horses! I need military salvage from later corporate skirmishes before I can weld Tier %d components onto the chassis.'" % (current_lvl + 1), "PORTER // THE PIT GARAGE")
+		return false
 	
 	if current_credits < cost:
 		print("[GARAGE MANAGER] Not enough credits! Needed: %d, Has: %d" % [cost, current_credits])

@@ -1090,6 +1090,8 @@ func enter_location(target_floor: HQFloor) -> void:
 		spawn_z = 7.5
 	elif current_floor == HQFloor.CHOP_SHOP:
 		spawn_z = 9.5
+	elif current_floor == HQFloor.PORTER_PIT:
+		spawn_z = 8.0 # Halfway between south entrance door (Z=11.2) and center war table (Z=4.0)
 
 	if is_instance_valid(player_car) and player_car.is_on_foot and is_instance_valid(player_car.on_foot_node):
 		saved_player_position = player_car.on_foot_node.global_position
@@ -1106,6 +1108,28 @@ func enter_location(target_floor: HQFloor) -> void:
 		indoor_camera.current = true
 	indoor_hud_layer.visible = true
 	_update_hud_floor_label()
+	_apply_floor_reverb_acoustics()
+
+func _apply_floor_reverb_acoustics() -> void:
+	var amb_mgr = get_parent().get_node_or_null("WeatherAmbienceManager")
+	if not is_instance_valid(amb_mgr) or not amb_mgr.has_method("set_indoor_room_acoustics"):
+		return
+	
+	var dim: Vector2 = Vector2(25.0, 20.0) # default medium
+	match current_floor:
+		HQFloor.BANQUO_LOFT: dim = Vector2(15.0, 15.0)       # 225m² - tight intimate acoustic loft
+		HQFloor.LADY_M_LAIR: dim = Vector2(16.0, 15.0)       # 240m² - server-lined bunker
+		HQFloor.SUBSTATION:  dim = Vector2(20.0, 18.0)       # 360m² - concrete power vault
+		HQFloor.MACK_HIDEOUT: dim = Vector2(24.0, 20.0)      # 480m² - warehouse workshop
+		HQFloor.PENTHOUSE:   dim = Vector2(40.0, 30.0)       # 1200m² - high-ceiling executive penthouse
+		HQFloor.LOBBY:       dim = Vector2(40.0, 30.0)       # 1200m² - cavernous marble lobby
+		HQFloor.CHOP_SHOP:   dim = Vector2(35.0, 25.0)       # 875m² - industrial garage bay
+		HQFloor.PORTER_PIT:  dim = Vector2(40.0, 30.0)       # 1200m² - underground subterranean hub
+		HQFloor.NORNS_AI:    dim = Vector2(30.0, 30.0)       # 900m² - circular holographic terminal chamber
+		HQFloor.FIFE_HQ:     dim = Vector2(30.0, 25.0)       # 750m² - tactical squad garrison
+		HQFloor.BANKES_LOGISTICS: dim = Vector2(35.0, 25.0)  # 875m² - logistics storage hub
+
+	amb_mgr.set_indoor_room_acoustics(dim, false)
 
 func toggle_indoor_view_mode() -> void:
 	if not is_inside_building:
@@ -1131,6 +1155,11 @@ func exit_building_interior() -> void:
 	_fp_pitch = 0.0
 	player_surface_zone = 0  # FootstepSurface.CONCRETE — returning to city streets
 	print("[INDOOR SYSTEM] Exiting interior, returning to city street...")
+
+	# Clear indoor room reverb when exiting to outdoor streets
+	var amb_mgr = get_parent().get_node_or_null("WeatherAmbienceManager")
+	if is_instance_valid(amb_mgr) and amb_mgr.has_method("set_indoor_room_acoustics"):
+		amb_mgr.set_indoor_room_acoustics(Vector2.ZERO, true)
 
 	if is_instance_valid(player_car) and player_car.is_on_foot and is_instance_valid(player_car.on_foot_node):
 		var target_exit: Vector3 = saved_player_position
@@ -1191,6 +1220,7 @@ func switch_to_floor(target_floor: HQFloor) -> void:
 			player_car.on_foot_node.set("_facing_angle", deg_to_rad(facing_deg))
 
 	_update_hud_floor_label()
+	_apply_floor_reverb_acoustics()
 
 func _get_origin_for_floor(fl: HQFloor) -> Vector3:
 	match fl:
@@ -1354,19 +1384,25 @@ func _process(_delta: float) -> void:
 		if current_floor == HQFloor.BANQUO_LOFT:
 			var cupboard_pos: Vector3 = banquo_loft_origin + Vector3(-9.5, 1.5, -4.0)
 			var bed_pos: Vector3 = banquo_loft_origin + Vector3(6.0, 0.0, -4.0)
+			var roof_door_pos: Vector3 = banquo_loft_origin + Vector3(0.0, 0.0, -8.6)
 			if pos.distance_to(cupboard_pos) <= 5.5:
-				prompt_text = "[E] OPEN WARDROBE CUPBOARD // CHANGE HEAD OUTFIT COLOR"
+				prompt_text = "[E] ACCESS BANQUO'S OPERATIVE ARMORY // PERSONAL LOADOUT"
 			elif pos.distance_to(bed_pos) <= 4.5:
 				prompt_text = "[E] SLEEP & ADVANCE TO NEXT DAY"
+			elif pos.distance_to(roof_door_pos) <= 4.5:
+				prompt_text = "[E] TAKE ELEVATOR TO ROOFTOP"
 			elif pos.distance_to(floor_exit_pos) <= 4.5:
 				prompt_text = "[E] EXIT TO CITY STREETS"
 		elif current_floor == HQFloor.MACK_HIDEOUT:
 			var mack_pos: Vector3 = mack_hideout_origin + Vector3(0.0, 0.0, -5.5)
 			var cot_pos: Vector3 = mack_hideout_origin + Vector3(6.0, 0.0, -4.0)
+			var balcony_door_pos: Vector3 = mack_hideout_origin + Vector3(0.0, 0.0, -8.6)
 			if pos.distance_to(mack_pos) <= 4.0:
 				prompt_text = "[E] TALK TO COMMANDER MACK"
 			elif pos.distance_to(cot_pos) <= 4.5:
 				prompt_text = "[E] SLEEP & ADVANCE TO NEXT DAY"
+			elif pos.distance_to(balcony_door_pos) <= 4.5:
+				prompt_text = "[E] TAKE ELEVATOR TO BALCONY"
 			elif pos.distance_to(floor_exit_pos) <= 4.5:
 				prompt_text = "[E] EXIT TO CITY STREETS"
 		elif current_floor == HQFloor.PORTER_PIT:
@@ -1387,7 +1423,7 @@ func _process(_delta: float) -> void:
 			elif pos.distance_to(porter_pit_origin + Vector3(26.0, 0.0, 0.0) + Vector3(4.0, 0.0, -4.0)) <= 4.0:
 				prompt_text = "[E] ACCESS BLACK-MARKET CYBERWARE & PARTS SHOP"
 			elif pos.distance_to(cyborg_terminal_pos) <= 4.0:
-				prompt_text = "[E] ACCESS MACK'S NEURAL CYBORG MODDING SUITE"
+				prompt_text = "[E] ACCESS TACTICAL LOADOUT GRID (MACK CYBORG & WAR-RIG HARDPOINTS)"
 			elif pos.distance_to(wartable_pos) <= 4.0:
 				prompt_text = "[E] ACCESS WAR-TABLE // DEPLOY MACK TO GRAND HIT"
 			elif pos.distance_to(pit_cot_pos) <= 4.5:
@@ -1486,7 +1522,12 @@ func _unhandled_input(event: InputEvent) -> void:
 						return
 
 				if current_floor == HQFloor.BANQUO_LOFT and pos.distance_to(cupboard_pos) <= 5.5:
-					if is_instance_valid(player_car) and player_car.is_on_foot and is_instance_valid(player_car.on_foot_node):
+					var banquo_ui = get_parent().get_node_or_null("BanquoOperativeUI")
+					if is_instance_valid(banquo_ui) and banquo_ui.has_method("open_banquo_ui"):
+						banquo_ui.open_banquo_ui()
+						get_viewport().set_input_as_handled()
+						return
+					elif is_instance_valid(player_car) and player_car.is_on_foot and is_instance_valid(player_car.on_foot_node):
 						var foot_node = player_car.on_foot_node
 						if foot_node.has_method("cycle_outfit_head_color"):
 							var new_style: String = foot_node.cycle_outfit_head_color()

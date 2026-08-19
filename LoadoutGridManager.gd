@@ -117,6 +117,37 @@ var item_catalog: Dictionary = {
 		"id": "emp_disruptor_pod", "name": "Wide-Spectrum EMP Emitter Pod", "slot": "ecm_scrambler",
 		"icon": "📡", "tier": 2, "hack_speed_bonus": 50.0, "shield_bonus": 45.0, "glitch_heat": 0.0,
 		"description": "Active localized EMP aura that neutralizes hostile electronics. +50% Hack Speed."
+	},
+	# --- BANQUO OPERATIVE ITEMS ---
+	"tactical_trenchcoat": {
+		"id": "tactical_trenchcoat", "name": "Reinforced Tactical Trenchcoat", "slot": "banquo_outfit",
+		"icon": "🧥", "tier": 1, "shield_bonus": 30.0, "dps_bonus": 0.0, "glitch_heat": 0.0,
+		"description": "Charcoal ballistic-weave coat. +30 Banquo on-foot armor."
+	},
+	"stealth_nanoshroud": {
+		"id": "stealth_nanoshroud", "name": "Active Camo Nanoshroud", "slot": "banquo_outfit",
+		"icon": "🧥", "tier": 2, "shield_bonus": 65.0, "hack_speed_bonus": 25.0, "glitch_heat": 0.0,
+		"description": "Photonic-bending tactical shroud. +65 Armor, +25% Infiltration Speed."
+	},
+	"kinetic_vibroblade": {
+		"id": "kinetic_vibroblade", "name": "High-Frequency Vibro-Blade", "slot": "banquo_melee",
+		"icon": "🗡️", "tier": 1, "dps_bonus": 20.0, "shield_bonus": 0.0, "glitch_heat": 0.0,
+		"description": "Ultrasonic carbon steel blade for swift melee takedowns. +20 Melee DPS."
+	},
+	"mono_molecular_katana": {
+		"id": "mono_molecular_katana", "name": "Mono-Molecular Edge Katana", "slot": "banquo_melee",
+		"icon": "⚔️", "tier": 2, "dps_bonus": 48.0, "shield_bonus": 0.0, "glitch_heat": 0.0,
+		"description": "Atomic-scale sharp edge that severs cybernetic armor plates. +48 Melee DPS."
+	},
+	"street_cyberdeck": {
+		"id": "street_cyberdeck", "name": "Custom Street Cyberdeck", "slot": "banquo_deck",
+		"icon": "💻", "tier": 1, "hack_speed_bonus": 30.0, "dps_bonus": 5.0, "glitch_heat": 0.0,
+		"description": "Portable terminal for door bypasses and security overrides. +30% Hack Speed."
+	},
+	"ghost_monocular": {
+		"id": "ghost_monocular", "name": "Ghost-Frequency Monocular", "slot": "banquo_optics",
+		"icon": "🧐", "tier": 1, "hack_speed_bonus": 20.0, "shield_bonus": 10.0, "glitch_heat": 0.0,
+		"description": "Detects hidden cameras and patrolling drones through walls."
 	}
 }
 
@@ -139,6 +170,13 @@ var vehicle_equipped: Dictionary = {
 	"ecm_scrambler": "ecm_scrambler_l1"
 }
 
+var banquo_equipped: Dictionary = {
+	"banquo_outfit": "tactical_trenchcoat",
+	"banquo_melee": "kinetic_vibroblade",
+	"banquo_deck": "street_cyberdeck",
+	"banquo_optics": "ghost_monocular"
+}
+
 # Unlocked inventory pool
 var inventory_pool: Array[String] = [
 	"neural_core_l1", "neural_core_l2", "cerberus_core",
@@ -149,7 +187,10 @@ var inventory_pool: Array[String] = [
 	"autocannon_turret", "flak_burst_pod",
 	"reinforced_plating", "reactive_skin",
 	"nitro_injector_l1", "overdrive_turbo",
-	"ecm_scrambler_l1", "emp_disruptor_pod"
+	"ecm_scrambler_l1", "emp_disruptor_pod",
+	"tactical_trenchcoat", "stealth_nanoshroud",
+	"kinetic_vibroblade", "mono_molecular_katana",
+	"street_cyberdeck", "ghost_monocular"
 ]
 
 # ------------------------------------------------------------------------------
@@ -157,6 +198,24 @@ var inventory_pool: Array[String] = [
 # ------------------------------------------------------------------------------
 
 func equip_item(target_grid: String, slot_id: String, item_id: String) -> bool:
+	if item_id == "" or item_id == "EMPTY":
+		# Unequip / clear slot
+		if target_grid == "MACK":
+			mack_equipped.erase(slot_id)
+			loadout_changed.emit("MACK", slot_id, "")
+			_sync_mack_stats()
+			return true
+		elif target_grid == "VEHICLE":
+			vehicle_equipped.erase(slot_id)
+			loadout_changed.emit("VEHICLE", slot_id, "")
+			_sync_vehicle_stats()
+			return true
+		elif target_grid == "BANQUO":
+			banquo_equipped.erase(slot_id)
+			loadout_changed.emit("BANQUO", slot_id, "")
+			return true
+		return false
+
 	if not item_catalog.has(item_id):
 		return false
 	var item_data: Dictionary = item_catalog[item_id]
@@ -173,6 +232,10 @@ func equip_item(target_grid: String, slot_id: String, item_id: String) -> bool:
 		loadout_changed.emit("VEHICLE", slot_id, item_id)
 		_sync_vehicle_stats()
 		return true
+	elif target_grid == "BANQUO":
+		banquo_equipped[slot_id] = item_id
+		loadout_changed.emit("BANQUO", slot_id, item_id)
+		return true
 	return false
 
 func get_equipped_item(target_grid: String, slot_id: String) -> Dictionary:
@@ -181,6 +244,8 @@ func get_equipped_item(target_grid: String, slot_id: String) -> Dictionary:
 		item_id = mack_equipped.get(slot_id, "")
 	elif target_grid == "VEHICLE":
 		item_id = vehicle_equipped.get(slot_id, "")
+	elif target_grid == "BANQUO":
+		item_id = banquo_equipped.get(slot_id, "")
 	return item_catalog.get(item_id, {})
 
 func get_items_for_slot(slot_id: String) -> Array[Dictionary]:
@@ -218,6 +283,47 @@ func calculate_total_glitch_heat() -> float:
 		var item = item_catalog.get(mack_equipped[slot], {})
 		heat += item.get("glitch_heat", 0.0)
 	return heat
+
+func calculate_mack_power_threat() -> Dictionary:
+	# Real-time power rating based on current cyborg implants and war-rig chassis
+	var dps: float = calculate_total_dps()
+	var shield: float = calculate_total_shielding()
+	var glitch: float = calculate_total_glitch_heat()
+	
+	var equipped_count: int = mack_equipped.size() + vehicle_equipped.size()
+	var total_slots: int = 9
+	var free_slots: int = total_slots - equipped_count
+	
+	# Threat index formula
+	var raw_power: float = (dps * 1.8) + (shield * 0.9) - (glitch * 0.5)
+	var threat_rating: int = int(round(raw_power))
+	
+	var threat_class: String = "NOMAD RECON"
+	var threat_color: String = "#00ffcc"
+	if threat_rating >= 450:
+		threat_class = "WAR-RIG TITAN // S-RANK"
+		threat_color = "#ff0055"
+	elif threat_rating >= 320:
+		threat_class = "ASSAULT JUGGERNAUT // A-RANK"
+		threat_color = "#ff7700"
+	elif threat_rating >= 220:
+		threat_class = "CYBERNETIC ENFORCER // B-RANK"
+		threat_color = "#ffcc00"
+	elif threat_rating >= 140:
+		threat_class = "COMBAT OPERATIVE // C-RANK"
+		threat_color = "#00ffcc"
+	
+	return {
+		"rating": threat_rating,
+		"class": threat_class,
+		"color": threat_color,
+		"dps": dps,
+		"shield": shield,
+		"glitch": glitch,
+		"equipped_count": equipped_count,
+		"free_slots": free_slots,
+		"total_slots": total_slots
+	}
 
 func _sync_mack_stats() -> void:
 	var glitch_sys = get_parent().get_node_or_null("NeuralGlitchSystem")
