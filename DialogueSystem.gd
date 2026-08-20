@@ -59,6 +59,7 @@ var _scanline_overlay_rect:     ColorRect       # Animated scanline texture over
 var _portrait_frame_panel:      Panel           # Left-side portrait chrome frame
 var _portrait_color_accent:     ColorRect       # Speaker accent color bar (left edge)
 var _portrait_label_initials:   Label           # Large character initial/sigil
+var _portrait_canvas:           Control         # Custom vector wireframe character portrait canvas
 
 var _dialogue_panel:            Panel           # Bottom dialogue box
 var _speaker_name_label:        Label           # Speaker name (Orbitron, neon styled)
@@ -371,14 +372,19 @@ func _animate_scanlines(delta: float) -> void:
 		"scroll_offset_y", fmod(_scanline_scroll_offset, 64.0)
 	)
 
+var _portrait_anim_time: float = 0.0
+
 func _animate_portrait_pulse(delta: float) -> void:
 	_portrait_pulse_phase += portrait_glow_pulse_speed * delta
+	_portrait_anim_time += delta
 	var pulse_value: float = (sin(_portrait_pulse_phase) * 0.5 + 0.5)  # 0.0 – 1.0
 	var pulsed_alpha: float = lerpf(0.6, 1.0, pulse_value)
 	var speaker_hex: String = _active_dialogue_tree.get("speaker_color", "#00FFD5")
 	var pulsed_color := Color(speaker_hex)
 	pulsed_color.a    = pulsed_alpha
 	_portrait_color_accent.color = pulsed_color
+	if is_instance_valid(_portrait_canvas):
+		_portrait_canvas.queue_redraw()
 
 func _animate_panel_slide(delta: float) -> void:
 	if _is_sliding_in:
@@ -531,7 +537,7 @@ func _build_portrait_panel() -> void:
 	_portrait_color_accent.set_anchor_and_offset(SIDE_BOTTOM, 1.0,  0.0)
 	_portrait_frame_panel.add_child(_portrait_color_accent)
 
-	# Large character initial / sigil centered in portrait box
+	# Large character initial / sigil centered in portrait box (used for fallback or underlying text)
 	_portrait_label_initials      = Label.new()
 	_portrait_label_initials.name = "SpeakerInitialSigil"
 	_portrait_label_initials.set_anchors_and_offsets_preset(Control.PRESET_CENTER)
@@ -544,6 +550,13 @@ func _build_portrait_panel() -> void:
 		_portrait_label_initials.add_theme_font_override("font", sigil_font)
 	_portrait_label_initials.add_theme_font_size_override("font_size", 58)
 	_portrait_frame_panel.add_child(_portrait_label_initials)
+
+	# Dynamic Vector Character Emblem Canvas
+	_portrait_canvas = Control.new()
+	_portrait_canvas.name = "PortraitVectorCanvas"
+	_portrait_canvas.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	_portrait_canvas.draw.connect(_on_portrait_canvas_draw)
+	_portrait_frame_panel.add_child(_portrait_canvas)
 
 func _build_dialogue_panel() -> void:
 	_dialogue_panel      = Panel.new()
@@ -795,3 +808,254 @@ func _load_geist_font() -> FontFile:
 	if ResourceLoader.exists(geist_path):
 		return load(geist_path) as FontFile
 	return null
+
+# ==============================================================================
+# CHARACTER VECTOR WIREFRAME PORTRAIT RENDERER
+# ==============================================================================
+
+func _on_portrait_canvas_draw() -> void:
+	if not is_instance_valid(_portrait_canvas) or not _is_dialogue_active:
+		return
+
+	var rect = _portrait_canvas.get_rect()
+	var center = Vector2(rect.size.x * 0.5, rect.size.y * 0.48)
+	var speaker_name: String = _active_dialogue_tree.get("speaker_display_name", "").to_upper()
+	var speaker_hex: String = _active_dialogue_tree.get("speaker_color", "#00FFD5")
+	var col := Color(speaker_hex)
+
+	# 1. Subtle Radar Scan Circle
+	var radar_r: float = 68.0
+	_portrait_canvas.draw_arc(center, radar_r, 0, TAU, 32, Color(col.r, col.g, col.b, 0.25), 1.0)
+	var sweep_angle = fmod(_portrait_anim_time * 2.5, TAU)
+	_portrait_canvas.draw_line(center, center + Vector2(cos(sweep_angle), sin(sweep_angle)) * radar_r, Color(col.r, col.g, col.b, 0.45), 1.5)
+
+	# 2. Check speaker character archetype
+	if "MACK" in speaker_name:
+		_portrait_label_initials.visible = false
+		_draw_mack_portrait(center, col)
+	elif "BANQUO" in speaker_name:
+		_portrait_label_initials.visible = false
+		_draw_banquo_portrait(center, col)
+	elif "NORN" in speaker_name or "WITCH" in speaker_name or "AI TRIAD" in speaker_name or "ORACLE" in speaker_name:
+		_portrait_label_initials.visible = false
+		_draw_norns_portrait(center, col)
+	elif "DUNCAN" in speaker_name:
+		_portrait_label_initials.visible = false
+		_draw_duncan_portrait(center, col)
+	elif "LADY M" in speaker_name or "LADY" in speaker_name:
+		_portrait_label_initials.visible = false
+		_draw_lady_m_portrait(center, col)
+	elif "PORTER" in speaker_name or "MECHANIC" in speaker_name:
+		_portrait_label_initials.visible = false
+		_draw_porter_portrait(center, col)
+	elif "JOE" in speaker_name or "ICE CREAM" in speaker_name:
+		_portrait_label_initials.visible = false
+		_draw_joe_portrait(center, col)
+	elif "DODGY" in speaker_name or "FIXER" in speaker_name or "GANG" in speaker_name:
+		_portrait_label_initials.visible = false
+		_draw_dodgy_portrait(center, col)
+	elif "DRONE" in speaker_name or "TECH" in speaker_name:
+		_portrait_label_initials.visible = false
+		_draw_drone_portrait(center, col)
+	else:
+		_portrait_label_initials.visible = true
+		_draw_generic_hud_reticle(center, col)
+
+func _draw_mack_portrait(c: Vector2, col: Color) -> void:
+	var wire = Color(col.r, col.g, col.b, 0.95)
+	var fill = Color(col.r, col.g, col.b, 0.15)
+
+	var helmet = PackedVector2Array([
+		c + Vector2(-26, -34),
+		c + Vector2(26, -34),
+		c + Vector2(34, 8),
+		c + Vector2(18, 34),
+		c + Vector2(-18, 34),
+		c + Vector2(-34, 8)
+	])
+	_portrait_canvas.draw_colored_polygon(helmet, fill)
+	_portrait_canvas.draw_polyline(helmet, wire, 2.0, true)
+
+	var shoulders = PackedVector2Array([
+		c + Vector2(-52, 64),
+		c + Vector2(-34, 34),
+		c + Vector2(34, 34),
+		c + Vector2(52, 64)
+	])
+	_portrait_canvas.draw_polyline(shoulders, wire, 2.5)
+
+	# Red Ocular Cyber-Optic Targeter
+	var eye_c = c + Vector2(11, -11)
+	_portrait_canvas.draw_circle(eye_c, 6.0, Color(1.0, 0.1, 0.1, 1.0))
+	_portrait_canvas.draw_arc(eye_c, 12.0, 0, TAU, 16, Color(1.0, 0.3, 0.2, 0.8), 1.5)
+	_portrait_canvas.draw_line(eye_c + Vector2(-16, 0), eye_c + Vector2(16, 0), Color(1.0, 0.2, 0.1, 0.9), 1.0)
+	_portrait_canvas.draw_line(eye_c + Vector2(0, -16), eye_c + Vector2(0, 16), Color(1.0, 0.2, 0.1, 0.9), 1.0)
+
+func _draw_banquo_portrait(c: Vector2, col: Color) -> void:
+	var wire = Color(col.r, col.g, col.b, 0.95)
+	var fill = Color(col.r, col.g, col.b, 0.12)
+
+	var head = PackedVector2Array([
+		c + Vector2(-22, -38),
+		c + Vector2(22, -38),
+		c + Vector2(28, -8),
+		c + Vector2(14, 28),
+		c + Vector2(-14, 28),
+		c + Vector2(-28, -8)
+	])
+	_portrait_canvas.draw_colored_polygon(head, fill)
+	_portrait_canvas.draw_polyline(head, wire, 2.0, true)
+
+	var coat = PackedVector2Array([
+		c + Vector2(-48, 64),
+		c + Vector2(-24, 24),
+		c + Vector2(0, 36),
+		c + Vector2(24, 24),
+		c + Vector2(48, 64)
+	])
+	_portrait_canvas.draw_polyline(coat, wire, 2.2)
+
+	# Cyan Cyber-Visor Strip
+	var visor = PackedVector2Array([
+		c + Vector2(-18, -15),
+		c + Vector2(18, -15),
+		c + Vector2(16, -7),
+		c + Vector2(-16, -7)
+	])
+	_portrait_canvas.draw_colored_polygon(visor, Color(0.0, 1.0, 0.85, 0.95))
+
+func _draw_norns_portrait(c: Vector2, col: Color) -> void:
+	# 3 Intersecting Animated Pulsing AI Cores / Triangle of Fate
+	var wire = Color(col.r, col.g, col.b, 0.9)
+	var fill = Color(col.r, col.g, col.b, 0.15)
+
+	var p1 = c + Vector2(0, -42)
+	var p2 = c + Vector2(38, 26)
+	var p3 = c + Vector2(-38, 26)
+
+	_portrait_canvas.draw_colored_polygon(PackedVector2Array([p1, p2, p3]), fill)
+	_portrait_canvas.draw_polyline(PackedVector2Array([p1, p2, p3]), wire, 2.2, true)
+
+	# 3 Glowing Animated AI Cores at Vertices
+	_portrait_canvas.draw_circle(p1, 8.0 + sin(_portrait_anim_time * 8.0) * 2.5, Color(1.0, 0.1, 0.8, 1.0))
+	_portrait_canvas.draw_circle(p2, 8.0 + sin(_portrait_anim_time * 8.0 + 2.0) * 2.5, Color(0.2, 0.9, 1.0, 1.0))
+	_portrait_canvas.draw_circle(p3, 8.0 + sin(_portrait_anim_time * 8.0 + 4.0) * 2.5, Color(1.0, 0.85, 0.0, 1.0))
+
+	# Data Streams connecting to Center
+	_portrait_canvas.draw_line(p1, c, Color(1.0, 0.2, 0.9, 0.7), 1.5)
+	_portrait_canvas.draw_line(p2, c, Color(0.2, 0.9, 1.0, 0.7), 1.5)
+	_portrait_canvas.draw_line(p3, c, Color(1.0, 0.85, 0.0, 0.7), 1.5)
+
+func _draw_duncan_portrait(c: Vector2, col: Color) -> void:
+	var wire = Color(col.r, col.g, col.b, 0.95)
+	var fill = Color(col.r, col.g, col.b, 0.18)
+
+	var crown = PackedVector2Array([
+		c + Vector2(-34, 22),
+		c + Vector2(-42, -22),
+		c + Vector2(-18, -8),
+		c + Vector2(0, -45),
+		c + Vector2(18, -8),
+		c + Vector2(42, -22),
+		c + Vector2(34, 22)
+	])
+	_portrait_canvas.draw_colored_polygon(crown, fill)
+	_portrait_canvas.draw_polyline(crown, wire, 2.5, true)
+
+	# Central Corporate Eye
+	_portrait_canvas.draw_circle(c + Vector2(0, 0), 9.0, Color(1.0, 0.9, 0.2, 0.95))
+
+func _draw_lady_m_portrait(c: Vector2, col: Color) -> void:
+	var wire = Color(col.r, col.g, col.b, 0.95)
+	var fill = Color(col.r, col.g, col.b, 0.15)
+
+	var face = PackedVector2Array([
+		c + Vector2(-20, -32),
+		c + Vector2(20, -32),
+		c + Vector2(24, -4),
+		c + Vector2(12, 28),
+		c + Vector2(-12, 28),
+		c + Vector2(-24, -4)
+	])
+	_portrait_canvas.draw_colored_polygon(face, fill)
+	_portrait_canvas.draw_polyline(face, wire, 2.0, true)
+
+	var collar = PackedVector2Array([
+		c + Vector2(-42, 60),
+		c + Vector2(-26, 8),
+		c + Vector2(0, 34),
+		c + Vector2(26, 8),
+		c + Vector2(42, 60)
+	])
+	_portrait_canvas.draw_polyline(collar, wire, 2.2)
+
+	# Cold Indigo Visor Eyes
+	_portrait_canvas.draw_line(c + Vector2(-14, -12), c + Vector2(-4, -12), Color(0.6, 0.3, 1.0, 1.0), 2.5)
+	_portrait_canvas.draw_line(c + Vector2(4, -12), c + Vector2(14, -12), Color(0.6, 0.3, 1.0, 1.0), 2.5)
+
+func _draw_porter_portrait(c: Vector2, _col: Color) -> void:
+	var wire = Color(1.0, 0.65, 0.1, 0.95)
+	# Heavy Wrench & Industrial Gear
+	_portrait_canvas.draw_arc(c, 24.0, 0, TAU, 24, wire, 3.0)
+	_portrait_canvas.draw_line(c + Vector2(-32, -32), c + Vector2(32, 32), wire, 3.5)
+	_portrait_canvas.draw_circle(c, 8.0, Color(1.0, 0.6, 0.1, 1.0))
+
+func _draw_joe_portrait(c: Vector2, _col: Color) -> void:
+	# Neon Ice Cream Cone with Cherry
+	var cone = PackedVector2Array([
+		c + Vector2(0, 36),
+		c + Vector2(-16, -4),
+		c + Vector2(16, -4)
+	])
+	_portrait_canvas.draw_colored_polygon(cone, Color(1.0, 0.75, 0.2, 0.4))
+	_portrait_canvas.draw_polyline(cone, Color(1.0, 0.75, 0.2), 2.0, true)
+
+	# Scoops & Cherry
+	_portrait_canvas.draw_circle(c + Vector2(0, -10), 14.0, Color(0.0, 1.0, 0.75, 0.8))
+	_portrait_canvas.draw_circle(c + Vector2(0, -26), 11.0, Color(1.0, 0.2, 0.6, 0.85))
+	_portrait_canvas.draw_circle(c + Vector2(0, -40), 5.0, Color(1.0, 0.05, 0.15, 1.0))
+
+func _draw_dodgy_portrait(c: Vector2, _col: Color) -> void:
+	var wire = Color(0.8, 0.2, 1.0, 0.95)
+	# Shady Fedora Hat
+	var fedora = PackedVector2Array([
+		c + Vector2(-36, -14),
+		c + Vector2(-18, -36),
+		c + Vector2(18, -36),
+		c + Vector2(36, -14)
+	])
+	_portrait_canvas.draw_colored_polygon(fedora, Color(0.1, 0.05, 0.2, 0.6))
+	_portrait_canvas.draw_polyline(fedora, wire, 2.0, true)
+	_portrait_canvas.draw_line(c + Vector2(-42, -14), c + Vector2(42, -14), wire, 2.5)
+
+	# Neon Sunglasses
+	var glasses = PackedVector2Array([
+		c + Vector2(-22, -2),
+		c + Vector2(22, -2),
+		c + Vector2(16, 10),
+		c + Vector2(-16, 10)
+	])
+	_portrait_canvas.draw_colored_polygon(glasses, Color(1.0, 0.0, 0.6, 0.9))
+
+func _draw_drone_portrait(c: Vector2, col: Color) -> void:
+	var wire = Color(col.r, col.g, col.b, 0.95)
+	_portrait_canvas.draw_circle(c, 12.0, Color(col.r, col.g, col.b, 0.3))
+	_portrait_canvas.draw_line(c + Vector2(-32, 0), c + Vector2(32, 0), wire, 2.0)
+	_portrait_canvas.draw_line(c + Vector2(0, -32), c + Vector2(0, 32), wire, 2.0)
+	_portrait_canvas.draw_circle(c + Vector2(-24, 0), 6.0, col)
+	_portrait_canvas.draw_circle(c + Vector2(24, 0), 6.0, col)
+	_portrait_canvas.draw_circle(c + Vector2(0, -24), 6.0, col)
+	_portrait_canvas.draw_circle(c + Vector2(0, 24), 6.0, col)
+
+func _draw_generic_hud_reticle(c: Vector2, col: Color) -> void:
+	var wire = Color(col.r, col.g, col.b, 0.5)
+	var s: float = 38.0
+	# HUD Corner Brackets
+	_portrait_canvas.draw_line(c + Vector2(-s, -s), c + Vector2(-s + 12, -s), wire, 2.0)
+	_portrait_canvas.draw_line(c + Vector2(-s, -s), c + Vector2(-s, -s + 12), wire, 2.0)
+	_portrait_canvas.draw_line(c + Vector2(s, -s), c + Vector2(s - 12, -s), wire, 2.0)
+	_portrait_canvas.draw_line(c + Vector2(s, -s), c + Vector2(s, -s + 12), wire, 2.0)
+	_portrait_canvas.draw_line(c + Vector2(-s, s), c + Vector2(-s + 12, s), wire, 2.0)
+	_portrait_canvas.draw_line(c + Vector2(-s, s), c + Vector2(-s, s - 12), wire, 2.0)
+	_portrait_canvas.draw_line(c + Vector2(s, s), c + Vector2(s - 12, s), wire, 2.0)
+	_portrait_canvas.draw_line(c + Vector2(s, s), c + Vector2(s, s - 12), wire, 2.0)

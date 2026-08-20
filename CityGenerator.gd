@@ -932,6 +932,12 @@ func _spawn_building(pos: Vector3, b_size: Vector3, neon_colors: Array, b_type: 
 		static_body.add_child(shield_inst)
 
 	# --------------------------------------------------------------------------
+	# 3D HOLOGRAPHIC ROOFTOP SIGNS & CHARACTER EMBLEMS
+	# --------------------------------------------------------------------------
+	if b_type != "NORMAL":
+		_attach_rooftop_holographic_emblem(static_body, b_type, b_size, accent_color)
+
+	# --------------------------------------------------------------------------
 	# PLAYABLE BUILDING ENTRANCE DOOR & AREA3D TRIGGER
 	# --------------------------------------------------------------------------
 	if b_type != "NORMAL":
@@ -1273,6 +1279,421 @@ func _attach_door_to_building(static_body: StaticBody3D, pos: Vector3, b_size: V
 		bankes_logistics_door_pos = door_world_pos
 	elif b_type == "SUBSTATION":
 		power_substation_door_pos = door_world_pos
+
+# ==============================================================================
+# 3D HOLOGRAPHIC ROOFTOP SIGNS & CHARACTER EMBLEMS
+# ==============================================================================
+func _attach_rooftop_holographic_emblem(static_body: StaticBody3D, b_type: String, b_size: Vector3, _accent_color: Color) -> void:
+	var hh: float = b_size.y / 2.0
+	var holo_root = Node3D.new()
+	holo_root.name = "RooftopHolo_" + b_type
+	holo_root.add_to_group("rooftop_holograms")
+	var base_y: float = hh + 5.5
+
+	# --------------------------------------------------------------------------
+	# 1. THE 3 AI NORNS // ORACLE TRI-CORE TRIANGLE OF FATE
+	# --------------------------------------------------------------------------
+	if b_type == "NORNS_AI":
+		base_y = hh + 6.5
+		holo_root.position = Vector3(0.0, base_y, 0.0)
+		holo_root.set_meta("base_y", base_y)
+
+		# 3 Pulsing AI Core Spheres at Triangle Vertices
+		var core_configs = [
+			{"pos": Vector3(0.0, 3.2, 0.0), "color": Color(1.0, 0.1, 0.8), "name": "Core_Magenta_Past"},
+			{"pos": Vector3(3.2, -1.8, 0.0), "color": Color(0.2, 0.9, 1.0), "name": "Core_Cyan_Present"},
+			{"pos": Vector3(-3.2, -1.8, 0.0), "color": Color(1.0, 0.85, 0.0), "name": "Core_Gold_Future"}
+		]
+
+		for c_info in core_configs:
+			var core_inst = MeshInstance3D.new()
+			core_inst.name = c_info["name"]
+			var s_mesh = SphereMesh.new()
+			s_mesh.radius = 0.85
+			s_mesh.height = 1.7
+			core_inst.mesh = s_mesh
+			core_inst.position = c_info["pos"]
+			var c_mat = StandardMaterial3D.new()
+			c_mat.albedo_color = c_info["color"]
+			c_mat.emission_enabled = true
+			c_mat.emission = c_info["color"]
+			c_mat.emission_energy_multiplier = 6.0
+			core_inst.material_override = c_mat
+			holo_root.add_child(core_inst)
+
+		# 3 Glowing Laser Conduits connecting the Triangle
+		var line_pairs = [
+			[Vector3(0.0, 3.2, 0.0), Vector3(3.2, -1.8, 0.0), Color(1.0, 0.2, 0.9)],
+			[Vector3(3.2, -1.8, 0.0), Vector3(-3.2, -1.8, 0.0), Color(0.2, 0.9, 1.0)],
+			[Vector3(-3.2, -1.8, 0.0), Vector3(0.0, 3.2, 0.0), Color(1.0, 0.85, 0.0)]
+		]
+		for lp in line_pairs:
+			var beam = MeshInstance3D.new()
+			var cyl = CylinderMesh.new()
+			cyl.top_radius = 0.12
+			cyl.bottom_radius = 0.12
+			var p1: Vector3 = lp[0]
+			var p2: Vector3 = lp[1]
+			var dist: float = p1.distance_to(p2)
+			cyl.height = dist
+			beam.mesh = cyl
+			beam.position = (p1 + p2) * 0.5
+			beam.look_at_from_position(beam.position, p2, Vector3.UP)
+			beam.rotate_object_local(Vector3.RIGHT, deg_to_rad(90))
+			var b_mat = StandardMaterial3D.new()
+			b_mat.albedo_color = lp[2]
+			b_mat.emission_enabled = true
+			b_mat.emission = lp[2]
+			b_mat.emission_energy_multiplier = 5.0
+			beam.material_override = b_mat
+			holo_root.add_child(beam)
+
+		# Central Floating Quantum Singularity Core
+		var center_core = MeshInstance3D.new()
+		var cs_mesh = SphereMesh.new()
+		cs_mesh.radius = 0.6
+		cs_mesh.height = 1.2
+		center_core.mesh = cs_mesh
+		var cs_mat = StandardMaterial3D.new()
+		cs_mat.albedo_color = Color(1.0, 1.0, 1.0)
+		cs_mat.emission_enabled = true
+		cs_mat.emission = Color(0.9, 0.5, 1.0)
+		cs_mat.emission_energy_multiplier = 8.0
+		center_core.material_override = cs_mat
+		holo_root.add_child(center_core)
+
+		# Holographic Title Banner
+		var holo_lbl = Label3D.new()
+		holo_lbl.text = "🔮 THE 3 AI NORNS // DEEP-NET ORACLE\n[QUANTUM PROBABILITY TRIAD]"
+		holo_lbl.position = Vector3(0.0, 4.8, 0.0)
+		holo_lbl.font_size = 22
+		holo_lbl.pixel_size = 0.005
+		holo_lbl.modulate = Color(1.0, 0.2, 0.9)
+		holo_lbl.outline_modulate = Color(0.0, 0.0, 0.0, 1.0)
+		holo_lbl.outline_size = 10
+		holo_root.add_child(holo_lbl)
+
+		var light = OmniLight3D.new()
+		light.light_color = Color(1.0, 0.2, 0.85)
+		light.light_energy = 8.0
+		light.omni_range = 28.0
+		holo_root.add_child(light)
+
+	# --------------------------------------------------------------------------
+	# 2. DUNCAN DYNAMICS HQ // GOLDEN SPIRE CROWN & CORPORATE EYE
+	# --------------------------------------------------------------------------
+	elif b_type == "HQ":
+		base_y = hh + 8.5
+		holo_root.position = Vector3(0.0, base_y, 0.0)
+		holo_root.set_meta("base_y", base_y)
+
+		# Central Monolith Spire & 5 Crown Pylons
+		var crown_root = Node3D.new()
+		var gold_col = Color(1.0, 0.85, 0.2)
+		var crown_pylons = [
+			{"pos": Vector3(-3.5, 0.0, 0.0), "h": 4.5},
+			{"pos": Vector3(-1.8, 1.2, 0.0), "h": 6.2},
+			{"pos": Vector3(0.0, 2.5, 0.0), "h": 8.0}, # Central Spire
+			{"pos": Vector3(1.8, 1.2, 0.0), "h": 6.2},
+			{"pos": Vector3(3.5, 0.0, 0.0), "h": 4.5}
+		]
+		for cp in crown_pylons:
+			var pylon = MeshInstance3D.new()
+			var p_mesh = CylinderMesh.new()
+			p_mesh.top_radius = 0.2
+			p_mesh.bottom_radius = 0.4
+			p_mesh.height = cp["h"]
+			pylon.mesh = p_mesh
+			pylon.position = cp["pos"]
+			var p_mat = StandardMaterial3D.new()
+			p_mat.albedo_color = gold_col
+			p_mat.emission_enabled = true
+			p_mat.emission = gold_col
+			p_mat.emission_energy_multiplier = 5.0
+			pylon.material_override = p_mat
+			crown_root.add_child(pylon)
+
+		# Central Glowing Corporate Eye
+		var eye = MeshInstance3D.new()
+		var e_mesh = SphereMesh.new()
+		e_mesh.radius = 1.1
+		e_mesh.height = 2.2
+		eye.mesh = e_mesh
+		eye.position = Vector3(0.0, 0.5, 0.0)
+		var e_mat = StandardMaterial3D.new()
+		e_mat.albedo_color = Color(1.0, 0.95, 0.4)
+		e_mat.emission_enabled = true
+		e_mat.emission = gold_col
+		e_mat.emission_energy_multiplier = 8.0
+		eye.material_override = e_mat
+		crown_root.add_child(eye)
+		holo_root.add_child(crown_root)
+
+		var holo_lbl = Label3D.new()
+		holo_lbl.text = "👑 DUNCAN DYNAMICS // EXECUTIVE CORE\n[GRID METROPOLIS PRIME SPIRE]"
+		holo_lbl.position = Vector3(0.0, 7.2, 0.0)
+		holo_lbl.font_size = 24
+		holo_lbl.pixel_size = 0.005
+		holo_lbl.modulate = gold_col
+		holo_lbl.outline_modulate = Color(0.0, 0.0, 0.0, 1.0)
+		holo_lbl.outline_size = 12
+		holo_root.add_child(holo_lbl)
+
+		var light = OmniLight3D.new()
+		light.light_color = gold_col
+		light.light_energy = 10.0
+		light.omni_range = 35.0
+		holo_root.add_child(light)
+
+	# --------------------------------------------------------------------------
+	# 3. MACK-BETH HIDEOUT // WAR-RIG HELM & TARGETER RETICLE
+	# --------------------------------------------------------------------------
+	elif b_type == "HIDEOUT":
+		base_y = hh + 5.5
+		holo_root.position = Vector3(0.0, base_y, 0.0)
+		holo_root.set_meta("base_y", base_y)
+
+		var red_col = Color(1.0, 0.15, 0.1)
+		# Armored Commander Helmet Structure
+		var helm = MeshInstance3D.new()
+		var h_box = BoxMesh.new()
+		h_box.size = Vector3(4.2, 3.2, 3.2)
+		helm.mesh = h_box
+		var h_mat = StandardMaterial3D.new()
+		h_mat.albedo_color = Color(0.08, 0.02, 0.02)
+		h_mat.emission_enabled = true
+		h_mat.emission = red_col
+		h_mat.emission_energy_multiplier = 4.0
+		helm.material_override = h_mat
+		holo_root.add_child(helm)
+
+		# Red Ocular Cyber-Optic Targeter Ring
+		var targeter = MeshInstance3D.new()
+		var t_cyl = CylinderMesh.new()
+		t_cyl.top_radius = 1.8
+		t_cyl.bottom_radius = 1.8
+		t_cyl.height = 0.15
+		targeter.mesh = t_cyl
+		targeter.position = Vector3(0.0, 0.0, 1.7)
+		targeter.rotation_degrees = Vector3(90, 0, 0)
+		var t_mat = StandardMaterial3D.new()
+		t_mat.albedo_color = red_col
+		t_mat.emission_enabled = true
+		t_mat.emission = red_col
+		t_mat.emission_energy_multiplier = 6.0
+		targeter.material_override = t_mat
+		holo_root.add_child(targeter)
+
+		var holo_lbl = Label3D.new()
+		holo_lbl.text = "⚔️ MACK-BETH // WAR-RIG COMMAND\n[GLAMIS HIGHWAY STRIKE LEAD]"
+		holo_lbl.position = Vector3(0.0, 3.8, 0.0)
+		holo_lbl.font_size = 22
+		holo_lbl.pixel_size = 0.005
+		holo_lbl.modulate = red_col
+		holo_lbl.outline_modulate = Color(0.0, 0.0, 0.0, 1.0)
+		holo_lbl.outline_size = 10
+		holo_root.add_child(holo_lbl)
+
+		var light = OmniLight3D.new()
+		light.light_color = red_col
+		light.light_energy = 8.0
+		light.omni_range = 26.0
+		holo_root.add_child(light)
+
+	# --------------------------------------------------------------------------
+	# 4. LADY M PENTHOUSE LAIR // ELECTRIC VIOLET ROYAL CREST
+	# --------------------------------------------------------------------------
+	elif b_type == "LADY_M":
+		base_y = hh + 6.0
+		holo_root.position = Vector3(0.0, base_y, 0.0)
+		holo_root.set_meta("base_y", base_y)
+
+		var violet_col = Color(0.8, 0.2, 1.0)
+		# Sharp Geometric Executive Diamond / Crown
+		var crest = MeshInstance3D.new()
+		var c_prism = PrismMesh.new()
+		c_prism.size = Vector3(4.8, 4.2, 1.2)
+		crest.mesh = c_prism
+		crest.rotation_degrees = Vector3(180, 0, 0)
+		var c_mat = StandardMaterial3D.new()
+		c_mat.albedo_color = Color(0.05, 0.02, 0.08)
+		c_mat.emission_enabled = true
+		c_mat.emission = violet_col
+		c_mat.emission_energy_multiplier = 5.5
+		crest.material_override = c_mat
+		holo_root.add_child(crest)
+
+		var holo_lbl = Label3D.new()
+		holo_lbl.text = "⚜️ LADY M // HIGH STRATEGY PENTHOUSE\n[CAWDOR SYNDICATE DIRECTIVE]"
+		holo_lbl.position = Vector3(0.0, 4.4, 0.0)
+		holo_lbl.font_size = 22
+		holo_lbl.pixel_size = 0.005
+		holo_lbl.modulate = violet_col
+		holo_lbl.outline_modulate = Color(0.0, 0.0, 0.0, 1.0)
+		holo_lbl.outline_size = 10
+		holo_root.add_child(holo_lbl)
+
+		var light = OmniLight3D.new()
+		light.light_color = violet_col
+		light.light_energy = 8.0
+		light.omni_range = 26.0
+		holo_root.add_child(light)
+
+	# --------------------------------------------------------------------------
+	# 5. THE PIT // PORTER'S HEAVY FLEET GARAGE
+	# --------------------------------------------------------------------------
+	elif b_type in ["PORTER_PIT", "CHOP_SHOP"]:
+		base_y = hh + 5.0
+		holo_root.position = Vector3(0.0, base_y, 0.0)
+		holo_root.set_meta("base_y", base_y)
+
+		var amber_col = Color(1.0, 0.65, 0.1)
+		# Industrial Gear & Tool Rig
+		var gear = MeshInstance3D.new()
+		var g_cyl = CylinderMesh.new()
+		g_cyl.top_radius = 2.4
+		g_cyl.bottom_radius = 2.4
+		g_cyl.height = 0.4
+		gear.mesh = g_cyl
+		gear.rotation_degrees = Vector3(90, 0, 0)
+		var g_mat = StandardMaterial3D.new()
+		g_mat.albedo_color = Color(0.06, 0.04, 0.02)
+		g_mat.emission_enabled = true
+		g_mat.emission = amber_col
+		g_mat.emission_energy_multiplier = 5.0
+		gear.material_override = g_mat
+		holo_root.add_child(gear)
+
+		var holo_lbl = Label3D.new()
+		holo_lbl.text = "🔧 THE PIT // PORTER'S HEAVY FLEET\n[ARMOR, WEAPONS & CHOP SHOP]"
+		holo_lbl.position = Vector3(0.0, 3.8, 0.0)
+		holo_lbl.font_size = 22
+		holo_lbl.pixel_size = 0.005
+		holo_lbl.modulate = amber_col
+		holo_lbl.outline_modulate = Color(0.0, 0.0, 0.0, 1.0)
+		holo_lbl.outline_size = 10
+		holo_root.add_child(holo_lbl)
+
+		var light = OmniLight3D.new()
+		light.light_color = amber_col
+		light.light_energy = 7.0
+		light.omni_range = 24.0
+		holo_root.add_child(light)
+
+	# --------------------------------------------------------------------------
+	# 6. FIFE POLICE HEADQUARTERS
+	# --------------------------------------------------------------------------
+	elif b_type == "FIFE_HQ":
+		base_y = hh + 5.5
+		holo_root.position = Vector3(0.0, base_y, 0.0)
+		holo_root.set_meta("base_y", base_y)
+
+		var blue_col = Color(0.1, 0.5, 1.0)
+		var shield = MeshInstance3D.new()
+		var s_box = BoxMesh.new()
+		s_box.size = Vector3(3.8, 4.2, 0.4)
+		shield.mesh = s_box
+		var s_mat = StandardMaterial3D.new()
+		s_mat.albedo_color = Color(0.02, 0.04, 0.08)
+		s_mat.emission_enabled = true
+		s_mat.emission = blue_col
+		s_mat.emission_energy_multiplier = 5.0
+		shield.material_override = s_mat
+		holo_root.add_child(shield)
+
+		var holo_lbl = Label3D.new()
+		holo_lbl.text = "🛡️ FIFE MUNICIPAL POLICE // PRECINCT 04\n[GRID SECURITY & ENFORCEMENT]"
+		holo_lbl.position = Vector3(0.0, 4.0, 0.0)
+		holo_lbl.font_size = 22
+		holo_lbl.pixel_size = 0.005
+		holo_lbl.modulate = blue_col
+		holo_lbl.outline_modulate = Color(0.0, 0.0, 0.0, 1.0)
+		holo_lbl.outline_size = 10
+		holo_root.add_child(holo_lbl)
+
+		var light = OmniLight3D.new()
+		light.light_color = blue_col
+		light.light_energy = 7.0
+		light.omni_range = 24.0
+		holo_root.add_child(light)
+
+	# --------------------------------------------------------------------------
+	# 7. BANKES LOGISTICS FREIGHT HUB
+	# --------------------------------------------------------------------------
+	elif b_type == "BANKES_LOGISTICS":
+		base_y = hh + 5.0
+		holo_root.position = Vector3(0.0, base_y, 0.0)
+		holo_root.set_meta("base_y", base_y)
+
+		var green_col = Color(0.1, 1.0, 0.5)
+		var crate = MeshInstance3D.new()
+		var c_box = BoxMesh.new()
+		c_box.size = Vector3(3.6, 3.6, 3.6)
+		crate.mesh = c_box
+		crate.rotation_degrees = Vector3(45, 45, 0)
+		var c_mat = StandardMaterial3D.new()
+		c_mat.albedo_color = Color(0.02, 0.08, 0.04)
+		c_mat.emission_enabled = true
+		c_mat.emission = green_col
+		c_mat.emission_energy_multiplier = 5.0
+		crate.material_override = c_mat
+		holo_root.add_child(crate)
+
+		var holo_lbl = Label3D.new()
+		holo_lbl.text = "📦 BANKES LOGISTICS // FREIGHT CONDUIT\n[AUTOMATED SUPPLY TERMINAL]"
+		holo_lbl.position = Vector3(0.0, 4.0, 0.0)
+		holo_lbl.font_size = 22
+		holo_lbl.pixel_size = 0.005
+		holo_lbl.modulate = green_col
+		holo_lbl.outline_modulate = Color(0.0, 0.0, 0.0, 1.0)
+		holo_lbl.outline_size = 10
+		holo_root.add_child(holo_lbl)
+
+		var light = OmniLight3D.new()
+		light.light_color = green_col
+		light.light_energy = 7.0
+		light.omni_range = 24.0
+		holo_root.add_child(light)
+
+	# --------------------------------------------------------------------------
+	# 8. SUBSTATION 09 POWER VAULT
+	# --------------------------------------------------------------------------
+	elif b_type == "SUBSTATION":
+		base_y = hh + 5.0
+		holo_root.position = Vector3(0.0, base_y, 0.0)
+		holo_root.set_meta("base_y", base_y)
+
+		var yellow_col = Color(1.0, 1.0, 0.2)
+		var arc_core = MeshInstance3D.new()
+		var a_mesh = SphereMesh.new()
+		a_mesh.radius = 1.4
+		a_mesh.height = 2.8
+		arc_core.mesh = a_mesh
+		var a_mat = StandardMaterial3D.new()
+		a_mat.albedo_color = Color(0.08, 0.08, 0.02)
+		a_mat.emission_enabled = true
+		a_mat.emission = yellow_col
+		a_mat.emission_energy_multiplier = 6.0
+		arc_core.material_override = a_mat
+		holo_root.add_child(arc_core)
+
+		var holo_lbl = Label3D.new()
+		holo_lbl.text = "⚡ SUBSTATION 09 // GRID POWER VAULT\n[HIGH-VOLTAGE QUANTUM GENERATOR]"
+		holo_lbl.position = Vector3(0.0, 3.8, 0.0)
+		holo_lbl.font_size = 22
+		holo_lbl.pixel_size = 0.005
+		holo_lbl.modulate = yellow_col
+		holo_lbl.outline_modulate = Color(0.0, 0.0, 0.0, 1.0)
+		holo_lbl.outline_size = 10
+		holo_root.add_child(holo_lbl)
+
+		var light = OmniLight3D.new()
+		light.light_color = yellow_col
+		light.light_energy = 7.0
+		light.omni_range = 24.0
+		holo_root.add_child(light)
+
+	static_body.add_child(holo_root)
 
 func _build_joe_ice_cream_storefront(static_body: StaticBody3D, pos: Vector3, b_size: Vector3, _accent_color: Color) -> void:
 	var hh: float = b_size.y / 2.0

@@ -572,6 +572,13 @@ func _update_stage_lights_and_band_animation(delta: float) -> void:
 			cone_sign.rotation_degrees.y = sin(_stage_anim_time * 1.5) * 12.0
 			cone_sign.position.y = 5.2 + sin(_stage_anim_time * 2.5) * 0.15
 
+	# 6. Animate 3D Holographic Rooftop Landmark Signs & Character Emblems
+	for holo in get_tree().get_nodes_in_group("rooftop_holograms"):
+		if is_instance_valid(holo) and holo is Node3D:
+			holo.rotation.y += delta * 0.65
+			var base_y: float = holo.get_meta("base_y", holo.position.y)
+			holo.position.y = base_y + sin(_stage_anim_time * 2.0) * 0.35
+
 
 
 
