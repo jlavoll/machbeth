@@ -1,0 +1,98 @@
+{
+	"speaker_display_name": "TRIXIE",
+	"speaker_subtitle": "BARTENDER // THE ELECTRIC DAGGER",
+	"speaker_color": "#FF00AA",
+	"nodes": {
+		"start": {
+			"text": "Well, well... If it isn't General Banquo! The whole club is buzzing about you and Mack breaking the Cawdor siege. What can I pour for Dunsinane's finest street tactician?",
+			"choices": [
+				{
+					"text": "\"Pour me a glass of Glamis Fuel [50 Credits].\"",
+					"target": "order_glamis_fuel"
+				},
+				{
+					"text": "\"Make it a Cawdor Royale [100 Credits].\"",
+					"target": "order_cawdor_royale"
+				},
+				{
+					"text": "\"What's the word on the street tonight, Trixie?\"",
+					"target": "gossip_menu",
+					"familiarity_gain": 1
+				},
+				{
+					"text": "\"Who's the high-roller in the VIP booth?\"",
+					"target": "vip_intel"
+				},
+				{
+					"text": "\"Just taking in the synth-beats for now.\"",
+					"target": "exit"
+				}
+			]
+		},
+		"order_glamis_fuel": {
+			"text": "One Glamis Fuel coming up — high-octane synth-ethanol with a jolt of neural stimulant! Guaranteed to sharpen your reflexes on the asphalt.",
+			"choices": [
+				{
+					"text": "\"Hits like a freight truck. Thanks, Trixie.\"",
+					"target": "start"
+				},
+				{
+					"text": "\"Back to the floor.\"",
+					"target": "exit"
+				}
+			]
+		},
+		"order_cawdor_royale": {
+			"text": "A Cawdor Royale! Top shelf liquid chrome, infused with bio-regen nanites. Restores your vital shields to maximum peak performance.",
+			"choices": [
+				{
+					"text": "\"Smooth and dangerous. Just how I like it.\"",
+					"target": "start"
+				},
+				{
+					"text": "\"Appreciate the mix, Trixie.\"",
+					"target": "exit"
+				}
+			]
+		},
+		"gossip_menu": {
+			"text": "The city's on edge, Banquo. Duncan's executives have been sequestered on Floor 99 all morning. Meanwhile, Mack's convoys are tearing through the western sector like a hurricane. People say something big is brewing between Cawdor and the Throne.",
+			"choices": [
+				{
+					"text": "\"What about the AI Norns in the deep net?\"",
+					"target": "norns_intel"
+				},
+				{
+					"text": "\"Mack will hold his ground. He always does.\"",
+					"target": "start"
+				}
+			]
+		},
+		"norns_intel": {
+			"text": "Those three quantum oracles? Half the street netrunners think they're an urban myth, but the fixers swear their predictions never fail. Just be careful if they ever whisper your name, Banquo. Fate has a nasty kickback in this city.",
+			"choices": [
+				{
+					"text": "\"Good advice. Pour another drink.\"",
+					"target": "start"
+				},
+				{
+					"text": "\"I'll keep my guard up.\"",
+					"target": "exit"
+				}
+			]
+		},
+		"vip_intel": {
+			"text": "That's Fixer Vance in the plush booth. He brokers high-stakes bounties for corporate defectors and black-market convoys. If you're looking for extra credits or heavy contracts, he's your man.",
+			"choices": [
+				{
+					"text": "\"I might have a word with him.\"",
+					"target": "start"
+				},
+				{
+					"text": "\"Thanks for the tip, Trixie.\"",
+					"target": "exit"
+				}
+			]
+		}
+	}
+}

@@ -296,6 +296,8 @@ func _handle_movement(delta: float) -> void:
 			prompt_msg = "[E] ENTER BANKES LOGISTICS HUB"
 		elif city_gen.power_substation_door_pos != Vector3.ZERO and global_position.distance_to(city_gen.power_substation_door_pos) <= 6.0:
 			prompt_msg = "[E] ENTER SUBSTATION 09 POWER VAULT"
+		elif "nightclub_door_pos" in city_gen and city_gen.nightclub_door_pos != Vector3.ZERO and global_position.distance_to(city_gen.nightclub_door_pos) <= 6.0:
+			prompt_msg = "[E] ENTER THE ELECTRIC DAGGER NIGHTCLUB"
 		elif city_gen.park_statue_pos != Vector3.ZERO and global_position.distance_to(city_gen.park_statue_pos) <= 8.0:
 			var s_name: String = city_gen.park_statue_identity.get("name", "CITY MONUMENT")
 			prompt_msg = "[E] EXAMINE MONUMENT INSCRIPTION // %s" % s_name
@@ -490,6 +492,10 @@ func _unhandled_input(event: InputEvent) -> void:
 					return
 				elif city_gen.power_substation_door_pos != Vector3.ZERO and global_position.distance_to(city_gen.power_substation_door_pos) <= 7.0:
 					indoor_mgr.enter_location(indoor_mgr.HQFloor.SUBSTATION)
+					get_viewport().set_input_as_handled()
+					return
+				elif "nightclub_door_pos" in city_gen and city_gen.nightclub_door_pos != Vector3.ZERO and global_position.distance_to(city_gen.nightclub_door_pos) <= 7.0:
+					indoor_mgr.enter_location(indoor_mgr.HQFloor.NIGHTCLUB)
 					get_viewport().set_input_as_handled()
 					return
 				elif city_gen.park_statue_pos != Vector3.ZERO and global_position.distance_to(city_gen.park_statue_pos) <= 8.0:

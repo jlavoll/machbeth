@@ -64,6 +64,7 @@ var norns_ai_door_pos: Vector3 = Vector3.ZERO
 var fife_hq_door_pos: Vector3 = Vector3.ZERO
 var bankes_logistics_door_pos: Vector3 = Vector3.ZERO
 var power_substation_door_pos: Vector3 = Vector3.ZERO
+var nightclub_door_pos: Vector3 = Vector3.ZERO
 var joe_ice_cream_door_pos: Vector3 = Vector3.ZERO
 var joe_npc_node: Node3D = null
 
@@ -121,6 +122,7 @@ func generate_city_from_seed(target_seed: int) -> void:
 	fife_hq_door_pos = Vector3.ZERO
 	bankes_logistics_door_pos = Vector3.ZERO
 	power_substation_door_pos = Vector3.ZERO
+	nightclub_door_pos = Vector3.ZERO
 	joe_ice_cream_door_pos = Vector3.ZERO
 	joe_npc_node = null
 
@@ -1161,6 +1163,7 @@ func _ensure_all_special_buildings_placed(neon_colors: Array) -> void:
 		{"type": "PORTER_PIT", "placed": porter_pit_door_pos != Vector3.ZERO, "target": Vector3(-180.0, 0.0, 180.0)},
 		{"type": "SUBSTATION", "placed": power_substation_door_pos != Vector3.ZERO, "target": Vector3(0.0, 0.0, 180.0)},
 		{"type": "CHOP_SHOP", "placed": chop_shop_door_pos != Vector3.ZERO, "target": Vector3(180.0, 0.0, 180.0)},
+		{"type": "NIGHTCLUB", "placed": nightclub_door_pos != Vector3.ZERO, "target": Vector3(90.0, 0.0, -90.0)},
 		{"type": "JOE_ICE_CREAM", "placed": joe_ice_cream_door_pos != Vector3.ZERO, "target": Vector3(65.0, 0.0, 25.0)}
 	]
 
@@ -1279,6 +1282,8 @@ func _attach_door_to_building(static_body: StaticBody3D, pos: Vector3, b_size: V
 		bankes_logistics_door_pos = door_world_pos
 	elif b_type == "SUBSTATION":
 		power_substation_door_pos = door_world_pos
+	elif b_type == "NIGHTCLUB":
+		nightclub_door_pos = door_world_pos
 
 # ==============================================================================
 # 3D HOLOGRAPHIC ROOFTOP SIGNS & CHARACTER EMBLEMS
@@ -1691,6 +1696,81 @@ func _attach_rooftop_holographic_emblem(static_body: StaticBody3D, b_type: Strin
 		light.light_color = yellow_col
 		light.light_energy = 7.0
 		light.omni_range = 24.0
+		holo_root.add_child(light)
+
+	# --------------------------------------------------------------------------
+	# 9. THE ELECTRIC DAGGER NIGHTCLUB // NEON CROSSED DAGGERS & AUDIO WAVES
+	# --------------------------------------------------------------------------
+	elif b_type == "NIGHTCLUB":
+		base_y = hh + 6.0
+		holo_root.position = Vector3(0.0, base_y, 0.0)
+		holo_root.set_meta("base_y", base_y)
+
+		var pink_col = Color(1.0, 0.0, 0.7)
+		var cyan_col = Color(0.0, 1.0, 0.85)
+
+		# Crossed Glowing Daggers
+		var dagger_root = Node3D.new()
+		var d1 = MeshInstance3D.new()
+		var d1_mesh = PrismMesh.new()
+		d1_mesh.size = Vector3(1.2, 5.0, 0.2)
+		d1.mesh = d1_mesh
+		d1.rotation_degrees = Vector3(180, 0, 35)
+		var d1_mat = StandardMaterial3D.new()
+		d1_mat.albedo_color = pink_col
+		d1_mat.emission_enabled = true
+		d1_mat.emission = pink_col
+		d1_mat.emission_energy_multiplier = 6.0
+		d1.material_override = d1_mat
+		dagger_root.add_child(d1)
+
+		var d2 = MeshInstance3D.new()
+		var d2_mesh = PrismMesh.new()
+		d2_mesh.size = Vector3(1.2, 5.0, 0.2)
+		d2.mesh = d2_mesh
+		d2.rotation_degrees = Vector3(180, 0, -35)
+		var d2_mat = StandardMaterial3D.new()
+		d2_mat.albedo_color = cyan_col
+		d2_mat.emission_enabled = true
+		d2_mat.emission = cyan_col
+		d2_mat.emission_energy_multiplier = 6.0
+		d2.material_override = d2_mat
+		dagger_root.add_child(d2)
+		holo_root.add_child(dagger_root)
+
+		# Equalizer Audio Frequency Bars
+		var eq_root = Node3D.new()
+		var eq_heights = [1.5, 2.8, 4.2, 3.0, 4.8, 3.4, 2.0]
+		for e_i in range(eq_heights.size()):
+			var bar = MeshInstance3D.new()
+			var b_mesh = BoxMesh.new()
+			b_mesh.size = Vector3(0.3, eq_heights[e_i], 0.2)
+			bar.mesh = b_mesh
+			bar.position = Vector3((e_i - 3) * 0.6, -1.0 + eq_heights[e_i] * 0.5, 0.0)
+			var b_mat = StandardMaterial3D.new()
+			var b_col = pink_col if e_i % 2 == 0 else cyan_col
+			b_mat.albedo_color = b_col
+			b_mat.emission_enabled = true
+			b_mat.emission = b_col
+			b_mat.emission_energy_multiplier = 5.0
+			bar.material_override = b_mat
+			eq_root.add_child(bar)
+		holo_root.add_child(eq_root)
+
+		var holo_lbl = Label3D.new()
+		holo_lbl.text = "🍸 THE ELECTRIC DAGGER // NEON NIGHTCLUB\n[SYNTH-BEATS • COCKTAILS • UNDERGROUND INTEL]"
+		holo_lbl.position = Vector3(0.0, 4.2, 0.0)
+		holo_lbl.font_size = 22
+		holo_lbl.pixel_size = 0.005
+		holo_lbl.modulate = pink_col
+		holo_lbl.outline_modulate = Color(0.0, 0.0, 0.0, 1.0)
+		holo_lbl.outline_size = 10
+		holo_root.add_child(holo_lbl)
+
+		var light = OmniLight3D.new()
+		light.light_color = pink_col
+		light.light_energy = 8.0
+		light.omni_range = 26.0
 		holo_root.add_child(light)
 
 	static_body.add_child(holo_root)

@@ -854,6 +854,9 @@ func _on_portrait_canvas_draw() -> void:
 	elif "DODGY" in speaker_name or "FIXER" in speaker_name or "GANG" in speaker_name:
 		_portrait_label_initials.visible = false
 		_draw_dodgy_portrait(center, col)
+	elif "TRIXIE" in speaker_name or "BARTENDER" in speaker_name or "NIGHTCLUB" in speaker_name:
+		_portrait_label_initials.visible = false
+		_draw_trixie_portrait(center, col)
 	elif "DRONE" in speaker_name or "TECH" in speaker_name:
 		_portrait_label_initials.visible = false
 		_draw_drone_portrait(center, col)
@@ -1046,6 +1049,32 @@ func _draw_drone_portrait(c: Vector2, col: Color) -> void:
 	_portrait_canvas.draw_circle(c + Vector2(24, 0), 6.0, col)
 	_portrait_canvas.draw_circle(c + Vector2(0, -24), 6.0, col)
 	_portrait_canvas.draw_circle(c + Vector2(0, 24), 6.0, col)
+
+func _draw_trixie_portrait(c: Vector2, col: Color) -> void:
+	var wire = Color(col.r, col.g, col.b, 0.95)
+	var fill = Color(col.r, col.g, col.b, 0.18)
+
+	# Cocktail Martini Glass Triangle
+	var glass = PackedVector2Array([
+		c + Vector2(-28, -26),
+		c + Vector2(28, -26),
+		c + Vector2(0, 10)
+	])
+	_portrait_canvas.draw_colored_polygon(glass, fill)
+	_portrait_canvas.draw_polyline(glass, wire, 2.2, true)
+
+	# Stem and Base
+	_portrait_canvas.draw_line(c + Vector2(0, 10), c + Vector2(0, 38), wire, 2.5)
+	_portrait_canvas.draw_line(c + Vector2(-18, 38), c + Vector2(18, 38), wire, 2.5)
+
+	# Glowing Neon Olive / Cherry Sphere on Skewer
+	var olive_c = c + Vector2(6, -14)
+	_portrait_canvas.draw_circle(olive_c, 5.0, Color(0.0, 1.0, 0.85, 1.0))
+	_portrait_canvas.draw_line(c + Vector2(-16, -34), c + Vector2(16, 4), Color(1.0, 0.85, 0.0, 0.9), 1.5)
+
+	# Synth-Liquid Wave
+	var wave_y = c.y - 12 + sin(_portrait_anim_time * 4.0) * 2.0
+	_portrait_canvas.draw_line(Vector2(c.x - 14, wave_y), Vector2(c.x + 14, wave_y), Color(1.0, 0.0, 0.7, 0.8), 2.0)
 
 func _draw_generic_hud_reticle(c: Vector2, col: Color) -> void:
 	var wire = Color(col.r, col.g, col.b, 0.5)

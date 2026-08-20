@@ -11,7 +11,7 @@ class_name IndoorSystemManager
 # - Interactive Security Vault Door sliding open/closed in the Penthouse.
 # - Exit portal trigger returning player to city streets outside.
 
-enum HQFloor { LOBBY, PENTHOUSE, MACK_HIDEOUT, BANQUO_LOFT, LADY_M_LAIR, CHOP_SHOP, PORTER_PIT, NORNS_AI, FIFE_HQ, BANKES_LOGISTICS, SUBSTATION }
+enum HQFloor { LOBBY, PENTHOUSE, MACK_HIDEOUT, BANQUO_LOFT, LADY_M_LAIR, CHOP_SHOP, PORTER_PIT, NORNS_AI, FIFE_HQ, BANKES_LOGISTICS, SUBSTATION, NIGHTCLUB }
 var current_floor: HQFloor = HQFloor.LOBBY
 
 var is_inside_building: bool = false
@@ -38,6 +38,13 @@ var norns_ai_origin: Vector3 = Vector3(7000.0, 0.0, 7000.0)
 var fife_hq_origin: Vector3 = Vector3(8000.0, 0.0, 8000.0)
 var bankes_logistics_origin: Vector3 = Vector3(9000.0, 0.0, 9000.0)
 var substation_origin: Vector3 = Vector3(10000.0, 0.0, 10000.0)
+var nightclub_origin: Vector3 = Vector3(11000.0, 0.0, 11000.0)
+
+# Nightclub Dynamic Animation References
+var _nc_anim_time: float = 0.0
+var _nc_lasers: Array[SpotLight3D] = []
+var _nc_dancers: Array[Node3D] = []
+var _nc_dance_tiles: Array[MeshInstance3D] = []
 
 # Elevator Lift World Locations
 var lobby_elevator_pos: Vector3 = Vector3.ZERO
@@ -100,6 +107,7 @@ func _ready() -> void:
 	_build_fife_hq_floor()
 	_build_bankes_logistics_floor()
 	_build_substation_floor()
+	_build_nightclub_floor()
 	_setup_indoor_camera()
 	_setup_indoor_hud()
 
@@ -742,6 +750,188 @@ func _build_duncan_drone_surveillance_tv(parent: Node3D) -> void:
 	duncan_drone_telemetry_lbl.outline_size = 6
 	drone_tv_root.add_child(duncan_drone_telemetry_lbl)
 
+# ==============================================================================
+# 12. THE ELECTRIC DAGGER NIGHTCLUB (44m x 34m)
+# ==============================================================================
+func _build_nightclub_floor() -> void:
+	var root_nc = Node3D.new()
+	root_nc.name = "NightclubRoot"
+	root_nc.position = nightclub_origin
+	add_child(root_nc)
+
+	# 1. Floor & Perimeter Soundproof Walls
+	_build_floor_plane(root_nc, Vector2(44.0, 34.0), Color(0.01, 0.01, 0.03))
+	_build_blueprint_grid(root_nc, 44, 34, Color(1.0, 0.0, 0.7)) # Hot Pink Blueprint Grid
+
+	_build_interior_wall(root_nc, Vector3(0.0, 2.5, -17.0), Vector3(44.0, 5.0, 0.8), Color(1.0, 0.0, 0.7)) # North
+	_build_interior_wall(root_nc, Vector3(0.0, 2.5, 17.0), Vector3(44.0, 5.0, 0.8), Color(1.0, 0.0, 0.7)) # South
+	_build_interior_wall(root_nc, Vector3(-22.0, 2.5, 0.0), Vector3(0.8, 5.0, 34.0), Color(0.0, 1.0, 0.85)) # West
+	_build_interior_wall(root_nc, Vector3(22.0, 2.5, 0.0), Vector3(0.8, 5.0, 34.0), Color(0.0, 1.0, 0.85)) # East
+
+	# 2. Exit Door at South Wall
+	_build_exit_door(root_nc, Vector3(0.0, 0.0, 16.0))
+
+	# 3. Center Pulsing Dance Floor (16m x 14m matrix of glowing reactive tiles)
+	var df_root = Node3D.new()
+	df_root.name = "DanceFloorTiles"
+	for tx in range(-3, 4, 2):
+		for tz in range(-3, 4, 2):
+			var tile = MeshInstance3D.new()
+			var t_box = BoxMesh.new()
+			t_box.size = Vector3(1.8, 0.05, 1.8)
+			tile.mesh = t_box
+			tile.position = Vector3(tx * 2.0, 0.03, tz * 2.0)
+			var t_mat = StandardMaterial3D.new()
+			var is_pink = (abs(tx) + abs(tz)) % 4 == 0
+			var t_col = Color(1.0, 0.0, 0.7) if is_pink else Color(0.0, 1.0, 0.85)
+			t_mat.albedo_color = t_col
+			t_mat.emission_enabled = true
+			t_mat.emission = t_col
+			t_mat.emission_energy_multiplier = 4.0
+			tile.material_override = t_mat
+			df_root.add_child(tile)
+			_nc_dance_tiles.append(tile)
+	root_nc.add_child(df_root)
+
+	# 4. DJ Stage & Sound Rig (North Wall)
+	var dj_stage = StaticBody3D.new()
+	dj_stage.name = "DJStage"
+	dj_stage.position = Vector3(0.0, 0.6, -12.0)
+	var stage_col = CollisionShape3D.new()
+	var stage_box = BoxShape3D.new()
+	stage_box.size = Vector3(14.0, 1.2, 6.0)
+	stage_col.shape = stage_box
+	dj_stage.add_child(stage_col)
+
+	var stage_mesh = MeshInstance3D.new()
+	stage_mesh.mesh = stage_box
+	var st_mat = StandardMaterial3D.new()
+	st_mat.albedo_color = Color(0.04, 0.02, 0.06)
+	st_mat.emission_enabled = true
+	st_mat.emission = Color(1.0, 0.0, 0.6)
+	st_mat.emission_energy_multiplier = 2.0
+	stage_mesh.material_override = st_mat
+	dj_stage.add_child(stage_mesh)
+	root_nc.add_child(dj_stage)
+
+	# DJ Console Desk & Turntables
+	_build_interior_desk(root_nc, Vector3(0.0, 1.4, -11.0), Vector3(5.0, 1.0, 1.4), Color(0.0, 1.0, 0.85))
+
+	# DJ NPC: DJ Hex
+	var _dj = _spawn_npc_character(root_nc, Vector3(0.0, 1.2, -12.5), Color(1.0, 0.0, 0.8), "DJ_Hex", Vector3(0.0, 1.2, 0.0))
+
+	# DJ Holographic Audio Banner
+	var dj_banner = Label3D.new()
+	dj_banner.text = "🎧 DJ HEX // LIVE SYNTH-BEAT RIG\n[HEAVY NEON DANCE PULSE]"
+	dj_banner.position = Vector3(0.0, 4.5, -11.0)
+	dj_banner.font_size = 20
+	dj_banner.pixel_size = 0.005
+	dj_banner.modulate = Color(0.0, 1.0, 0.85)
+	dj_banner.outline_modulate = Color(0, 0, 0, 1)
+	dj_banner.outline_size = 8
+	root_nc.add_child(dj_banner)
+
+	# DJ Moving Laser Spotlights
+	var laser_colors = [Color(1.0, 0.0, 0.6), Color(0.0, 1.0, 0.85), Color(0.6, 0.1, 1.0), Color(1.0, 0.85, 0.0)]
+	for l_i in range(4):
+		var laser = SpotLight3D.new()
+		laser.name = "DJLaser_%d" % (l_i + 1)
+		laser.position = Vector3((l_i - 1.5) * 3.5, 4.2, -11.5)
+		laser.light_color = laser_colors[l_i]
+		laser.light_energy = 8.0
+		laser.spot_range = 28.0
+		laser.spot_angle = 20.0
+		laser.rotation_degrees = Vector3(-45, 0, 0)
+		root_nc.add_child(laser)
+		_nc_lasers.append(laser)
+
+	# 5. Full Bar Counter (West Wing)
+	var bar_counter = StaticBody3D.new()
+	bar_counter.name = "BarCounter"
+	bar_counter.position = Vector3(-14.0, 0.6, 0.0)
+	var bar_col = CollisionShape3D.new()
+	var bar_box = BoxShape3D.new()
+	bar_box.size = Vector3(3.0, 1.2, 18.0)
+	bar_col.shape = bar_box
+	bar_counter.add_child(bar_col)
+
+	var bar_mesh = MeshInstance3D.new()
+	bar_mesh.mesh = bar_box
+	var b_mat = StandardMaterial3D.new()
+	b_mat.albedo_color = Color(0.03, 0.03, 0.06)
+	b_mat.emission_enabled = true
+	b_mat.emission = Color(0.0, 1.0, 0.85)
+	b_mat.emission_energy_multiplier = 2.5
+	bar_mesh.material_override = b_mat
+	bar_counter.add_child(bar_mesh)
+	root_nc.add_child(bar_counter)
+
+	# Bartender NPC: Trixie
+	var _trixie = _spawn_npc_character(root_nc, Vector3(-16.0, 0.0, 0.0), Color(1.0, 0.0, 0.7), "Bartender_Trixie", Vector3(-14.0, 0.0, 0.0))
+
+	# Bar Holographic Sign
+	var bar_lbl = Label3D.new()
+	bar_lbl.text = "🍸 ELECTRIC DAGGER BAR\n[ORDER SYNTH-COCKTAILS & GOSSIP]"
+	bar_lbl.position = Vector3(-14.0, 3.2, 0.0)
+	bar_lbl.rotation_degrees = Vector3(0, 90, 0)
+	bar_lbl.font_size = 20
+	bar_lbl.pixel_size = 0.005
+	bar_lbl.modulate = Color(1.0, 0.0, 0.7)
+	bar_lbl.outline_modulate = Color(0, 0, 0, 1)
+	bar_lbl.outline_size = 8
+	root_nc.add_child(bar_lbl)
+
+	# 6. VIP Lounge (East Wing)
+	var vip_booth = StaticBody3D.new()
+	vip_booth.name = "VIPBooth"
+	vip_booth.position = Vector3(15.0, 0.5, 0.0)
+	var v_col = CollisionShape3D.new()
+	var v_box = BoxShape3D.new()
+	v_box.size = Vector3(4.0, 1.0, 14.0)
+	v_col.shape = v_box
+	vip_booth.add_child(v_col)
+
+	var v_mesh = MeshInstance3D.new()
+	v_mesh.mesh = v_box
+	var v_mat = StandardMaterial3D.new()
+	v_mat.albedo_color = Color(0.08, 0.02, 0.08) # Plush Dark Velvet
+	v_mat.emission_enabled = true
+	v_mat.emission = Color(0.7, 0.1, 1.0)
+	v_mat.emission_energy_multiplier = 2.0
+	v_mesh.material_override = v_mat
+	vip_booth.add_child(v_mesh)
+	root_nc.add_child(vip_booth)
+
+	# VIP Fixer NPC: Fixer Vance
+	var _vance = _spawn_npc_character(root_nc, Vector3(16.0, 0.0, 0.0), Color(0.9, 0.7, 0.1), "Fixer_Vance", Vector3(14.0, 0.0, 0.0))
+
+	var vip_lbl = Label3D.new()
+	vip_lbl.text = "👑 VIP SYNDICATE LOUNGE\n[HIGH-STAKES BOUNTIES & CONTRACTS]"
+	vip_lbl.position = Vector3(14.0, 3.2, 0.0)
+	vip_lbl.rotation_degrees = Vector3(0, -90, 0)
+	vip_lbl.font_size = 20
+	vip_lbl.pixel_size = 0.005
+	vip_lbl.modulate = Color(0.9, 0.7, 0.1)
+	vip_lbl.outline_modulate = Color(0, 0, 0, 1)
+	vip_lbl.outline_size = 8
+	root_nc.add_child(vip_lbl)
+
+	# 7. Animated Dancing Patrons on Dance Floor
+	var dancer_coords = [
+		Vector3(-3.0, 0.0, -2.0),
+		Vector3(3.0, 0.0, -2.0),
+		Vector3(-2.0, 0.0, 3.0),
+		Vector3(2.0, 0.0, 3.0),
+		Vector3(-4.5, 0.0, 1.0),
+		Vector3(4.5, 0.0, 1.0)
+	]
+	var dancer_colors = [
+		Color(0.0, 1.0, 0.85), Color(1.0, 0.0, 0.6), Color(0.8, 0.2, 1.0),
+		Color(1.0, 0.85, 0.0), Color(0.2, 1.0, 0.3), Color(1.0, 0.3, 0.0)
+	]
+	for d_i in range(dancer_coords.size()):
+		var d_npc = _spawn_npc_character(root_nc, dancer_coords[d_i], dancer_colors[d_i], "ClubDancer_%d" % (d_i + 1), Vector3(0.0, 0.0, -11.0))
+		_nc_dancers.append(d_npc)
 
 # ==============================================================================
 # HELPER BUILDERS: PLANES, GRIDS, WALLS, ELEVATORS, DOORS
@@ -1128,6 +1318,7 @@ func _apply_floor_reverb_acoustics() -> void:
 		HQFloor.NORNS_AI:    dim = Vector2(30.0, 30.0)       # 900m² - circular holographic terminal chamber
 		HQFloor.FIFE_HQ:     dim = Vector2(30.0, 25.0)       # 750m² - tactical squad garrison
 		HQFloor.BANKES_LOGISTICS: dim = Vector2(35.0, 25.0)  # 875m² - logistics storage hub
+		HQFloor.NIGHTCLUB:   dim = Vector2(44.0, 34.0)       # 1496m² - spacious acoustic dance & lounge club
 
 	amb_mgr.set_indoor_room_acoustics(dim, false)
 
@@ -1183,6 +1374,8 @@ func exit_building_interior() -> void:
 			target_exit = city_gen.bankes_logistics_door_pos if is_instance_valid(city_gen) and city_gen.bankes_logistics_door_pos != Vector3.ZERO else saved_player_position
 		elif current_floor == HQFloor.SUBSTATION:
 			target_exit = city_gen.power_substation_door_pos if is_instance_valid(city_gen) and city_gen.power_substation_door_pos != Vector3.ZERO else saved_player_position
+		elif current_floor == HQFloor.NIGHTCLUB:
+			target_exit = city_gen.nightclub_door_pos if is_instance_valid(city_gen) and "nightclub_door_pos" in city_gen and city_gen.nightclub_door_pos != Vector3.ZERO else saved_player_position
 
 		target_exit += Vector3(0.0, 0.0, 3.0)
 		target_exit.y = 0.0
@@ -1246,6 +1439,8 @@ func _get_origin_for_floor(fl: HQFloor) -> Vector3:
 			return bankes_logistics_origin
 		HQFloor.SUBSTATION:
 			return substation_origin
+		HQFloor.NIGHTCLUB:
+			return nightclub_origin
 	return lobby_floor_origin
 
 func _update_hud_floor_label() -> void:
@@ -1291,6 +1486,9 @@ func _update_hud_floor_label() -> void:
 			HQFloor.SUBSTATION:
 				indoor_title_label.text = "SUB-GRID POWER SUBSTATION 09\n // GRID BLACKOUT TARGET\n " + mode_suffix
 				indoor_title_label.add_theme_color_override("font_color", Color(1.0, 0.9, 0.0))
+			HQFloor.NIGHTCLUB:
+				indoor_title_label.text = "THE ELECTRIC DAGGER\n // NEON UNDERGROUND NIGHTCLUB\n " + mode_suffix
+				indoor_title_label.add_theme_color_override("font_color", Color(1.0, 0.0, 0.75))
 
 # ==============================================================================
 # PROCESS LOOP & INTERACTION PROMPTS
@@ -1327,11 +1525,35 @@ func _process(_delta: float) -> void:
 					if is_instance_valid(duncan_drone_telemetry_lbl):
 						duncan_drone_telemetry_lbl.text = "ALTITUDE: %.1fM // POS: [%.0f, %.0f] // STATUS: NOMINAL" % [drone_pos.y, drone_pos.x, drone_pos.z]
 
+	# Animate Nightclub Floor, Laser Spotlights, and Dancers
+	if current_floor == HQFloor.NIGHTCLUB:
+		_nc_anim_time += _delta
+		# Sweep laser spotlights
+		for l_i in range(_nc_lasers.size()):
+			var laser = _nc_lasers[l_i]
+			if is_instance_valid(laser):
+				var sweep_speed: float = 1.8 + l_i * 0.4
+				laser.rotation_degrees.y = sin(_nc_anim_time * sweep_speed + l_i * 1.5) * 35.0
+				laser.rotation_degrees.x = -45.0 + cos(_nc_anim_time * (sweep_speed * 0.8) + l_i) * 15.0
+
+		# Pulse dance floor tile materials
+		for t_i in range(_nc_dance_tiles.size()):
+			var tile = _nc_dance_tiles[t_i]
+			if is_instance_valid(tile) and is_instance_valid(tile.material_override):
+				var mat = tile.material_override as StandardMaterial3D
+				mat.emission_energy_multiplier = lerp(2.0, 7.0, abs(sin(_nc_anim_time * 3.5 + t_i * 0.6)))
+
+		# Animate Dancers bobbing to the synth-beat
+		for d_i in range(_nc_dancers.size()):
+			var dancer = _nc_dancers[d_i]
+			if is_instance_valid(dancer):
+				var bounce: float = abs(sin(_nc_anim_time * 5.0 + d_i * 1.1)) * 0.15
+				dancer.position.y = bounce
+				dancer.rotation_degrees.y = sin(_nc_anim_time * 2.5 + d_i) * 20.0
+
 	var player_node: Node3D = player_car.on_foot_node if (player_car.is_on_foot and is_instance_valid(player_car.on_foot_node)) else null
 	if not is_instance_valid(player_node):
 		return
-
-
 
 	var current_origin: Vector3 = _get_origin_for_floor(current_floor)
 	if indoor_view_mode == "TOPDOWN":
@@ -1364,6 +1586,8 @@ func _process(_delta: float) -> void:
 		exit_target_z = 14.2
 	elif current_floor == HQFloor.SUBSTATION:
 		exit_target_z = 9.2
+	elif current_floor == HQFloor.NIGHTCLUB:
+		exit_target_z = 16.0
 
 	var floor_exit_pos: Vector3 = current_origin + Vector3(0.0, 0.0, exit_target_z)
 
@@ -1441,6 +1665,18 @@ func _process(_delta: float) -> void:
 			var sub_breaker_pos: Vector3 = substation_origin + Vector3(0.0, 0.0, -6.0)
 			if pos.distance_to(sub_breaker_pos) <= 2.5:
 				prompt_text = "[E] CUT SUBSTATION 09 POWER GRID // SEVER NORNS FEED"
+			elif pos.distance_to(floor_exit_pos) <= 2.6:
+				prompt_text = "[E] EXIT TO CITY STREETS"
+		elif current_floor == HQFloor.NIGHTCLUB:
+			var bar_pos: Vector3 = nightclub_origin + Vector3(-14.0, 0.0, 0.0)
+			var dj_pos: Vector3 = nightclub_origin + Vector3(0.0, 0.0, -11.0)
+			var vip_pos: Vector3 = nightclub_origin + Vector3(14.0, 0.0, 0.0)
+			if pos.distance_to(bar_pos) <= 3.5:
+				prompt_text = "[E] ORDER SYNTH-COCKTAIL // TALK TO TRIXIE"
+			elif pos.distance_to(dj_pos) <= 3.5:
+				prompt_text = "[E] REQUEST BEAT DROP // TALK TO DJ HEX"
+			elif pos.distance_to(vip_pos) <= 3.5:
+				prompt_text = "[E] TALK TO FIXER VANCE // UNDERGROUND BOUNTIES"
 			elif pos.distance_to(floor_exit_pos) <= 2.6:
 				prompt_text = "[E] EXIT TO CITY STREETS"
 		elif pos.distance_to(floor_exit_pos) <= 2.6:
@@ -1677,6 +1913,29 @@ func _unhandled_input(event: InputEvent) -> void:
 							
 							get_viewport().set_input_as_handled()
 							return
+
+			if current_floor == HQFloor.NIGHTCLUB:
+				var bar_pos: Vector3 = nightclub_origin + Vector3(-14.0, 0.0, 0.0)
+				var dj_pos: Vector3 = nightclub_origin + Vector3(0.0, 0.0, -11.0)
+				var vip_pos: Vector3 = nightclub_origin + Vector3(14.0, 0.0, 0.0)
+				if pos.distance_to(bar_pos) <= 3.5:
+					var dialogue_sys = get_parent().get_node_or_null("DialogueSystem")
+					if is_instance_valid(dialogue_sys) and dialogue_sys.has_method("start_dialogue"):
+						dialogue_sys.start_dialogue("res://scripts/electric_dagger_bartender.json")
+						get_viewport().set_input_as_handled()
+						return
+				elif pos.distance_to(dj_pos) <= 3.5:
+					var comms = get_parent().get_node_or_null("NeuralNotificationSystem")
+					if is_instance_valid(comms) and comms.has_method("send_message"):
+						comms.send_message("🎧 DJ HEX: 'Dropping the heavy Dunsinane synth-bass! Let the floor burn, Banquo!'", "THE ELECTRIC DAGGER // BEAT DROP")
+					get_viewport().set_input_as_handled()
+					return
+				elif pos.distance_to(vip_pos) <= 3.5:
+					var dialogue_sys = get_parent().get_node_or_null("DialogueSystem")
+					if is_instance_valid(dialogue_sys) and dialogue_sys.has_method("start_dialogue"):
+						dialogue_sys.start_dialogue("res://scripts/fixer.json")
+						get_viewport().set_input_as_handled()
+						return
 
 			if pos.distance_to(floor_exit_pos) <= 4.5:
 				exit_building_interior()
