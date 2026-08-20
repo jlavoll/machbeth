@@ -36,6 +36,8 @@ var norns_blip_marker: ColorRect
 var fife_blip_marker: ColorRect
 var bankes_blip_marker: ColorRect
 var substation_blip_marker: ColorRect
+var nightclub_blip_marker: ColorRect
+var joe_blip_marker: ColorRect
 var parked_car_blip_marker: ColorRect
 var poi_legend_container: Control = null
 var delivery_target_pos: Vector3 = Vector3.ZERO
@@ -181,6 +183,18 @@ func _setup_map_hud_overlay() -> void:
 	substation_blip_marker.color = Color(1.0, 0.9, 0.0) # High Voltage Yellow
 	map_overlay_panel.add_child(substation_blip_marker)
 
+	# The Electric Dagger Nightclub Blip (Hot Pink)
+	nightclub_blip_marker = ColorRect.new()
+	nightclub_blip_marker.size = Vector2(12, 12)
+	nightclub_blip_marker.color = Color(1.0, 0.0, 0.85) # Hot Pink Nightclub
+	map_overlay_panel.add_child(nightclub_blip_marker)
+
+	# Joe's Ice Cream Stand Blip (Mint Cyan)
+	joe_blip_marker = ColorRect.new()
+	joe_blip_marker.size = Vector2(12, 12)
+	joe_blip_marker.color = Color(0.2, 0.9, 1.0) # Mint Cyan Ice Cream Stand
+	map_overlay_panel.add_child(joe_blip_marker)
+
 	# Executive Limo Target Blip Marker (Radiant Gold / Red Pulse)
 	var limo_blip_marker: ColorRect = ColorRect.new()
 	limo_blip_marker.name = "LimoBlipMarker"
@@ -308,6 +322,8 @@ func _update_poi_legend() -> void:
 	entries.append({"name": "FIFE PATROL HQ", "color": Color(0.1, 0.5, 1.0)})
 	entries.append({"name": "CAWDOR LOGISTICS", "color": Color(0.9, 0.7, 0.1)})
 	entries.append({"name": "SUBSTATION 09", "color": Color(1.0, 0.9, 0.0)})
+	entries.append({"name": "THE ELECTRIC DAGGER (CLUB)", "color": Color(1.0, 0.0, 0.85)})
+	entries.append({"name": "JOE'S ICE CREAM STAND", "color": Color(0.2, 0.9, 1.0)})
 
 	
 	var campaign_mgr = $"../CampaignManager"
@@ -419,6 +435,8 @@ func _process(_delta: float) -> void:
 		_update_single_blip(fife_blip_marker, city_gen.fife_hq_door_pos if is_instance_valid(city_gen) else Vector3.ZERO)
 		_update_single_blip(bankes_blip_marker, city_gen.bankes_logistics_door_pos if is_instance_valid(city_gen) else Vector3.ZERO)
 		_update_single_blip(substation_blip_marker, city_gen.power_substation_door_pos if is_instance_valid(city_gen) else Vector3.ZERO)
+		_update_single_blip(nightclub_blip_marker, city_gen.nightclub_door_pos if is_instance_valid(city_gen) and "nightclub_door_pos" in city_gen else Vector3.ZERO)
+		_update_single_blip(joe_blip_marker, city_gen.joe_ice_cream_door_pos if is_instance_valid(city_gen) and "joe_ice_cream_door_pos" in city_gen else Vector3.ZERO)
 
 		# Live Limo Target Tracking Update
 		var limo_marker = map_overlay_panel.get_node_or_null("LimoBlipMarker")
