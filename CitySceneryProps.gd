@@ -235,15 +235,16 @@ func create_food_truck(spawn_pos: Vector3, facing_dir: Vector3, neon_color: Colo
 	truck_root.add_child(counter_light)
 
 	# 7. Impassable Solid Collision Box for Player Car, Traffic & On-Foot Player
-	# collision_layer = 1 (default) — matches player car and on-foot CharacterBody3D mask
 	var static_body = StaticBody3D.new()
 	static_body.name = "FoodTruckCollision"
+	static_body.collision_layer = 1 | 2
+	static_body.collision_mask  = 1 | 2
 
 	var col_shape = CollisionShape3D.new()
 	var box_shape = BoxShape3D.new()
-	box_shape.size = Vector3(2.4, 2.5, 4.4)
+	box_shape.size = Vector3(2.3, 2.4, 4.2) # Snug collision box
 	col_shape.shape = box_shape
-	col_shape.position = Vector3(0.0, 1.4, 0.0)
+	col_shape.position = Vector3(0.0, 1.35, 0.0)
 	static_body.add_child(col_shape)
 	truck_root.add_child(static_body)
 
@@ -333,10 +334,12 @@ func create_parked_vehicle(spawn_pos: Vector3, facing_dir: Vector3, car_color: C
 	# 4. Solid Physics Body Collider (Blocks player car & on-foot player)
 	var static_body = StaticBody3D.new()
 	static_body.name = "ParkedCarCollider"
+	static_body.collision_layer = 1 | 2
+	static_body.collision_mask  = 1 | 2
 
 	var col_shape = CollisionShape3D.new()
 	var box_shape = BoxShape3D.new()
-	box_shape.size = Vector3(1.8, 1.2, 4.0)
+	box_shape.size = Vector3(1.75, 1.1, 3.9) # Snug parked vehicle collision box
 	col_shape.shape = box_shape
 	col_shape.position = Vector3(0.0, 0.6, 0.0)
 	static_body.add_child(col_shape)

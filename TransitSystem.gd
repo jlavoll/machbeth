@@ -104,6 +104,19 @@ func _spawn_station_shelters() -> void:
 		mesh_inst.material_override = mat
 		mesh_inst.position = Vector3(0.0, 1.4, 0.0)
 		shelter_node.add_child(mesh_inst)
+
+		# Solid Physical Collider for Station Shelter
+		var shelter_body = StaticBody3D.new()
+		shelter_body.name = "StationShelterCollider"
+		shelter_body.collision_layer = 1 | 2
+		shelter_body.collision_mask = 1 | 2
+		var shelter_col = CollisionShape3D.new()
+		var shelter_box = BoxShape3D.new()
+		shelter_box.size = Vector3(4.0, 2.8, 1.2)
+		shelter_col.shape = shelter_box
+		shelter_col.position = Vector3(0.0, 1.4, 0.0)
+		shelter_body.add_child(shelter_col)
+		shelter_node.add_child(shelter_body)
 		
 		# Holographic Station Label
 		var label = Label3D.new()
@@ -117,8 +130,20 @@ func _spawn_station_shelters() -> void:
 func _spawn_cyber_busses(route_01: Array[Vector3], route_02: Array[Vector3]) -> void:
 	var routes = [route_01, route_02]
 	for b_idx in range(1): # 1 single Cyber-Transit streetcar bus running the main loop
-		var bus_node = Node3D.new()
+		var bus_node = AnimatableBody3D.new()
 		bus_node.name = "CyberBus_%d" % (b_idx + 1)
+		bus_node.collision_layer = 1 | 2
+		bus_node.collision_mask = 1 | 2
+		bus_node.sync_to_physics = false
+
+		# Solid Physical Collider for Moving Street Car
+		var bus_col = CollisionShape3D.new()
+		var bus_col_shape = BoxShape3D.new()
+		bus_col_shape.size = Vector3(3.6, 3.0, 8.8) # Snug physical collision box
+		bus_col.shape = bus_col_shape
+		bus_col.position = Vector3(0.0, 0.0, 0.0)
+		bus_node.add_child(bus_col)
+
 		var bus_route: Array[Vector3] = routes[b_idx]
 		bus_node.position = bus_route[0] + Vector3(0.0, 1.6, 0.0)
 		add_child(bus_node)

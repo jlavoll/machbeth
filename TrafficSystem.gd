@@ -443,11 +443,12 @@ func _spawn_car_on_loop(loop_route: Array[Vector3], start_waypoint_index: int) -
 	car_node.add_child(headlight)
 
 	# ---- Collision ----
-	car_node.collision_layer = 2
+	car_node.collision_layer = 1 | 2
 	car_node.collision_mask  = 1 | 2
 	var col_node  := CollisionShape3D.new()
 	var col_shape := BoxShape3D.new()
-	col_shape.size   = car_size
+	# Snug 95% collision envelope to prevent corner snags and smooth passing
+	col_shape.size   = car_size * Vector3(0.95, 0.95, 0.95)
 	col_node.shape   = col_shape
 	col_node.position = Vector3(0.0, body_y_offset, 0.0)
 	car_node.add_child(col_node)

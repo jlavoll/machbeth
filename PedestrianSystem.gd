@@ -1164,12 +1164,12 @@ func _spawn_concert_crowd() -> void:
 			crowd_guy.add_child(visor)
 
 		crowd_guy.position = pos
+		add_child(crowd_guy)
 		crowd_guy.look_at(stage_pos + Vector3(0.0, 1.2, 0.0), Vector3.UP) # Facing stage center
 		crowd_guy.set_meta("base_pos", pos)
 		crowd_guy.set_meta("fan_idx", i)
 		crowd_guy.set_meta("event_id", active_event_id)
 
-		add_child(crowd_guy)
 		active_concert_crowd.append(crowd_guy)
 
 
@@ -2547,9 +2547,6 @@ func _try_trigger_character_dialogue(player_pos: Vector3, dialogue_sys: Dialogue
 
 	if is_joe_meta:
 		json_path = "res://scripts/joe_ice_cream.json"
-		var campaign_mgr = get_parent().get_node_or_null("CampaignManager")
-		if is_instance_valid(campaign_mgr) and campaign_mgr.has_method("collect_joe_daily_stipend"):
-			campaign_mgr.collect_joe_daily_stipend()
 	elif is_delivery_recipient or "Delivery" in char_name:
 		json_path = "res://scripts/delivery_contact.json"
 	elif "Dodgy" in char_name or is_dodgy_meta:

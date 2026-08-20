@@ -70,7 +70,7 @@ emission = Color(0, 0.9, 1, 1)
 emission_energy_multiplier = 5.0
 
 [sub_resource type="BoxShape3D" id="BoxShape3D_Car"]
-size = Vector3(1.8, 0.8, 2.2)
+size = Vector3(1.65, 0.75, 2.1)
 
 [node name="Main" type="Node3D" unique_id=279897959]
 

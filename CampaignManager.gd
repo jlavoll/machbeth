@@ -326,8 +326,11 @@ func _start_day_1() -> void:
 	if is_instance_valid(visual_fx) and visual_fx.has_method("set_city_light_stage"):
 		visual_fx.set_city_light_stage(visual_fx.CityLightStage.DIM, false)
 	
-	# Trigger sequential top-left HUD comms calls & lighting progression for Day 1 start!
-	_trigger_sequential_daily_calls()
+	# Play cinematic fade-to-black with large DAY 1 title card
+	play_day_transition_cinematic(1, active_daily_event, func():
+		# Trigger sequential top-left HUD comms calls & lighting progression after title card!
+		_trigger_sequential_daily_calls()
+	)
 
 
 func _connect_dialogue_signals() -> void:
@@ -1715,8 +1718,124 @@ func advance_to_next_day() -> void:
 	if is_instance_valid(neural_comms) and "ambient_timer" in neural_comms:
 		neural_comms.ambient_timer = -25.0 # Reset ambient chatter grace period on new day!
 
-	# Sequential Neural Comms Calls with spaced delays & gradual morning warmup
-	call_deferred("_trigger_sequential_daily_calls")
+	# Play cinematic fade-to-black with large DAY X title card before triggering comms
+	play_day_transition_cinematic(current_day, active_daily_event, func():
+		_trigger_sequential_daily_calls()
+	)
+
+# ==============================================================================
+# CINEMATIC DAY TRANSITION OVERLAY
+# ==============================================================================
+func play_day_transition_cinematic(day_num: int, event_info: Dictionary = {}, on_completed: Callable = Callable()) -> void:
+	var canvas = CanvasLayer.new()
+	canvas.layer = 100
+	add_child(canvas)
+
+	var root = Control.new()
+	root.set_anchors_preset(Control.PRESET_FULL_RECT)
+	canvas.add_child(root)
+
+	# Fullscreen Black Fade Background
+	var bg = ColorRect.new()
+	bg.set_anchors_preset(Control.PRESET_FULL_RECT)
+	bg.color = Color(0.01, 0.01, 0.02, 1.0)
+	root.add_child(bg)
+
+	# Animated Tech Grid / Scanlines in Background
+	var grid_ctrl = Control.new()
+	grid_ctrl.set_anchors_preset(Control.PRESET_FULL_RECT)
+	grid_ctrl.draw.connect(func():
+		var sz = grid_ctrl.size
+		var g_col = Color(0.0, 1.0, 0.85, 0.03)
+		for x in range(0, int(sz.x), 36):
+			grid_ctrl.draw_line(Vector2(x, 0), Vector2(x, sz.y), g_col, 1.0)
+		for y in range(0, int(sz.y), 36):
+			grid_ctrl.draw_line(Vector2(0, y), Vector2(sz.x, y), g_col, 1.0)
+	)
+	root.add_child(grid_ctrl)
+
+	# Center Title Card Container
+	var center_box = VBoxContainer.new()
+	center_box.set_anchors_preset(Control.PRESET_CENTER)
+	center_box.alignment = BoxContainer.ALIGNMENT_CENTER
+	center_box.add_theme_constant_override("separation", 14)
+	root.add_child(center_box)
+
+	# Subtitle / Sector header
+	var header_lbl = Label.new()
+	header_lbl.text = "DUNSINANE METROPOLIS // SECTOR WARD 01"
+	if sharetech_font:
+		header_lbl.add_theme_font_override("font", sharetech_font)
+	header_lbl.add_theme_font_size_override("font_size", 14)
+	header_lbl.add_theme_color_override("font_color", Color(0.0, 1.0, 0.85, 0.85))
+	header_lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	center_box.add_child(header_lbl)
+
+	# Large DAY X Title Label
+	var day_lbl = Label.new()
+	day_lbl.text = "— DAY %d —" % day_num
+	if orbitron_font:
+		day_lbl.add_theme_font_override("font", orbitron_font)
+	day_lbl.add_theme_font_size_override("font_size", 56)
+	day_lbl.add_theme_color_override("font_color", Color(1.0, 0.85, 0.2, 1.0)) # Gold Amber
+	day_lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	center_box.add_child(day_lbl)
+
+	# Decorative Cyan Divider Line
+	var line = ColorRect.new()
+	line.custom_minimum_size = Vector2(340, 2)
+	line.color = Color(0.0, 1.0, 0.85, 0.9)
+	line.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
+	center_box.add_child(line)
+
+	# Daily Event / Narrative Subtext
+	var ev_title = event_info.get("title", "NEW DAWN OVER THE METROPOLIS")
+	var event_lbl = Label.new()
+	event_lbl.text = ev_title
+	if sharetech_font:
+		event_lbl.add_theme_font_override("font", sharetech_font)
+	event_lbl.add_theme_font_size_override("font_size", 17)
+	event_lbl.add_theme_color_override("font_color", Color(0.9, 0.95, 1.0, 0.95))
+	event_lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	center_box.add_child(event_lbl)
+
+	# Shakespeare Cyberpunk Quote
+	var quote_lbl = Label.new()
+	var quotes = [
+		"\"The seeds of time begin to grow.\"",
+		"\"Fair is foul, and foul is fair: hover through the fog and filthy air.\"",
+		"\"What he hath lost noble Macbeth hath won.\"",
+		"\"Stars, hide your fires; let not light see my black and deep desires.\""
+	]
+	quote_lbl.text = quotes[(day_num - 1) % quotes.size()]
+	if ubuntu_font:
+		quote_lbl.add_theme_font_override("font", ubuntu_font)
+	quote_lbl.add_theme_font_size_override("font_size", 13)
+	quote_lbl.add_theme_color_override("font_color", Color(0.65, 0.75, 0.85, 0.65))
+	quote_lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	center_box.add_child(quote_lbl)
+
+	# Audio Ambience / Sting
+	var audio = AudioStreamPlayer.new()
+	audio.bus = "SFX" if AudioServer.get_bus_index("SFX") >= 0 else "Master"
+	if ResourceLoader.exists("res://sfx/engine_hum.ogg"):
+		audio.stream = load("res://sfx/engine_hum.ogg")
+		audio.pitch_scale = 0.55
+		audio.volume_db = -1.0
+	canvas.add_child(audio)
+	audio.play()
+
+	# Tween Animation: Fade in -> Hold 2.2s -> Smooth Fade Out 0.8s
+	center_box.modulate.a = 0.0
+	var tween = create_tween()
+	tween.tween_property(center_box, "modulate:a", 1.0, 0.5)
+	tween.tween_interval(2.2)
+	tween.tween_property(root, "modulate:a", 0.0, 0.8)
+	tween.tween_callback(func():
+		if on_completed.is_valid():
+			on_completed.call()
+		canvas.queue_free()
+	)
 
 func _trigger_sequential_daily_calls() -> void:
 	var visual_fx = get_parent().get_node_or_null("CityVisualEffects")

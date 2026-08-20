@@ -212,7 +212,11 @@ func _connect_dialogue_signals() -> void:
 
 func _on_dialogue_choice_selected(_choice_index: int, target_node_id: String) -> void:
 	# Check explicit hardcoded targets or dialogue node IDs
-	if target_node_id == "accept_pink_cadillac":
+	if target_node_id == "collect_stipend":
+		var campaign_mgr = get_parent().get_node_or_null("CampaignManager")
+		if is_instance_valid(campaign_mgr) and campaign_mgr.has_method("collect_joe_daily_stipend"):
+			campaign_mgr.collect_joe_daily_stipend()
+	elif target_node_id == "accept_pink_cadillac":
 		start_quest("street_01_pink_cadillac")
 	elif target_node_id == "accept_data_drop":
 		start_quest("street_02_data_drop")

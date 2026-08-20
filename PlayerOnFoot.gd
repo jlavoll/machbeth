@@ -167,6 +167,8 @@ func _build_figure() -> void:
 	_head_inst.add_child(nose_inst)
 
 	# --- Collision capsule ---
+	collision_layer = 1 | 2
+	collision_mask  = 1 | 2
 	var col_shape    := CapsuleShape3D.new()
 	col_shape.radius  = 0.2
 	col_shape.height  = 1.5

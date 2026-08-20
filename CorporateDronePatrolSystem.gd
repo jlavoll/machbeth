@@ -146,7 +146,10 @@ func _process(delta_time_step: float) -> void:
 			drone_instance.look_at(drone_instance.position + movement_direction_vector, Vector3.UP)
 
 		# Check for Player Vehicle Detection under spotlight beam
-		if is_instance_valid(player_car_node):
+		var indoor_mgr = get_parent().get_node_or_null("IndoorSystemManager")
+		var is_inside: bool = is_instance_valid(indoor_mgr) and indoor_mgr.is_inside_building
+
+		if is_instance_valid(player_car_node) and not is_inside:
 			var distance_to_player_vehicle = Vector2(current_drone_position.x - player_car_node.global_position.x, current_drone_position.z - player_car_node.global_position.z).length()
 			var spotlight_node: SpotLight3D = drone_instance.get_node_or_null("SurveillanceSpotLight")
 			var status_led_mesh: MeshInstance3D = drone_instance.get_node_or_null("DroneStatusLEDMesh")

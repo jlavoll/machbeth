@@ -74,9 +74,11 @@ func _build_pink_cadillac_mesh() -> void:
 	add_child(underglow_light)
 	
 	# Collision Box
+	collision_layer = 1 | 2
+	collision_mask  = 1 | 2
 	var col_shape = CollisionShape3D.new()
 	var box_shape = BoxShape3D.new()
-	box_shape.size = Vector3(2.1, 0.9, 5.4)
+	box_shape.size = Vector3(2.0, 0.85, 5.2) # Snug collision envelope
 	col_shape.shape = box_shape
 	col_shape.position = Vector3(0.0, 0.55, 0.0)
 	add_child(col_shape)

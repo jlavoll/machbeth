@@ -1309,6 +1309,17 @@ func _build_joe_ice_cream_storefront(static_body: StaticBody3D, pos: Vector3, b_
 	counter.material_override = c_mat
 	store_root.add_child(counter)
 
+	# Solid Collision Body for Service Counter
+	var counter_body = StaticBody3D.new()
+	counter_body.name = "IceCreamCounterCollider"
+	var counter_col = CollisionShape3D.new()
+	var counter_shape = BoxShape3D.new()
+	counter_shape.size = Vector3(4.4, 1.1, 1.2)
+	counter_col.shape = counter_shape
+	counter_col.position = Vector3(0.0, 0.55, 1.2)
+	counter_body.add_child(counter_col)
+	store_root.add_child(counter_body)
+
 	# Counter Glow Strip (Strawberry Pink)
 	var c_strip = MeshInstance3D.new()
 	var cs_box = BoxMesh.new()
@@ -1426,6 +1437,14 @@ func _build_joe_ice_cream_storefront(static_body: StaticBody3D, pos: Vector3, b_
 	j_mesh.material_override = j_mat
 	joe_body.add_child(j_mesh)
 
+	var j_col = CollisionShape3D.new()
+	var j_shape = CapsuleShape3D.new()
+	j_shape.radius = 0.25
+	j_shape.height = 1.3
+	j_col.shape = j_shape
+	j_col.position = Vector3(0.0, 0.65, 0.0)
+	joe_body.add_child(j_col)
+
 	var j_head = MeshInstance3D.new()
 	var j_sphere = SphereMesh.new()
 	j_sphere.radius = 0.24
@@ -1477,6 +1496,7 @@ func _spawn_cyber_river_canal(center: Vector3, b_size: Vector2) -> void:
 	var box_shape = BoxShape3D.new()
 	box_shape.size = Vector3(b_size.x, 4.0, b_size.y) # 4m deep collision wall
 	col_shape.shape = box_shape
+	col_shape.position = Vector3(0.0, -2.0, 0.0) # Submerged flush with ground so no invisible air walls
 	river_body.add_child(col_shape)
 
 	var river_mesh = MeshInstance3D.new()
@@ -1731,7 +1751,10 @@ func _spawn_cyber_park(center: Vector3, b_size: Vector2, neon_colors: Array, par
 		plaque_lbl.position = Vector3(0.0, 2.2, 2.1)
 		plaque_lbl.font_size = 20
 		plaque_lbl.pixel_size = 0.004
-		plaque_lbl.modulate = Color(1.0, 0.85, 0.0)
+		plaque_lbl.modulate = Color(1.0, 0.88, 0.2) # High-visibility Amber Gold
+		plaque_lbl.outline_modulate = Color(0.0, 0.0, 0.0, 1.0) # Solid Black Outline
+		plaque_lbl.outline_size = 10 # Thick outline for crystal clear readability against grass
+		plaque_lbl.outline_render_priority = 1
 		statue_root.add_child(plaque_lbl)
 
 		add_child(statue_root)

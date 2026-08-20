@@ -174,6 +174,8 @@ var base_fov: float = 85.0
 # ==============================================================================
 
 func _ready() -> void:
+	collision_layer = 1 | 2
+	collision_mask = 1 | 2
 	if camera:
 		base_fov = camera.fov  # Capture scene-configured base FOV for zoom calculations
 		# Start (and always return to) 5 scroll steps back from the maximum zoom-in level.

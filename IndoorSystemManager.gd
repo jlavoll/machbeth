@@ -1368,14 +1368,14 @@ func _process(_delta: float) -> void:
 	var floor_exit_pos: Vector3 = current_origin + Vector3(0.0, 0.0, exit_target_z)
 
 	if current_floor == HQFloor.LOBBY:
-		if pos.distance_to(exit_door_pos) <= 4.5:
+		if pos.distance_to(exit_door_pos) <= 2.6:
 			prompt_text = "[E] EXIT TO CITY STREETS"
-		elif pos.distance_to(lobby_elevator_pos) <= 4.5:
+		elif pos.distance_to(lobby_elevator_pos) <= 2.6:
 			prompt_text = "[E] TAKE ELEVATOR UP TO PENTHOUSE (CEO SUITE)"
 	elif current_floor == HQFloor.PENTHOUSE:
-		if pos.distance_to(penthouse_elevator_pos) <= 4.5:
+		if pos.distance_to(penthouse_elevator_pos) <= 2.6:
 			prompt_text = "[E] TAKE ELEVATOR DOWN TO GROUND LOBBY"
-		elif pos.distance_to(penthouse_server_door_pos) <= 4.5:
+		elif pos.distance_to(penthouse_server_door_pos) <= 2.6:
 			if not is_server_door_open:
 				prompt_text = "[E] OPEN SECURITY DOOR // SERVER VAULT"
 			else:
@@ -1385,25 +1385,25 @@ func _process(_delta: float) -> void:
 			var cupboard_pos: Vector3 = banquo_loft_origin + Vector3(-9.5, 1.5, -4.0)
 			var bed_pos: Vector3 = banquo_loft_origin + Vector3(6.0, 0.0, -4.0)
 			var roof_door_pos: Vector3 = banquo_loft_origin + Vector3(0.0, 0.0, -8.6)
-			if pos.distance_to(cupboard_pos) <= 5.5:
+			if pos.distance_to(cupboard_pos) <= 2.6:
 				prompt_text = "[E] ACCESS BANQUO'S OPERATIVE ARMORY // PERSONAL LOADOUT"
-			elif pos.distance_to(bed_pos) <= 4.5:
+			elif pos.distance_to(bed_pos) <= 2.6:
 				prompt_text = "[E] SLEEP & ADVANCE TO NEXT DAY"
-			elif pos.distance_to(roof_door_pos) <= 4.5:
+			elif pos.distance_to(roof_door_pos) <= 2.6:
 				prompt_text = "[E] TAKE ELEVATOR TO ROOFTOP"
-			elif pos.distance_to(floor_exit_pos) <= 4.5:
+			elif pos.distance_to(floor_exit_pos) <= 2.6:
 				prompt_text = "[E] EXIT TO CITY STREETS"
 		elif current_floor == HQFloor.MACK_HIDEOUT:
 			var mack_pos: Vector3 = mack_hideout_origin + Vector3(0.0, 0.0, -5.5)
 			var cot_pos: Vector3 = mack_hideout_origin + Vector3(6.0, 0.0, -4.0)
 			var balcony_door_pos: Vector3 = mack_hideout_origin + Vector3(0.0, 0.0, -8.6)
-			if pos.distance_to(mack_pos) <= 4.0:
+			if pos.distance_to(mack_pos) <= 2.6:
 				prompt_text = "[E] TALK TO COMMANDER MACK"
-			elif pos.distance_to(cot_pos) <= 4.5:
+			elif pos.distance_to(cot_pos) <= 2.6:
 				prompt_text = "[E] SLEEP & ADVANCE TO NEXT DAY"
-			elif pos.distance_to(balcony_door_pos) <= 4.5:
+			elif pos.distance_to(balcony_door_pos) <= 2.6:
 				prompt_text = "[E] TAKE ELEVATOR TO BALCONY"
-			elif pos.distance_to(floor_exit_pos) <= 4.5:
+			elif pos.distance_to(floor_exit_pos) <= 2.6:
 				prompt_text = "[E] EXIT TO CITY STREETS"
 		elif current_floor == HQFloor.PORTER_PIT:
 			var terminal_pos: Vector3 = porter_pit_origin + Vector3(-10.0, 0.0, 0.0)
@@ -1411,39 +1411,39 @@ func _process(_delta: float) -> void:
 			var wartable_pos: Vector3 = porter_pit_origin + Vector3(0.0, 0.0, 4.0)
 			var pit_cot_pos: Vector3 = porter_pit_origin + Vector3(14.0, 0.0, -4.0) # East Annex Crew Cot
 			var porter_npc_pos_p: Vector3 = porter_pit_origin + Vector3(0.0, 0.0, -5.5)
-			if pos.distance_to(porter_npc_pos_p) <= 3.5:
+			if pos.distance_to(porter_npc_pos_p) <= 2.5:
 				prompt_text = "[E] TALK TO PORTER"
-			elif pos.distance_to(pit_backroom_door_pos) <= 4.5:
+			elif pos.distance_to(pit_backroom_door_pos) <= 2.6:
 				if not is_pit_backroom_door_open:
 					prompt_text = "[E] OPEN SIDE ENTRANCE DOOR // PIT BACK-ROOM ANNEX"
 				else:
 					prompt_text = "[E] CLOSE SIDE ENTRANCE DOOR"
-			elif pos.distance_to(terminal_pos) <= 4.0:
+			elif pos.distance_to(terminal_pos) <= 2.5:
 				prompt_text = "[E] ACCESS PIT GARAGE & FLEET MANAGER (VEHICLE & TELEMETRY UPGRADES)"
-			elif pos.distance_to(porter_pit_origin + Vector3(26.0, 0.0, 0.0) + Vector3(4.0, 0.0, -4.0)) <= 4.0:
+			elif pos.distance_to(porter_pit_origin + Vector3(26.0, 0.0, 0.0) + Vector3(4.0, 0.0, -4.0)) <= 2.5:
 				prompt_text = "[E] ACCESS BLACK-MARKET CYBERWARE & PARTS SHOP"
-			elif pos.distance_to(cyborg_terminal_pos) <= 4.0:
+			elif pos.distance_to(cyborg_terminal_pos) <= 2.5:
 				prompt_text = "[E] ACCESS TACTICAL LOADOUT GRID (MACK CYBORG & WAR-RIG HARDPOINTS)"
-			elif pos.distance_to(wartable_pos) <= 4.0:
+			elif pos.distance_to(wartable_pos) <= 2.5:
 				prompt_text = "[E] ACCESS WAR-TABLE // DEPLOY MACK TO GRAND HIT"
-			elif pos.distance_to(pit_cot_pos) <= 4.5:
+			elif pos.distance_to(pit_cot_pos) <= 2.6:
 				prompt_text = "[E] SLEEP & ADVANCE TO NEXT DAY"
-			elif pos.distance_to(floor_exit_pos) <= 4.5:
+			elif pos.distance_to(floor_exit_pos) <= 2.6:
 				prompt_text = "[E] EXIT TO CITY STREETS"
 
 		elif current_floor == HQFloor.BANKES_LOGISTICS:
 			var bankes_server_pos: Vector3 = bankes_logistics_origin + Vector3(0.0, 0.0, -2.0)
-			if pos.distance_to(bankes_server_pos) <= 4.0:
+			if pos.distance_to(bankes_server_pos) <= 2.5:
 				prompt_text = "[E] SEVER BANKES LOGISTICS SHIELD UPLINK"
-			elif pos.distance_to(floor_exit_pos) <= 4.5:
+			elif pos.distance_to(floor_exit_pos) <= 2.6:
 				prompt_text = "[E] EXIT TO CITY STREETS"
 		elif current_floor == HQFloor.SUBSTATION:
 			var sub_breaker_pos: Vector3 = substation_origin + Vector3(0.0, 0.0, -6.0)
-			if pos.distance_to(sub_breaker_pos) <= 4.0:
+			if pos.distance_to(sub_breaker_pos) <= 2.5:
 				prompt_text = "[E] CUT SUBSTATION 09 POWER GRID // SEVER NORNS FEED"
-			elif pos.distance_to(floor_exit_pos) <= 4.5:
+			elif pos.distance_to(floor_exit_pos) <= 2.6:
 				prompt_text = "[E] EXIT TO CITY STREETS"
-		elif pos.distance_to(floor_exit_pos) <= 4.5:
+		elif pos.distance_to(floor_exit_pos) <= 2.6:
 			prompt_text = "[E] EXIT TO CITY STREETS"
 
 	if is_instance_valid(_indoor_prompt_label):
@@ -1483,18 +1483,18 @@ func _unhandled_input(event: InputEvent) -> void:
 		var pos: Vector3 = player_node.global_position
 
 		if current_floor == HQFloor.LOBBY:
-			if pos.distance_to(exit_door_pos) <= 4.5:
+			if pos.distance_to(exit_door_pos) <= 2.6:
 				exit_building_interior()
 				get_viewport().set_input_as_handled()
-			elif pos.distance_to(lobby_elevator_pos) <= 4.5:
+			elif pos.distance_to(lobby_elevator_pos) <= 2.6:
 				switch_to_floor(HQFloor.PENTHOUSE)
 				get_viewport().set_input_as_handled()
 
 		elif current_floor == HQFloor.PENTHOUSE:
-			if pos.distance_to(penthouse_elevator_pos) <= 4.5:
+			if pos.distance_to(penthouse_elevator_pos) <= 2.6:
 				switch_to_floor(HQFloor.LOBBY)
 				get_viewport().set_input_as_handled()
-			elif pos.distance_to(penthouse_server_door_pos) <= 4.5:
+			elif pos.distance_to(penthouse_server_door_pos) <= 2.6:
 				_toggle_server_vault_door()
 				get_viewport().set_input_as_handled()
 		else:
@@ -1510,18 +1510,18 @@ func _unhandled_input(event: InputEvent) -> void:
 
 				if current_floor == HQFloor.MACK_HIDEOUT:
 					var balcony_door_pos: Vector3 = mack_hideout_origin + Vector3(0.0, 0.0, -8.6)
-					if pos.distance_to(balcony_door_pos) <= 4.5:
+					if pos.distance_to(balcony_door_pos) <= 2.6:
 						_teleport_player_to_mack_balcony()
 						get_viewport().set_input_as_handled()
 						return
 				elif current_floor == HQFloor.BANQUO_LOFT:
 					var roof_door_pos: Vector3 = banquo_loft_origin + Vector3(0.0, 0.0, -8.6)
-					if pos.distance_to(roof_door_pos) <= 4.5:
+					if pos.distance_to(roof_door_pos) <= 2.6:
 						_teleport_player_to_banquo_rooftop()
 						get_viewport().set_input_as_handled()
 						return
 
-				if current_floor == HQFloor.BANQUO_LOFT and pos.distance_to(cupboard_pos) <= 5.5:
+				if current_floor == HQFloor.BANQUO_LOFT and pos.distance_to(cupboard_pos) <= 2.6:
 					var banquo_ui = get_parent().get_node_or_null("BanquoOperativeUI")
 					if is_instance_valid(banquo_ui) and banquo_ui.has_method("open_banquo_ui"):
 						banquo_ui.open_banquo_ui()
@@ -1536,13 +1536,13 @@ func _unhandled_input(event: InputEvent) -> void:
 								comms.send_message("👔 BANQUO'S WARDROBE: Changed head color outfit to [color=#FF00CC]%s[/color]!" % new_style, "OUTFIT CUSTOMIZER")
 							get_viewport().set_input_as_handled()
 							return
-				elif current_floor == HQFloor.MACK_HIDEOUT and pos.distance_to(mack_pos) <= 4.0:
+				elif current_floor == HQFloor.MACK_HIDEOUT and pos.distance_to(mack_pos) <= 2.6:
 					var dialogue_sys = get_parent().get_node_or_null("DialogueSystem")
 					if is_instance_valid(dialogue_sys):
 						dialogue_sys.start_dialogue("res://scripts/mack_dialogue.json")
 						get_viewport().set_input_as_handled()
 						return
-				elif pos.distance_to(bed_pos) <= 5.0 or (current_floor == HQFloor.MACK_HIDEOUT and pos.distance_to(mack_pos) <= 7.0):
+				elif pos.distance_to(bed_pos) <= 2.6:
 					var campaign_mgr = get_parent().get_node_or_null("CampaignManager")
 					if is_instance_valid(campaign_mgr):
 						campaign_mgr.advance_to_next_day()
@@ -1568,7 +1568,7 @@ func _unhandled_input(event: InputEvent) -> void:
 				var porter_npc_pos: Vector3 = porter_pit_origin + Vector3(0.0, 0.0, -5.5)
 
 				# --- PORTER NPC DIALOGUE (walk up to Porter himself) ---
-				if pos.distance_to(porter_npc_pos) <= 3.5:
+				if pos.distance_to(porter_npc_pos) <= 2.5:
 					var dialogue_sys = get_parent().get_node_or_null("DialogueSystem")
 					if is_instance_valid(dialogue_sys) and dialogue_sys.has_method("start_dialogue"):
 						var day: int = 1
@@ -1593,24 +1593,24 @@ func _unhandled_input(event: InputEvent) -> void:
 						return
 
 
-				elif pos.distance_to(pit_backroom_door_pos) <= 4.5:
+				elif pos.distance_to(pit_backroom_door_pos) <= 2.6:
 					_toggle_pit_backroom_door()
 					get_viewport().set_input_as_handled()
 					return
-				elif pos.distance_to(terminal_pos) <= 4.0:
+				elif pos.distance_to(terminal_pos) <= 2.5:
 					var garage_mgr = get_parent().get_node_or_null("GarageManager")
 					if is_instance_valid(garage_mgr):
 						garage_mgr.open_garage_ui()
 						get_viewport().set_input_as_handled()
 						return
-				elif pos.distance_to(porter_pit_origin + Vector3(26.0, 0.0, 0.0) + Vector3(4.0, 0.0, -4.0)) <= 4.0: # Backroom Cyber Parts Rack
+				elif pos.distance_to(porter_pit_origin + Vector3(26.0, 0.0, 0.0) + Vector3(4.0, 0.0, -4.0)) <= 2.5: # Backroom Cyber Parts Rack
 					var shop_ui = get_parent().get_node_or_null("InventoryShopUI")
 					if is_instance_valid(shop_ui) and shop_ui.has_method("open_inventory_ui"):
 						shop_ui.open_inventory_ui(0) # Open The Pit Shop
 						get_viewport().set_input_as_handled()
 						return
 
-				elif pos.distance_to(cyborg_terminal_pos) <= 4.0:
+				elif pos.distance_to(cyborg_terminal_pos) <= 2.5:
 					var loadout_ui = get_parent().get_node_or_null("LoadoutGridUI")
 					if is_instance_valid(loadout_ui) and loadout_ui.has_method("open_loadout_ui"):
 						loadout_ui.open_loadout_ui()
@@ -1622,12 +1622,12 @@ func _unhandled_input(event: InputEvent) -> void:
 						get_viewport().set_input_as_handled()
 						return
 
-				elif pos.distance_to(wartable_pos) <= 4.0:
+				elif pos.distance_to(wartable_pos) <= 2.5:
 					if is_instance_valid(campaign_mgr):
 						campaign_mgr.open_deployment_ui()
 						get_viewport().set_input_as_handled()
 						return
-				elif pos.distance_to(porter_pit_origin + Vector3(14.0, 0.0, -4.0)) <= 4.5:
+				elif pos.distance_to(porter_pit_origin + Vector3(14.0, 0.0, -4.0)) <= 2.6:
 					if is_instance_valid(campaign_mgr):
 						campaign_mgr.advance_to_next_day()
 						get_viewport().set_input_as_handled()
@@ -1636,7 +1636,7 @@ func _unhandled_input(event: InputEvent) -> void:
 
 			if current_floor == HQFloor.BANKES_LOGISTICS:
 				var bankes_server_pos: Vector3 = bankes_logistics_origin + Vector3(0.0, 0.0, -2.0)
-				if pos.distance_to(bankes_server_pos) <= 4.0:
+				if pos.distance_to(bankes_server_pos) <= 2.5:
 					var campaign_mgr = get_parent().get_node_or_null("CampaignManager")
 					if is_instance_valid(campaign_mgr):
 						if campaign_mgr.is_bankes_server_mission_active:
@@ -1658,7 +1658,7 @@ func _unhandled_input(event: InputEvent) -> void:
 
 			if current_floor == HQFloor.SUBSTATION:
 				var sub_breaker_pos: Vector3 = substation_origin + Vector3(0.0, 0.0, -6.0)
-				if pos.distance_to(sub_breaker_pos) <= 4.0:
+				if pos.distance_to(sub_breaker_pos) <= 2.5:
 					var campaign_mgr = get_parent().get_node_or_null("CampaignManager")
 					if is_instance_valid(campaign_mgr):
 						if campaign_mgr.is_substation_side_mission_active:

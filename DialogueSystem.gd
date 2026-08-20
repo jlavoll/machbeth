@@ -234,6 +234,10 @@ func _display_node(node_id: String) -> void:
 
 	# --- Start typewriter for dialogue text ---
 	_typewriter_full_text   = node_data.get("text", "")
+	if node_id == "collect_stipend":
+		var campaign_mgr = get_parent().get_node_or_null("CampaignManager")
+		if is_instance_valid(campaign_mgr) and campaign_mgr.get("has_collected_daily_joe_stipend") == true:
+			_typewriter_full_text = "Already handed you today's 750 credits sponsor stipend, Banquo! Come back tomorrow morning after a night's rest for the next payout!"
 	_typewriter_char_index  = 0.0
 	_typewriter_is_complete = false
 	_dialogue_rich_label.text = ""
